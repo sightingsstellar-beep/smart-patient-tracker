@@ -106,6 +106,9 @@ app.use(session({
   },
 }));
 
+// Health check (public — used by Railway to verify the container is up)
+app.get('/health', (req, res) => res.json({ ok: true }));
+
 // Login page (public — no auth required)
 app.get('/login', (req, res) => {
   if (req.session && req.session.authenticated) return res.redirect('/');
