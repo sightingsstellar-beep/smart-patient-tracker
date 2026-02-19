@@ -644,24 +644,6 @@ app.post('/api/settings', (req, res) => {
   }
 });
 
-// ---------------------------------------------------------------------------
-// One-time seed endpoint (TEMPORARY — remove after use)
-// Protected by the normal session auth gate.
-// ---------------------------------------------------------------------------
-app.get('/api/admin/seed', (req, res) => {
-  try {
-    const { execFileSync } = require('child_process');
-    const output = execFileSync('node', ['seed-sample-data.js'], {
-      cwd: __dirname,
-      env: process.env,
-      encoding: 'utf8',
-    });
-    res.type('text/plain').send(output);
-  } catch (err) {
-    res.status(500).type('text/plain').send(err.stdout || err.message);
-  }
-});
-
 // Settings page
 app.get('/settings', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'settings.html'));
