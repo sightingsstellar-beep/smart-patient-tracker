@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="theme-color" content="#1a73e8" />
+  <title>Elina 💙 Tracker</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💙</text></svg>" />
+</head>
+<body>
+  <!-- ========== HEADER ========== -->
+  <header class="header">
+    <div class="header-left">
+      <h1 class="title">Elina <span class="heart">💙</span></h1>
+      <div class="subtitle" id="current-date">Loading...</div>
+    </div>
+    <div class="header-right">
+      <div class="clock" id="current-time">--:--</div>
+      <div class="refresh-indicator" id="refresh-badge" title="Auto-refresh every 30s">🔄</div>
+    </div>
+  </header>
+
+  <main class="main">
+
+    <!-- ========== INTAKE SECTION ========== -->
+    <section class="card intake-card" id="intake-section">
+      <div class="card-header">
+        <span class="card-icon">💧</span>
+        <h2>Fluid Intake</h2>
+      </div>
+
+      <div class="intake-totals">
+        <span class="intake-amount" id="intake-amount">-- ml</span>
+        <span class="intake-limit">/ 1200 ml</span>
+        <span class="intake-pct" id="intake-pct">--%</span>
+      </div>
+
+      <!-- Progress bar -->
+      <div class="progress-container" aria-label="Intake progress">
+        <div class="progress-bar" id="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+      </div>
+      <div class="over-limit-warning" id="over-limit-warning" style="display:none;">
+        ⚠️ Daily limit exceeded!
+      </div>
+
+      <!-- Intake breakdown cards -->
+      <div class="fluid-types" id="fluid-types">
+        <!-- Populated by JS -->
+      </div>
+    </section>
+
+    <!-- ========== OUTPUT LOG ========== -->
+    <section class="card output-card">
+      <div class="card-header">
+        <span class="card-icon">🚽</span>
+        <h2>Outputs</h2>
+        <span class="badge" id="output-count">0</span>
+      </div>
+      <ul class="output-list" id="output-list">
+        <li class="empty-state">No outputs logged today</li>
+      </ul>
+    </section>
+
+    <!-- ========== GAG COUNTER ========== -->
+    <section class="card gag-card">
+      <div class="card-header">
+        <span class="card-icon">🤢</span>
+        <h2>Gag Episodes</h2>
+        <span class="badge badge-warn" id="gag-count">0</span>
+      </div>
+      <ul class="gag-list" id="gag-list">
+        <li class="empty-state">No gag episodes today</li>
+      </ul>
+    </section>
+
+    <!-- ========== WELLNESS PANEL ========== -->
+    <section class="card wellness-card">
+      <div class="card-header">
+        <span class="card-icon">❤️</span>
+        <h2>Wellness Check</h2>
+        <span class="wellness-label" id="wellness-label">--</span>
+      </div>
+      <div class="wellness-grid" id="wellness-grid">
+        <div class="wellness-empty" id="wellness-empty">No wellness check logged yet</div>
+        <!-- Gauges populated by JS -->
+      </div>
+    </section>
+
+    <!-- ========== QUICK LOG ========== -->
+    <section class="card quick-log-card">
+      <div class="card-header">
+        <span class="card-icon">⚡</span>
+        <h2>Quick Log</h2>
+      </div>
+      <p class="quick-log-hint">Tap to log via Telegram bot, or use buttons below:</p>
+      <div class="quick-buttons">
+        <button class="quick-btn" data-type="input" data-fluid="water" data-amount="120">💧 Water 120ml</button>
+        <button class="quick-btn" data-type="input" data-fluid="pediasure" data-amount="237">🍼 PediaSure 237ml</button>
+        <button class="quick-btn" data-type="input" data-fluid="milk" data-amount="120">🥛 Milk 120ml</button>
+        <button class="quick-btn" data-type="output" data-fluid="urine" data-amount="">🚽 Urine</button>
+        <button class="quick-btn" data-type="output" data-fluid="poop" data-amount="">💩 Poop</button>
+        <button class="quick-btn" data-type="gag" data-count="1">🤢 Gag ×1</button>
+      </div>
+      <!-- Modal for urine amount -->
+      <div class="amount-modal" id="amount-modal" style="display:none;">
+        <div class="amount-modal-inner">
+          <h3>Enter amount (ml)</h3>
+          <input type="number" id="amount-input" min="1" max="1000" placeholder="e.g. 85" />
+          <div class="modal-buttons">
+            <button class="btn-cancel" id="modal-cancel">Cancel</button>
+            <button class="btn-confirm" id="modal-confirm">Log It</button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    <span>Last updated: <span id="last-updated">--</span></span>
+    <span>Auto-refresh: 30s</span>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>

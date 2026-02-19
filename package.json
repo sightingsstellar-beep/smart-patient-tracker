@@ -1,0 +1,22 @@
+{
+  "name": "elina-tracker",
+  "version": "1.0.0",
+  "description": "Fluid intake/output tracker for Elina — hospital-grade daily logging via Telegram bot and web dashboard",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^9.4.3",
+    "dotenv": "^16.4.5",
+    "express": "^4.18.3",
+    "node-cron": "^3.0.3",
+    "node-telegram-bot-api": "^0.66.0",
+    "openai": "^4.28.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "license": "MIT"
+}
