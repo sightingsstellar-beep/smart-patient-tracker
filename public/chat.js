@@ -248,28 +248,47 @@ function recognizeWithWebSpeech() {
 let mediaRecorder = null;
 let audioChunks = [];
 let mediaStream = null;
+let micInitialized = false;
+let currentMimeType = '';
+
+async function initMic() {
+  if (micInitialized || mediaStream) return;
+  try {
+    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    micInitialized = true;
+  } catch (_) {}
+}
 
 async function startMediaRecorder() {
   // Request microphone (iOS Safari: this MUST happen in a user gesture handler — it does)
   if (!mediaStream) {
-    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    micInitialized = true;
   }
 
   audioChunks = [];
 
   // Pick the best MIME type Whisper supports
-  let mimeType = 'audio/webm';
-  if (!MediaRecorder.isTypeSupported('audio/webm')) {
-    mimeType = MediaRecorder.isTypeSupported('audio/ogg') ? 'audio/ogg' : 'audio/mp4';
+  currentMimeType = '';
+  if (MediaRecorder.isTypeSupported('audio/mp4')) {
+    currentMimeType = 'audio/mp4';
+  } else if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+    currentMimeType = 'audio/webm;codecs=opus';
+  } else if (MediaRecorder.isTypeSupported('audio/webm')) {
+    currentMimeType = 'audio/webm';
+  } else if (MediaRecorder.isTypeSupported('audio/ogg')) {
+    currentMimeType = 'audio/ogg';
   }
 
-  mediaRecorder = new MediaRecorder(mediaStream, { mimeType });
+  mediaRecorder = currentMimeType
+    ? new MediaRecorder(mediaStream, { mimeType: currentMimeType })
+    : new MediaRecorder(mediaStream);
 
   mediaRecorder.ondataavailable = (e) => {
     if (e.data && e.data.size > 0) audioChunks.push(e.data);
   };
 
-  mediaRecorder.start(100); // collect chunks every 100ms
+  mediaRecorder.start();
 }
 
 function stopMediaRecorder() {
@@ -279,18 +298,27 @@ function stopMediaRecorder() {
       return;
     }
     mediaRecorder.onstop = () => {
-      const mimeType = mediaRecorder.mimeType || 'audio/webm';
+      const mimeType = currentMimeType || 'audio/webm';
       const blob = new Blob(audioChunks, { type: mimeType });
       resolve(blob);
     };
+    mediaRecorder.requestData();
     mediaRecorder.stop();
   });
 }
 
 async function transcribeWithWhisper(audioBlob) {
   const formData = new FormData();
-  // Use .webm extension by default — Whisper accepts webm, ogg, mp4
-  const ext = audioBlob.type.includes('ogg') ? 'ogg' : audioBlob.type.includes('mp4') ? 'mp4' : 'webm';
+  const blobType = audioBlob.type || currentMimeType || '';
+  const ext = blobType.includes('mp4')
+    ? 'mp4'
+    : blobType.includes('ogg')
+    ? 'ogg'
+    : blobType.includes('webm')
+    ? 'webm'
+    : isIOS
+    ? 'mp4'
+    : 'webm';
   formData.append('audio', audioBlob, `recording.${ext}`);
 
   const res = await fetch('/api/transcribe', {
@@ -469,3 +497,5 @@ micBtn.addEventListener('touchcancel', () => stopRecording(true));
 
 // Prevent context menu on long-press (mobile)
 micBtn.addEventListener('contextmenu', (e) => e.preventDefault());
+
+initMic();
