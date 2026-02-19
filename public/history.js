@@ -138,9 +138,9 @@ function buildDayCard(day, prevDay) {
   }
 
   // ---- Sections: Intake → Outputs → Gags → Wellness ----
-  card.appendChild(buildIntakeSection(day.intake));
+  card.appendChild(buildIntakeSection(day.intake, day.inputs));
   card.appendChild(buildOutputsSection(day.outputs));
-  card.appendChild(buildGagSection(day.gagCount));
+  card.appendChild(buildGagSection(day.gagCount, day.gags));
   card.appendChild(buildWellnessSection(day.wellness, prevDay ? prevDay.wellness : null));
 
   // ---- Wire up accordion toggle ----
@@ -212,8 +212,8 @@ function createAccordionSection(labelText, summaryHTML, detailHTML) {
 
 // --- Intake section ---
 
-function buildIntakeSection(intake) {
-  const { total_ml, limit_ml, percent, byType } = intake;
+function buildIntakeSection(intake, inputs) {
+  const { total_ml, limit_ml, percent } = intake;
 
   // Progress bar
   const barWidth = Math.min(percent, 100);
@@ -232,18 +232,20 @@ function buildIntakeSection(intake) {
     </div>
   `;
 
-  // Detail: per-type breakdown
-  const types = Object.entries(byType || {}).filter(([, ml]) => ml > 0);
+  // Detail: full timestamped list
+  const entries = inputs || [];
   let detailHTML;
-  if (types.length === 0) {
+  if (entries.length === 0) {
     detailHTML = '<p class="h-detail-empty">No intake logged</p>';
   } else {
-    const rows = types.map(([type, ml]) =>
-      `<div class="h-detail-row">
-        <span class="h-detail-label">${fluidLabel(type)}</span>
-        <span class="h-detail-value">${ml}ml</span>
-      </div>`
-    ).join('');
+    const rows = entries.map((input) => {
+      const amount = input.amount_ml ? `${input.amount_ml}ml` : '';
+      const label = [fluidLabel(input.fluid_type), amount].filter(Boolean).join(' ');
+      return `<div class="h-detail-row">
+        <span class="h-detail-time">${input.time}</span>
+        <span class="h-detail-label">— ${label}</span>
+      </div>`;
+    }).join('');
     detailHTML = `<div class="h-detail-list">${rows}</div>`;
   }
 
@@ -292,20 +294,20 @@ function buildOutputsSection(outputs) {
 
 // --- Gag section ---
 
-function buildGagSection(gagCount) {
+function buildGagSection(gagCount, gags) {
   const summaryHTML = gagCount > 0
     ? `<span class="h-gag-count">🤢 ${gagCount} gag episode${gagCount !== 1 ? 's' : ''}</span>`
     : '<span class="h-gag-none">None</span>';
 
   let detailHTML;
-  if (gagCount === 0) {
+  const entries = gags || [];
+  if (entries.length === 0) {
     detailHTML = '<p class="h-detail-empty">No gag episodes</p>';
   } else {
-    // Individual timestamps not included in the /api/history response
-    const items = Array.from({ length: gagCount }, (_, i) =>
+    const items = entries.map((gag) =>
       `<div class="h-detail-row h-gag-detail-row">
-        <span class="h-detail-icon">🤢</span>
-        <span class="h-detail-label">Gag episode ${i + 1}</span>
+        <span class="h-detail-time">${gag.time}</span>
+        <span class="h-detail-label">— Gag episode</span>
       </div>`
     ).join('');
     detailHTML = `<div class="h-detail-list">${items}</div>`;

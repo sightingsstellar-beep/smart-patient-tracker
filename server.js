@@ -201,6 +201,17 @@ app.get('/api/history', (req, res) => {
         amount_ml: o.amount_ml,
         time: formatTimestamp(o.timestamp),
       }));
+      const inputs = summary.inputs.map((l) => ({
+        id: l.id,
+        time: formatTime(l.timestamp),
+        fluid_type: l.fluid_type,
+        fluid_type_label: FLUID_LABELS[l.fluid_type] || l.fluid_type,
+        amount_ml: l.amount_ml,
+      }));
+      const gags = summary.gags.map((g) => ({
+        id: g.id,
+        time: formatTime(g.timestamp),
+      }));
 
       // Split wellness into afternoon (5pm) and evening (10pm)
       const afternoonRow = summary.wellness.find((w) => w.check_time === '5pm') || null;
@@ -219,7 +230,9 @@ app.get('/api/history', (req, res) => {
         label,
         isToday: dayKey === todayKey,
         intake: { total_ml, limit_ml, percent, byType: summary.intakeByType },
+        inputs,
         outputs,
+        gags,
         gagCount: summary.gagCount,
         wellness: {
           afternoon: pickWellness(afternoonRow),
