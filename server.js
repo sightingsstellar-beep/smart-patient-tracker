@@ -433,9 +433,10 @@ app.delete('/api/log/:id', (req, res) => {
 // ---------------------------------------------------------------------------
 
 /**
- * Builds a short confirmation message listing what was just logged.
+ * Builds a short confirmation message listing what was just logged,
+ * with a brief intake + output summary.
  */
-function buildChatConfirmation(actions, totalIntake) {
+function buildChatConfirmation(actions, summary) {
   const parts = [];
   for (const action of actions) {
     if (action.type === 'input') {
@@ -454,8 +455,12 @@ function buildChatConfirmation(actions, totalIntake) {
   }
   const logged = parts.length > 0 ? parts.join(' + ') : 'entry';
   const limit = getDailyLimit();
-  const pct = Math.round((totalIntake / limit) * 100);
-  return `✅ Logged: ${logged} | Total today: ${totalIntake}ml / ${limit}ml (${pct}%)`;
+  const pct = Math.round((summary.totalIntake / limit) * 100);
+
+  const totalOut = summary.outputs.reduce((sum, o) => sum + (o.amount_ml || 0), 0);
+  const outStr = totalOut > 0 ? `${totalOut}ml` : `${summary.outputs.length} event${summary.outputs.length !== 1 ? 's' : ''}`;
+
+  return `✅ Logged: ${logged} | 💧 In: ${summary.totalIntake}/${limit}ml (${pct}%) · 🚽 Out: ${outStr}`;
 }
 
 app.post('/api/chat', async (req, res) => {
@@ -515,7 +520,7 @@ app.post('/api/chat', async (req, res) => {
     }
 
     const summary = db.getDaySummary(dayKey);
-    const message = buildChatConfirmation(parsed.actions, summary.totalIntake);
+    const message = buildChatConfirmation(parsed.actions, summary);
 
     res.json({ ok: true, message, entries });
   } catch (err) {

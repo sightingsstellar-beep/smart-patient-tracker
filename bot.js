@@ -67,9 +67,10 @@ function titleCase(str) {
 }
 
 /**
- * Builds a short confirmation message listing what was just logged.
+ * Builds a short confirmation message listing what was just logged,
+ * with a brief intake + output summary.
  */
-function buildConfirmation(actions, totalIntake) {
+function buildConfirmation(actions, summary) {
   const parts = [];
 
   for (const action of actions) {
@@ -90,8 +91,12 @@ function buildConfirmation(actions, totalIntake) {
 
   const logged = parts.length > 0 ? parts.join(' + ') : 'entry';
   const limit = getDailyLimit();
-  const pct = Math.round((totalIntake / limit) * 100);
-  return `✅ Logged: ${logged} | Total today: ${totalIntake}ml / ${limit}ml (${pct}%)`;
+  const pct = Math.round((summary.totalIntake / limit) * 100);
+
+  const totalOut = summary.outputs.reduce((sum, o) => sum + (o.amount_ml || 0), 0);
+  const outStr = totalOut > 0 ? `${totalOut}ml` : `${summary.outputs.length} event${summary.outputs.length !== 1 ? 's' : ''}`;
+
+  return `✅ Logged: ${logged}\n💧 In: ${summary.totalIntake}/${limit}ml (${pct}%) · 🚽 Out: ${outStr}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -309,7 +314,7 @@ bot.on('message', async (msg) => {
 
   // Build and send confirmation
   const summary = db.getDaySummary(dayKey);
-  const confirmation = buildConfirmation(parsed.actions, summary.totalIntake);
+  const confirmation = buildConfirmation(parsed.actions, summary);
   bot.sendMessage(chatId, confirmation);
 
   // Warn if over daily limit
