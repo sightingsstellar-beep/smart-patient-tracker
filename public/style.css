@@ -100,6 +100,15 @@ body {
   cursor: default;
 }
 
+/* Row of header navigation buttons */
+.header-btn-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
 /* History toggle button — shown in header of main dashboard */
 .history-toggle-btn {
   display: inline-block;
@@ -112,7 +121,6 @@ body {
   font-size: 0.8rem;
   font-weight: 600;
   letter-spacing: 0.2px;
-  margin-bottom: 6px;
   transition: background 0.15s;
   white-space: nowrap;
 }

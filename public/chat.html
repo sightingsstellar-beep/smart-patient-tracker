@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <meta name="theme-color" content="#1a73e8" />
+  <title>Elina 💙 Chat</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="stylesheet" href="chat.css" />
+  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>💙</text></svg>" />
+</head>
+<body>
+  <!-- ========== HEADER ========== -->
+  <header class="header">
+    <div class="header-left">
+      <h1 class="title">Elina <span class="heart">💙</span></h1>
+      <div class="subtitle" id="current-date">Loading...</div>
+    </div>
+    <div class="header-right">
+      <a href="/" class="history-toggle-btn" aria-label="Back to today">📊 Today</a>
+      <div class="clock" id="current-time">--:--</div>
+    </div>
+  </header>
+
+  <main class="chat-main">
+
+    <!-- ========== VOICE SECTION ========== -->
+    <section class="voice-section" id="voice-section">
+      <div class="mic-wrapper">
+        <button
+          class="mic-btn"
+          id="mic-btn"
+          aria-label="Hold to record"
+          aria-pressed="false"
+        >🎤</button>
+        <div class="mic-label" id="mic-label">Hold to record</div>
+        <div class="mic-timer" id="mic-timer" style="display:none;">0:00</div>
+      </div>
+
+      <!-- Transcription result (shown after recording) -->
+      <div class="transcription-area" id="transcription-area" style="display:none;">
+        <div class="transcription-label">Edit if needed, then log:</div>
+        <textarea
+          class="transcription-input"
+          id="transcription-input"
+          rows="2"
+          placeholder="Transcribed text..."
+        ></textarea>
+        <div class="transcription-buttons">
+          <button class="btn-log-it" id="btn-log-it">Log It ✅</button>
+          <button class="btn-cancel-transcription" id="btn-cancel-transcription">Cancel</button>
+        </div>
+      </div>
+
+      <div class="transcribing-spinner" id="transcribing-spinner" style="display:none;">
+        <div class="spinner"></div>
+        <span>Transcribing...</span>
+      </div>
+    </section>
+
+    <!-- ========== CHAT SECTION ========== -->
+    <section class="chat-section" id="chat-section">
+      <div class="chat-history" id="chat-history">
+        <!-- Initial bot message injected by JS -->
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ========== FIXED INPUT BAR ========== -->
+  <div class="chat-input-bar" id="chat-input-bar">
+    <input
+      type="text"
+      class="chat-text-input"
+      id="chat-text-input"
+      placeholder="e.g. 80ml urine, or pediasure 200ml..."
+      autocomplete="off"
+      autocorrect="off"
+      spellcheck="false"
+    />
+    <button class="chat-send-btn" id="chat-send-btn" aria-label="Send">➤</button>
+  </div>
+
+  <script src="chat.js"></script>
+</body>
+</html>

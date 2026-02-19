@@ -11,7 +11,10 @@ require('dotenv').config();
 
 const express = require('express');
 const path = require('path');
+const multer = require('multer');
+const fs = require('fs');
 const db = require('./db');
+const { parseMessage } = require('./parser');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -253,9 +256,163 @@ app.delete('/api/log/:id', (req, res) => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// /api/chat — NLP text logging (same pipeline as Telegram bot)
+// ---------------------------------------------------------------------------
+
+/**
+ * Builds a short confirmation message listing what was just logged.
+ */
+function buildChatConfirmation(actions, totalIntake) {
+  const parts = [];
+  for (const action of actions) {
+    if (action.type === 'input') {
+      const label = formatFluidType(action.fluid_type);
+      const amount = action.amount_ml ? `${action.amount_ml}ml` : '(no amount)';
+      parts.push(`${amount} ${label}`);
+    } else if (action.type === 'output') {
+      const label = formatFluidType(action.fluid_type);
+      const amount = action.amount_ml ? ` ${action.amount_ml}ml` : '';
+      parts.push(`${label}${amount} (output)`);
+    } else if (action.type === 'wellness') {
+      parts.push(`Wellness check (${action.check_time})`);
+    } else if (action.type === 'gag') {
+      parts.push(`Gag ×${action.count}`);
+    }
+  }
+  const logged = parts.length > 0 ? parts.join(' + ') : 'entry';
+  const pct = Math.round((totalIntake / DAILY_LIMIT_ML) * 100);
+  return `✅ Logged: ${logged} | Total today: ${totalIntake}ml / ${DAILY_LIMIT_ML}ml (${pct}%)`;
+}
+
+app.post('/api/chat', async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text || typeof text !== 'string' || !text.trim()) {
+      return res.status(400).json({ ok: false, error: 'Missing or empty text' });
+    }
+
+    let parsed;
+    try {
+      parsed = await parseMessage(text.trim());
+    } catch (err) {
+      console.error('[POST /api/chat] Parser error:', err.message);
+      return res.status(500).json({ ok: false, error: 'Parser error: ' + err.message });
+    }
+
+    if (parsed.unparseable || parsed.actions.length === 0) {
+      return res.json({
+        ok: false,
+        message: "🤔 I couldn't understand that. Try something like: \"120ml pediasure\" or \"pee 80ml\" or \"gag x2\".",
+        entries: [],
+      });
+    }
+
+    // Persist all actions (same as bot)
+    const now = Date.now();
+    const dayKey = db.getDayKey();
+    const entries = [];
+
+    for (const action of parsed.actions) {
+      if (action.type === 'input' || action.type === 'output') {
+        const entry = db.logEntry({
+          timestamp: now,
+          day_key: dayKey,
+          entry_type: action.type,
+          fluid_type: action.fluid_type,
+          amount_ml: action.amount_ml,
+          source: 'chat',
+        });
+        entries.push({ kind: action.type, ...action, id: entry?.lastInsertRowid });
+      } else if (action.type === 'wellness') {
+        db.logWellness({
+          timestamp: now,
+          day_key: dayKey,
+          check_time: action.check_time,
+          appetite: action.appetite,
+          energy: action.energy,
+          mood: action.mood,
+          cyanosis: action.cyanosis,
+        });
+        entries.push({ kind: 'wellness', ...action });
+      } else if (action.type === 'gag') {
+        db.logGag(action.count, now);
+        entries.push({ kind: 'gag', count: action.count });
+      }
+    }
+
+    const summary = db.getDaySummary(dayKey);
+    const message = buildChatConfirmation(parsed.actions, summary.totalIntake);
+
+    res.json({ ok: true, message, entries });
+  } catch (err) {
+    console.error('[POST /api/chat]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ---------------------------------------------------------------------------
+// /api/transcribe — Whisper audio transcription
+// ---------------------------------------------------------------------------
+
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 25 * 1024 * 1024 }, // 25 MB max
+});
+
+app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ ok: false, error: 'No audio file provided' });
+    }
+
+    const OpenAI = require('openai');
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+    // Determine file extension from mimetype
+    const mime = req.file.mimetype || 'audio/webm';
+    let ext = 'webm';
+    if (mime.includes('ogg')) ext = 'ogg';
+    else if (mime.includes('mp4')) ext = 'mp4';
+    else if (mime.includes('wav')) ext = 'wav';
+    else if (mime.includes('mpeg') || mime.includes('mp3')) ext = 'mp3';
+
+    // Write temp file (Whisper API needs a file stream)
+    const tmpPath = `/tmp/elina-audio-${Date.now()}.${ext}`;
+    fs.writeFileSync(tmpPath, req.file.buffer);
+
+    let transcription;
+    try {
+      transcription = await openai.audio.transcriptions.create({
+        model: 'whisper-1',
+        file: fs.createReadStream(tmpPath),
+        language: 'en',
+      });
+    } finally {
+      // Clean up temp file
+      try { fs.unlinkSync(tmpPath); } catch (_) {}
+    }
+
+    const text = (transcription.text || '').trim();
+    if (!text) {
+      return res.json({ ok: false, error: 'Transcription returned empty result' });
+    }
+
+    res.json({ ok: true, text });
+  } catch (err) {
+    console.error('[POST /api/transcribe]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // History page
 app.get('/history', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'history.html'));
+});
+
+// Chat page
+app.get('/chat', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'chat.html'));
 });
 
 // Fallback — serve dashboard for any unknown route

@@ -1,0 +1,384 @@
+/* ============================================================
+   Elina Tracker — Chat/Voice page styles
+   Mobile-first, iMessage-style chat + large mic button
+   ============================================================ */
+
+/* ============================================================
+   LAYOUT
+   ============================================================ */
+
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  /* Extra bottom padding for fixed input bar + iOS home bar */
+  padding-bottom: 0;
+}
+
+.chat-main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  max-width: 640px;
+  margin: 0 auto;
+  width: 100%;
+  padding: 12px 12px 80px; /* 80px for fixed input bar */
+  gap: 12px;
+  overflow-y: auto;
+}
+
+/* ============================================================
+   VOICE SECTION
+   ============================================================ */
+
+.voice-section {
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 28px 20px 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.mic-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+/* Large circular mic button */
+.mic-btn {
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: white;
+  border: none;
+  font-size: 2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 16px rgba(26, 115, 232, 0.4);
+  transition: background 0.2s, box-shadow 0.2s, transform 0.1s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: none; /* prevent scroll while holding */
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.mic-btn:hover {
+  background: #1557b0;
+}
+
+.mic-btn:active,
+.mic-btn.recording {
+  background: var(--red);
+  box-shadow: 0 4px 20px rgba(234, 67, 53, 0.5);
+  transform: scale(1.05);
+}
+
+/* Pulse animation while recording */
+.mic-btn.recording {
+  animation: mic-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes mic-pulse {
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(234, 67, 53, 0.5), 0 4px 20px rgba(234, 67, 53, 0.4);
+  }
+  50% {
+    box-shadow: 0 0 0 14px rgba(234, 67, 53, 0), 0 4px 20px rgba(234, 67, 53, 0.4);
+  }
+}
+
+.mic-label {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+  text-align: center;
+  transition: color 0.2s;
+}
+
+.mic-label.recording {
+  color: var(--red);
+  font-weight: 600;
+}
+
+.mic-timer {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--red);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 1px;
+  min-height: 1.4em;
+}
+
+/* Transcribing spinner */
+.transcribing-spinner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.transcribing-spinner .spinner {
+  width: 24px;
+  height: 24px;
+  border-width: 3px;
+  margin-bottom: 0;
+}
+
+/* Transcription result area */
+.transcription-area {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.transcription-label {
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  font-weight: 500;
+}
+
+.transcription-input {
+  width: 100%;
+  padding: 12px 14px;
+  font-size: 1rem;
+  font-family: inherit;
+  border: 2px solid var(--blue);
+  border-radius: 12px;
+  background: var(--blue-light);
+  color: var(--text);
+  outline: none;
+  resize: none;
+  line-height: 1.5;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.transcription-input:focus {
+  background: white;
+  border-color: #1557b0;
+}
+
+.transcription-buttons {
+  display: flex;
+  gap: 10px;
+}
+
+.btn-log-it {
+  flex: 1;
+  padding: 12px;
+  background: var(--blue);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-log-it:hover,
+.btn-log-it:active {
+  background: #1557b0;
+}
+
+.btn-cancel-transcription {
+  flex: 0 0 auto;
+  padding: 12px 18px;
+  background: var(--grey-light);
+  color: var(--grey);
+  border: none;
+  border-radius: 10px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-cancel-transcription:hover {
+  background: #e0e0e0;
+}
+
+/* ============================================================
+   CHAT SECTION
+   ============================================================ */
+
+.chat-section {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.chat-history {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 4px 0;
+}
+
+/* Chat bubbles */
+.chat-bubble-row {
+  display: flex;
+  flex-direction: column;
+}
+
+.chat-bubble-row.user {
+  align-items: flex-end;
+}
+
+.chat-bubble-row.bot {
+  align-items: flex-start;
+}
+
+.chat-bubble {
+  max-width: 82%;
+  padding: 10px 14px;
+  border-radius: 18px;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+/* User bubble — blue, right side */
+.chat-bubble-row.user .chat-bubble {
+  background: var(--blue);
+  color: white;
+  border-bottom-right-radius: 4px;
+}
+
+/* Bot bubble — grey, left side */
+.chat-bubble-row.bot .chat-bubble {
+  background: #e8eaed;
+  color: var(--text);
+  border-bottom-left-radius: 4px;
+}
+
+/* Success bot response — slightly green tint */
+.chat-bubble-row.bot .chat-bubble.success {
+  background: var(--green-light);
+  border-left: 3px solid var(--green);
+}
+
+/* Error / warning bot response */
+.chat-bubble-row.bot .chat-bubble.warn {
+  background: var(--yellow-light);
+  border-left: 3px solid var(--yellow);
+}
+
+.chat-bubble-row.bot .chat-bubble.error {
+  background: var(--red-light);
+  border-left: 3px solid var(--red);
+}
+
+.chat-timestamp {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  margin-top: 3px;
+  padding: 0 4px;
+}
+
+/* ============================================================
+   FIXED INPUT BAR
+   ============================================================ */
+
+.chat-input-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: white;
+  border-top: 1px solid var(--border);
+  padding: 10px 12px;
+  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 200;
+  max-width: 640px;
+  margin: 0 auto;
+  /* full width even when centered */
+  width: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* Ensure the input bar spans full width on mobile */
+@media (max-width: 640px) {
+  .chat-input-bar {
+    left: 0;
+    right: 0;
+    transform: none;
+    max-width: 100%;
+  }
+}
+
+.chat-text-input {
+  flex: 1;
+  padding: 10px 14px;
+  font-size: 0.95rem;
+  font-family: inherit;
+  border: 1.5px solid var(--border);
+  border-radius: 22px;
+  background: var(--grey-light);
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.2s, background 0.2s;
+  min-width: 0;
+}
+
+.chat-text-input:focus {
+  border-color: var(--blue);
+  background: white;
+}
+
+.chat-send-btn {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--blue);
+  color: white;
+  border: none;
+  font-size: 1.1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.chat-send-btn:hover,
+.chat-send-btn:active {
+  background: #1557b0;
+  transform: scale(0.95);
+}
+
+.chat-send-btn:disabled {
+  background: #c0c0c0;
+  cursor: not-allowed;
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+
+@media (min-width: 480px) {
+  .mic-btn {
+    width: 90px;
+    height: 90px;
+    font-size: 2.2rem;
+  }
+
+  .chat-main {
+    padding: 16px 16px 88px;
+  }
+}
