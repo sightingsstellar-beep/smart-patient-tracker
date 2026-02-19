@@ -10,7 +10,7 @@
 const TelegramBot = require('node-telegram-bot-api');
 const db = require('./db');
 const { parseMessage } = require('./parser');
-const { buildReport, formatFluidType, DAILY_LIMIT_ML } = require('./server');
+const { buildReport, formatFluidType, getDailyLimit } = require('./server');
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 if (!token) {
@@ -50,9 +50,10 @@ function rejectUnauthorized(chatId) {
 // ---------------------------------------------------------------------------
 
 function formatIntakeSummary(totalIntake) {
-  const pct = Math.round((totalIntake / DAILY_LIMIT_ML) * 100);
+  const limit = getDailyLimit();
+  const pct = Math.round((totalIntake / limit) * 100);
   const bar = buildProgressBar(pct);
-  return `${bar} ${totalIntake}ml / ${DAILY_LIMIT_ML}ml (${pct}%)`;
+  return `${bar} ${totalIntake}ml / ${limit}ml (${pct}%)`;
 }
 
 function buildProgressBar(percent) {
@@ -88,8 +89,9 @@ function buildConfirmation(actions, totalIntake) {
   }
 
   const logged = parts.length > 0 ? parts.join(' + ') : 'entry';
-  const pct = Math.round((totalIntake / DAILY_LIMIT_ML) * 100);
-  return `✅ Logged: ${logged} | Total today: ${totalIntake}ml / ${DAILY_LIMIT_ML}ml (${pct}%)`;
+  const limit = getDailyLimit();
+  const pct = Math.round((totalIntake / limit) * 100);
+  return `✅ Logged: ${logged} | Total today: ${totalIntake}ml / ${limit}ml (${pct}%)`;
 }
 
 // ---------------------------------------------------------------------------
@@ -118,10 +120,11 @@ bot.onText(/^\/today$/, (msg) => {
   try {
     const dayKey = db.getDayKey();
     const summary = db.getDaySummary(dayKey);
-    const pct = Math.round((summary.totalIntake / DAILY_LIMIT_ML) * 100);
+    const limit = getDailyLimit();
+    const pct = Math.round((summary.totalIntake / limit) * 100);
 
     let text = `📅 *Today (${dayKey})*\n\n`;
-    text += `💧 *Intake:* ${summary.totalIntake}ml / ${DAILY_LIMIT_ML}ml (${pct}%)\n`;
+    text += `💧 *Intake:* ${summary.totalIntake}ml / ${limit}ml (${pct}%)\n`;
 
     if (Object.keys(summary.intakeByType).length > 0) {
       for (const [type, ml] of Object.entries(summary.intakeByType)) {
@@ -201,7 +204,7 @@ bot.onText(/^\/undo$/, (msg) => {
     bot.sendMessage(
       msg.chat.id,
       `↩️ Undone: ${label}${amount}\n` +
-        `Total intake now: ${summary.totalIntake}ml / ${DAILY_LIMIT_ML}ml`
+        `Total intake now: ${summary.totalIntake}ml / ${getDailyLimit()}ml`
     );
   } catch (err) {
     console.error('[bot /undo]', err);
@@ -310,11 +313,12 @@ bot.on('message', async (msg) => {
   bot.sendMessage(chatId, confirmation);
 
   // Warn if over daily limit
-  if (summary.totalIntake > DAILY_LIMIT_ML) {
-    const over = summary.totalIntake - DAILY_LIMIT_ML;
+  const dailyLimit = getDailyLimit();
+  if (summary.totalIntake > dailyLimit) {
+    const over = summary.totalIntake - dailyLimit;
     bot.sendMessage(
       chatId,
-      `⚠️ *Daily limit exceeded!* Elina is ${over}ml over the ${DAILY_LIMIT_ML}ml limit.`,
+      `⚠️ *Daily limit exceeded!* Elina is ${over}ml over the ${dailyLimit}ml limit.`,
       { parse_mode: 'Markdown' }
     );
   }
@@ -331,6 +335,22 @@ bot.on('polling_error', (err) => {
 
 bot.on('error', (err) => {
   console.error('[bot] Bot error:', err.message);
+});
+
+// Graceful shutdown — stop polling before process exits.
+// Prevents the 409 Conflict error during Railway rolling deploys
+// (old container and new container briefly overlap).
+process.on('SIGTERM', () => {
+  console.log('[bot] SIGTERM received — stopping polling gracefully');
+  bot.stopPolling()
+    .then(() => {
+      console.log('[bot] Polling stopped');
+      process.exit(0);
+    })
+    .catch((err) => {
+      console.error('[bot] Error stopping polling:', err.message);
+      process.exit(1);
+    });
 });
 
 console.log('[bot] Telegram bot started and polling for messages');
