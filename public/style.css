@@ -578,3 +578,31 @@ body {
   .main { padding: 24px 0; }
   .header { border-radius: 0; }
 }
+
+/* Undo button */
+.undo-row {
+  margin-top: 12px;
+  text-align: center;
+}
+
+.undo-btn {
+  background: none;
+  border: 1.5px solid #d93025;
+  color: #d93025;
+  border-radius: 10px;
+  padding: 10px 24px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  width: 100%;
+}
+
+.undo-btn:hover {
+  background: #fce8e6;
+}
+
+.undo-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

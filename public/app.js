@@ -367,3 +367,49 @@ document.getElementById('amount-input').addEventListener('keydown', (e) => {
 document.getElementById('amount-modal').addEventListener('click', (e) => {
   if (e.target === e.currentTarget) hideModal();
 });
+
+// ---------------------------------------------------------------------------
+// Undo last entry
+// ---------------------------------------------------------------------------
+
+document.getElementById('undo-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('undo-btn');
+
+  // Find the most recent entry from lastData
+  const allEntries = [
+    ...(lastData?.inputs || []),
+    ...(lastData?.outputs || []),
+    ...(lastData?.gags || []),
+  ].sort((a, b) => b.id - a.id);
+
+  if (allEntries.length === 0) {
+    btn.textContent = '⚠️ Nothing to undo';
+    setTimeout(() => { btn.textContent = '↩️ Undo Last Entry'; }, 2000);
+    return;
+  }
+
+  const lastEntry = allEntries[0];
+  const original = btn.textContent;
+  btn.textContent = '⏳ Undoing...';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch(`/api/log/${lastEntry.id}`, { method: 'DELETE' });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    btn.textContent = '✅ Undone';
+    setTimeout(() => {
+      btn.textContent = original;
+      btn.disabled = false;
+    }, 1500);
+
+    await fetchToday();
+  } catch (err) {
+    console.error('[undo] Error:', err.message);
+    btn.textContent = '❌ Failed';
+    setTimeout(() => {
+      btn.textContent = original;
+      btn.disabled = false;
+    }, 2000);
+  }
+});
