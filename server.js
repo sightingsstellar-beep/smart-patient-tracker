@@ -284,6 +284,13 @@ app.post('/api/log', (req, res) => {
 
     const results = [];
 
+    // Require amount_ml for all fluid inputs and outputs
+    if (body.type !== 'wellness' && body.type !== 'gag') {
+      if (!body.amount_ml || typeof body.amount_ml !== 'number' || body.amount_ml <= 0) {
+        return res.status(400).json({ ok: false, error: 'amount_ml is required for input and output entries' });
+      }
+    }
+
     if (body.type === 'wellness') {
       const w = db.logWellness({
         check_time: body.check_time || '5pm',
@@ -460,7 +467,7 @@ function buildChatConfirmation(actions, summary) {
   const totalOut = summary.outputs.reduce((sum, o) => sum + (o.amount_ml || 0), 0);
   const outStr = totalOut > 0 ? `${totalOut}ml` : `${summary.outputs.length} event${summary.outputs.length !== 1 ? 's' : ''}`;
 
-  return `✅ Logged: ${logged} | 💧 In: ${summary.totalIntake}/${limit}ml (${pct}%) · 🚽 Out: ${outStr}`;
+  return `✅ Logged: ${logged} | 💧 Total In: ${summary.totalIntake}/${limit}ml (${pct}%) · 🚽 Total Out: ${outStr}`;
 }
 
 app.post('/api/chat', async (req, res) => {
@@ -482,6 +489,19 @@ app.post('/api/chat', async (req, res) => {
       return res.json({
         ok: false,
         message: "🤔 I couldn't understand that. Try something like: \"120ml pediasure\" or \"pee 80ml\" or \"gag x2\".",
+        entries: [],
+      });
+    }
+
+    // Require a measurement for every input and output
+    const missingAmount = parsed.actions.find(
+      (a) => (a.type === 'input' || a.type === 'output') && !a.amount_ml
+    );
+    if (missingAmount) {
+      const label = formatFluidType(missingAmount.fluid_type);
+      return res.json({
+        ok: false,
+        message: `⚠️ I need a measurement for ${label}. How many ml was it? (e.g. "${label} 80ml")`,
         entries: [],
       });
     }

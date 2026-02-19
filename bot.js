@@ -96,7 +96,7 @@ function buildConfirmation(actions, summary) {
   const totalOut = summary.outputs.reduce((sum, o) => sum + (o.amount_ml || 0), 0);
   const outStr = totalOut > 0 ? `${totalOut}ml` : `${summary.outputs.length} event${summary.outputs.length !== 1 ? 's' : ''}`;
 
-  return `✅ Logged: ${logged}\n💧 In: ${summary.totalIntake}/${limit}ml (${pct}%) · 🚽 Out: ${outStr}`;
+  return `✅ Logged: ${logged}\n💧 Total In: ${summary.totalIntake}/${limit}ml (${pct}%) · 🚽 Total Out: ${outStr}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -276,6 +276,19 @@ bot.on('message', async (msg) => {
         '• "gag x2"\n' +
         '• "wellness: appetite 7, energy 4, mood 8, cyan 3"\n\n' +
         'Or type /help for more examples.'
+    );
+  }
+
+  // Require a measurement for every input and output
+  const missingAmount = parsed.actions.find(
+    (a) => (a.type === 'input' || a.type === 'output') && !a.amount_ml
+  );
+  if (missingAmount) {
+    const label = formatFluidType(missingAmount.fluid_type);
+    return bot.sendMessage(
+      chatId,
+      `⚠️ I need a measurement for *${label}*. How many ml was it?\n\nExample: _"${label} 80ml"_`,
+      { parse_mode: 'Markdown' }
     );
   }
 

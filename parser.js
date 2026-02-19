@@ -61,7 +61,7 @@ Rules:
 - Gag: "gagged" / "gag x2" / "she gagged once" / "gagging episode" → type "gag" with count.
 - Wellness check: extract appetite, energy, mood, cyanosis scores (1-10). "cyan" = cyanosis. Infer check_time from context or default to "5pm".
 - Amounts: "about", "roughly", "approximately", "~" are fine — use the number.
-- "full" bottle/cup without amount → null for amount_ml.
+- amount_ml is REQUIRED for every input and every output. If no amount is stated or inferable, do NOT include that action — set "unparseable": true instead.
 - If the message contains NO recognizable entries, set "unparseable": true and actions: [].
 - Do NOT include any explanation or markdown — return raw JSON only.
 - Clamp wellness scores to 1–10.
