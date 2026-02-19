@@ -203,14 +203,14 @@ app.get('/api/history', (req, res) => {
       }));
       const inputs = summary.inputs.map((l) => ({
         id: l.id,
-        time: formatTime(l.timestamp),
+        time: formatTimestamp(l.timestamp),
         fluid_type: l.fluid_type,
-        fluid_type_label: FLUID_LABELS[l.fluid_type] || l.fluid_type,
+        fluid_type_label: formatFluidType(l.fluid_type),
         amount_ml: l.amount_ml,
       }));
       const gags = summary.gags.map((g) => ({
         id: g.id,
-        time: formatTime(g.timestamp),
+        time: formatTimestamp(g.timestamp),
       }));
 
       // Split wellness into afternoon (5pm) and evening (10pm)
