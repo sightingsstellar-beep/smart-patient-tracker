@@ -28,7 +28,73 @@ app.use(express.urlencoded({ extended: false }));
 
 const session = require('express-session');
 
+// ---------------------------------------------------------------------------
+// SQLiteSessionStore — persists sessions in the existing better-sqlite3 DB.
+// Zero extra dependencies; sessions survive server restarts.
+// ---------------------------------------------------------------------------
+class SQLiteSessionStore extends session.Store {
+  constructor(database, ttlSeconds = 7 * 24 * 60 * 60) {
+    super();
+    this._db = database;
+    this._ttl = ttlSeconds;
+
+    // Create sessions table if it doesn't exist
+    this._db.exec(`
+      CREATE TABLE IF NOT EXISTS sessions (
+        sid     TEXT    PRIMARY KEY,
+        expires INTEGER NOT NULL,
+        data    TEXT    NOT NULL
+      )
+    `);
+
+    // Prepare statements once for performance
+    this._get     = this._db.prepare('SELECT data, expires FROM sessions WHERE sid = ?');
+    this._set     = this._db.prepare('INSERT OR REPLACE INTO sessions (sid, expires, data) VALUES (?, ?, ?)');
+    this._destroy = this._db.prepare('DELETE FROM sessions WHERE sid = ?');
+    this._touch   = this._db.prepare('UPDATE sessions SET expires = ? WHERE sid = ?');
+    this._prune   = this._db.prepare('DELETE FROM sessions WHERE expires < ?');
+
+    // Prune expired sessions hourly
+    setInterval(() => {
+      try { this._prune.run(Math.floor(Date.now() / 1000)); } catch (_) {}
+    }, 60 * 60 * 1000).unref();
+  }
+
+  get(sid, cb) {
+    try {
+      const row = this._get.get(sid);
+      if (!row) return cb(null, null);
+      if (row.expires < Math.floor(Date.now() / 1000)) {
+        this._destroy.run(sid);
+        return cb(null, null);
+      }
+      cb(null, JSON.parse(row.data));
+    } catch (err) { cb(err); }
+  }
+
+  set(sid, sess, cb) {
+    try {
+      const expires = Math.floor(Date.now() / 1000) + this._ttl;
+      this._set.run(sid, expires, JSON.stringify(sess));
+      cb(null);
+    } catch (err) { cb(err); }
+  }
+
+  destroy(sid, cb) {
+    try { this._destroy.run(sid); cb(null); } catch (err) { cb(err); }
+  }
+
+  touch(sid, sess, cb) {
+    try {
+      const expires = Math.floor(Date.now() / 1000) + this._ttl;
+      this._touch.run(expires, sid);
+      cb(null);
+    } catch (err) { cb(err); }
+  }
+}
+
 app.use(session({
+  store: new SQLiteSessionStore(db.db),
   secret: process.env.SESSION_SECRET || 'dev-secret-please-set-SESSION_SECRET-in-env',
   resave: false,
   saveUninitialized: false,
