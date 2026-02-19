@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign In — Smart Patient Tracker</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #f0f4f8;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 20px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+      padding: 40px 36px 36px;
+      width: 100%;
+      max-width: 380px;
+      text-align: center;
+    }
+
+    .icon {
+      font-size: 2.8rem;
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: #202124;
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      font-size: 0.9rem;
+      color: #5f6368;
+      margin-bottom: 28px;
+    }
+
+    .error-banner {
+      background: #fce8e6;
+      color: #c5221f;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 0.88rem;
+      margin-bottom: 20px;
+      display: none;
+    }
+    .error-banner.visible { display: block; }
+
+    label {
+      display: block;
+      text-align: left;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #5f6368;
+      margin-bottom: 6px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    input[type="password"] {
+      width: 100%;
+      padding: 14px 16px;
+      border: 1.5px solid #e0e0e0;
+      border-radius: 12px;
+      font-size: 1rem;
+      color: #202124;
+      background: #f8f9fa;
+      outline: none;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      margin-bottom: 20px;
+    }
+    input[type="password"]:focus {
+      border-color: #1a73e8;
+      box-shadow: 0 0 0 3px rgba(26,115,232,0.15);
+      background: #fff;
+    }
+
+    button[type="submit"] {
+      width: 100%;
+      padding: 14px;
+      background: #1a73e8;
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+    button[type="submit"]:hover { background: #1558b0; }
+    button[type="submit"]:active { transform: scale(0.98); }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">❤️</div>
+    <h1>Smart Patient Tracker</h1>
+    <p class="subtitle">Enter the dashboard password to continue</p>
+
+    <div class="error-banner" id="errorBanner">
+      Incorrect password. Please try again.
+    </div>
+
+    <form method="POST" action="/login">
+      <label for="password">Password</label>
+      <input
+        type="password"
+        id="password"
+        name="password"
+        placeholder="Enter password"
+        autocomplete="current-password"
+        autofocus
+        required
+      />
+      <button type="submit">Sign In</button>
+    </form>
+  </div>
+
+  <script>
+    // Show error banner if ?error=1 in URL
+    if (new URLSearchParams(location.search).get('error') === '1') {
+      document.getElementById('errorBanner').classList.add('visible');
+    }
+  </script>
+</body>
+</html>

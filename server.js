@@ -20,6 +20,62 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
+
+// ---------------------------------------------------------------------------
+// Session + Auth
+// ---------------------------------------------------------------------------
+
+const session = require('express-session');
+
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'dev-secret-please-set-SESSION_SECRET-in-env',
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production', // HTTPS-only cookies in prod
+    sameSite: 'lax',
+  },
+}));
+
+// Login page (public — no auth required)
+app.get('/login', (req, res) => {
+  if (req.session && req.session.authenticated) return res.redirect('/');
+  res.sendFile(path.join(__dirname, 'public', 'login.html'));
+});
+
+// Login form submission
+app.post('/login', (req, res) => {
+  const { password } = req.body;
+  const correct = process.env.DASHBOARD_PASSWORD;
+  if (!correct) {
+    return res.status(500).send('Server misconfiguration: DASHBOARD_PASSWORD not set.');
+  }
+  if (password === correct) {
+    req.session.authenticated = true;
+    return res.redirect('/');
+  }
+  res.redirect('/login?error=1');
+});
+
+// Logout
+app.get('/logout', (req, res) => {
+  req.session.destroy(() => res.redirect('/login'));
+});
+
+// Auth gate — everything below this line requires a valid session
+function requireAuth(req, res, next) {
+  if (req.session && req.session.authenticated) return next();
+  if (req.path.startsWith('/api/')) {
+    return res.status(401).json({ ok: false, error: 'Unauthorized' });
+  }
+  res.redirect('/login');
+}
+app.use(requireAuth);
+
+// Static files (served after auth check)
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ---------------------------------------------------------------------------
