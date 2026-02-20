@@ -250,6 +250,10 @@ function deleteLastGag() {
   return last;
 }
 
+function deleteGag(id) {
+  return db.prepare('DELETE FROM gag_events WHERE id = ?').run(id);
+}
+
 // ---------------------------------------------------------------------------
 // Aggregation helpers
 // ---------------------------------------------------------------------------
@@ -354,6 +358,7 @@ module.exports = {
   logGag,
   getGagsByDay,
   deleteLastGag,
+  deleteGag,
   getDaySummary,
   getSetting,
   getAllSettings,

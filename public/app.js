@@ -391,11 +391,12 @@ document.getElementById('amount-modal').addEventListener('click', (e) => {
 document.getElementById('undo-btn').addEventListener('click', async () => {
   const btn = document.getElementById('undo-btn');
 
-  // Find the most recent entry from lastData
+  // Find the most recent entry from lastData — tag each with its kind
+  // so we can route the delete to the correct endpoint.
   const allEntries = [
-    ...(lastData?.inputs || []),
-    ...(lastData?.outputs || []),
-    ...(lastData?.gags || []),
+    ...(lastData?.inputs  || []).map(e => ({ ...e, _kind: 'fluid' })),
+    ...(lastData?.outputs || []).map(e => ({ ...e, _kind: 'fluid' })),
+    ...(lastData?.gags    || []).map(e => ({ ...e, _kind: 'gag'   })),
   ].sort((a, b) => b.id - a.id);
 
   if (allEntries.length === 0) {
@@ -410,7 +411,10 @@ document.getElementById('undo-btn').addEventListener('click', async () => {
   btn.disabled = true;
 
   try {
-    const res = await fetch(`/api/log/${lastEntry.id}`, { method: 'DELETE' });
+    const url = lastEntry._kind === 'gag'
+      ? `/api/gag/${lastEntry.id}`
+      : `/api/log/${lastEntry.id}`;
+    const res = await fetch(url, { method: 'DELETE' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
     btn.textContent = '✅ Undone';

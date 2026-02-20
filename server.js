@@ -604,6 +604,27 @@ app.get('/api/history', (req, res) => {
 });
 
 /**
+ * DELETE /api/gag/:id
+ * Remove a specific gag event by ID.
+ */
+app.delete('/api/gag/:id', (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!id || isNaN(id)) {
+      return res.status(400).json({ ok: false, error: 'Invalid ID' });
+    }
+    const result = db.deleteGag(id);
+    if (result.changes === 0) {
+      return res.status(404).json({ ok: false, error: 'Gag entry not found' });
+    }
+    res.json({ ok: true, deleted: id });
+  } catch (err) {
+    console.error('[DELETE /api/gag/:id]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+/**
  * DELETE /api/log/:id
  * Remove a specific log entry by ID.
  */
