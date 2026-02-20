@@ -833,6 +833,20 @@ app.post('/api/settings', (req, res) => {
   }
 });
 
+// TEMPORARY — remove after use
+app.get('/api/admin/flush', (req, res) => {
+  try {
+    db.db.exec(`
+      DELETE FROM fluid_logs;
+      DELETE FROM wellness_checks;
+      DELETE FROM gag_events;
+    `);
+    res.type('text/plain').send('✅ All tracking data cleared. Settings and sessions kept intact.');
+  } catch (err) {
+    res.status(500).type('text/plain').send('❌ ' + err.message);
+  }
+});
+
 // Settings page
 app.get('/settings', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'settings.html'));
