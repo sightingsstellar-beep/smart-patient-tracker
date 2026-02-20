@@ -113,6 +113,14 @@ app.use(session({
 // Health check (public — used by Railway to verify the container is up)
 app.get('/health', (req, res) => res.json({ ok: true }));
 
+// PWA assets — must be public so iOS/Android can fetch them without a session
+app.get('/apple-touch-icon.png', (req, res) =>
+  res.sendFile(path.join(__dirname, 'public', 'apple-touch-icon.png'))
+);
+app.get('/manifest.json', (req, res) =>
+  res.sendFile(path.join(__dirname, 'public', 'manifest.json'))
+);
+
 // Login page (public — no auth required)
 app.get('/login', (req, res) => {
   if (req.session && req.session.authenticated) return res.redirect('/');
