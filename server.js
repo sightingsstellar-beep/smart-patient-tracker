@@ -207,7 +207,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid) {
             // Progress text
             {
               type: 'Text',
-              text: '${payload.data.intake} / ${payload.data.limit} ml · ${payload.data.pct}%',
+              text: '${payload.intake} / ${payload.limit} ml · ${payload.pct}%',
               color: '#ccc',
               fontSize: '16dp',
               textAlign: 'center',
@@ -222,7 +222,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid) {
               borderRadius: 5,
               items: [{
                 type: 'Frame',
-                width: '${payload.data.pct}%',
+                width: '${payload.pct}%',
                 height: '10dp',
                 backgroundColor: '#4a9eff',
                 borderRadius: 5
@@ -241,13 +241,13 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid) {
                   onPress: { type: 'SendEvent', arguments: ['mode', 'input'] },
                   items: [{
                     type: 'Frame',
-                    backgroundColor: "${payload.data.mode == 'input' ? '#4a9eff' : 'transparent'}",
+                    backgroundColor: "${payload.mode == 'input' ? '#4a9eff' : 'transparent'}",
                     borderRadius: 8,
                     paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '20dp', paddingRight: '20dp',
                     items: [{
                       type: 'Text',
                       text: 'Input',
-                      color: "${payload.data.mode == 'input' ? 'white' : '#888'}",
+                      color: "${payload.mode == 'input' ? 'white' : '#888'}",
                       fontSize: '16dp', fontWeight: 'bold'
                     }]
                   }]
@@ -258,13 +258,13 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid) {
                   onPress: { type: 'SendEvent', arguments: ['mode', 'output'] },
                   items: [{
                     type: 'Frame',
-                    backgroundColor: "${payload.data.mode == 'output' ? '#4a9eff' : 'transparent'}",
+                    backgroundColor: "${payload.mode == 'output' ? '#4a9eff' : 'transparent'}",
                     borderRadius: 8,
                     paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '20dp', paddingRight: '20dp',
                     items: [{
                       type: 'Text',
                       text: 'Output',
-                      color: "${payload.data.mode == 'output' ? 'white' : '#888'}",
+                      color: "${payload.mode == 'output' ? 'white' : '#888'}",
                       fontSize: '16dp', fontWeight: 'bold'
                     }]
                   }]
@@ -278,13 +278,13 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid) {
               type: 'Container',
               direction: 'row',
               justifyContent: 'center',
-              display: "${payload.data.mode == 'input' ? 'normal' : 'none'}",
+              display: "${payload.mode == 'input' ? 'normal' : 'none'}",
               items: [
-                { type: 'TouchWrapper', onPress: { type: 'SendEvent', arguments: ['select', 'water', '${payload.data.mode}'] }, items: [{ type: 'Frame', backgroundColor: "${payload.data.selectedFluid == 'water' ? '#4a9eff' : '#2a2a3e'}", borderRadius: 8, paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '8dp', paddingRight: '8dp', items: [{ type: 'Text', text: '💧 Water', color: "${payload.data.selectedFluid == 'water' ? 'white' : '#ccc'}", fontSize: '14dp' }] }] },
+                { type: 'TouchWrapper', onPress: { type: 'SendEvent', arguments: ['select', 'water', '${payload.mode}'] }, items: [{ type: 'Frame', backgroundColor: "${payload.selectedFluid == 'water' ? '#4a9eff' : '#2a2a3e'}", borderRadius: 8, paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '8dp', paddingRight: '8dp', items: [{ type: 'Text', text: '💧 Water', color: "${payload.selectedFluid == 'water' ? 'white' : '#ccc'}", fontSize: '14dp' }] }] },
                 { type: 'Container', width: '6dp' },
-                { type: 'TouchWrapper', onPress: { type: 'SendEvent', arguments: ['select', 'pediasure', '${payload.data.mode}'] }, items: [{ type: 'Frame', backgroundColor: "${payload.data.selectedFluid == 'pediasure' ? '#4a9eff' : '#2a2a3e'}", borderRadius: 8, paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '8dp', paddingRight: '8dp', items: [{ type: 'Text', text: '🍼 PediaSure', color: "${payload.data.selectedFluid == 'pediasure' ? 'white' : '#ccc'}", fontSize: '14dp' }] }] },
+                { type: 'TouchWrapper', onPress: { type: 'SendEvent', arguments: ['select', 'pediasure', '${payload.mode}'] }, items: [{ type: 'Frame', backgroundColor: "${payload.selectedFluid == 'pediasure' ? '#4a9eff' : '#2a2a3e'}", borderRadius: 8, paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '8dp', paddingRight: '8dp', items: [{ type: 'Text', text: '🍼 PediaSure', color: "${payload.selectedFluid == 'pediasure' ? 'white' : '#ccc'}", fontSize: '14dp' }] }] },
                 { type: 'Container', width: '6dp' },
-                { type: 'TouchWrapper', onPress: { type: 'SendEvent', arguments: ['select', 'milk', '${payload.data.mode}'] }, items: [{ type: 'Frame', backgroundColor: "${payload.data.selectedFluid == 'milk' ? '#4a9eff' : '#2a2a3e'}", borderRadius: 8, paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '8dp', paddingRight: '8dp', items: [{ type: 'Text', text: '🥛 Milk', color: "${payload.data.selectedFluid == 'milk' ? 'white' : '#ccc'}", fontSize: '14dp' }] }] }
+                { type: 'TouchWrapper', onPress: { type: 'SendEvent', arguments: ['select', 'milk', '${payload.mode}'] }, items: [{ type: 'Frame', backgroundColor: "${payload.selectedFluid == 'milk' ? '#4a9eff' : '#2a2a3e'}", borderRadius: 8, paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '8dp', paddingRight: '8dp', items: [{ type: 'Text', text: '🥛 Milk', color: "${payload.selectedFluid == 'milk' ? 'white' : '#ccc'}", fontSize: '14dp' }] }] }
               ]
             },
             // Fluid buttons - Output mode
@@ -292,13 +292,13 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid) {
               type: 'Container',
               direction: 'row',
               justifyContent: 'center',
-              display: "${payload.data.mode == 'output' ? 'normal' : 'none'}",
+              display: "${payload.mode == 'output' ? 'normal' : 'none'}",
               items: [
-                { type: 'TouchWrapper', onPress: { type: 'SendEvent', arguments: ['select', 'urine', '${payload.data.mode}'] }, items: [{ type: 'Frame', backgroundColor: "${payload.data.selectedFluid == 'urine' ? '#4a9eff' : '#2a2a3e'}", borderRadius: 8, paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '8dp', paddingRight: '8dp', items: [{ type: 'Text', text: '🚽 Urine', color: "${payload.data.selectedFluid == 'urine' ? 'white' : '#ccc'}", fontSize: '14dp' }] }] },
+                { type: 'TouchWrapper', onPress: { type: 'SendEvent', arguments: ['select', 'urine', '${payload.mode}'] }, items: [{ type: 'Frame', backgroundColor: "${payload.selectedFluid == 'urine' ? '#4a9eff' : '#2a2a3e'}", borderRadius: 8, paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '8dp', paddingRight: '8dp', items: [{ type: 'Text', text: '🚽 Urine', color: "${payload.selectedFluid == 'urine' ? 'white' : '#ccc'}", fontSize: '14dp' }] }] },
                 { type: 'Container', width: '6dp' },
-                { type: 'TouchWrapper', onPress: { type: 'SendEvent', arguments: ['select', 'poop', '${payload.data.mode}'] }, items: [{ type: 'Frame', backgroundColor: "${payload.data.selectedFluid == 'poop' ? '#4a9eff' : '#2a2a3e'}", borderRadius: 8, paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '8dp', paddingRight: '8dp', items: [{ type: 'Text', text: '💩 Poop', color: "${payload.data.selectedFluid == 'poop' ? 'white' : '#ccc'}", fontSize: '14dp' }] }] },
+                { type: 'TouchWrapper', onPress: { type: 'SendEvent', arguments: ['select', 'poop', '${payload.mode}'] }, items: [{ type: 'Frame', backgroundColor: "${payload.selectedFluid == 'poop' ? '#4a9eff' : '#2a2a3e'}", borderRadius: 8, paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '8dp', paddingRight: '8dp', items: [{ type: 'Text', text: '💩 Poop', color: "${payload.selectedFluid == 'poop' ? 'white' : '#ccc'}", fontSize: '14dp' }] }] },
                 { type: 'Container', width: '6dp' },
-                { type: 'TouchWrapper', onPress: { type: 'SendEvent', arguments: ['select', 'vomit', '${payload.data.mode}'] }, items: [{ type: 'Frame', backgroundColor: "${payload.data.selectedFluid == 'vomit' ? '#4a9eff' : '#2a2a3e'}", borderRadius: 8, paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '8dp', paddingRight: '8dp', items: [{ type: 'Text', text: '🤢 Vomit', color: "${payload.data.selectedFluid == 'vomit' ? 'white' : '#ccc'}", fontSize: '14dp' }] }] }
+                { type: 'TouchWrapper', onPress: { type: 'SendEvent', arguments: ['select', 'vomit', '${payload.mode}'] }, items: [{ type: 'Frame', backgroundColor: "${payload.selectedFluid == 'vomit' ? '#4a9eff' : '#2a2a3e'}", borderRadius: 8, paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '8dp', paddingRight: '8dp', items: [{ type: 'Text', text: '🤢 Vomit', color: "${payload.selectedFluid == 'vomit' ? 'white' : '#ccc'}", fontSize: '14dp' }] }] }
               ]
             },
             // Spacer
@@ -309,11 +309,11 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid) {
               direction: 'row',
               justifyContent: 'center',
               items: [
-                { type: 'TouchWrapper', onPress: { type: 'SendEvent', arguments: ['log', '${payload.data.selectedFluid}', 10, '${payload.data.mode}'] }, items: [{ type: 'Frame', backgroundColor: '#2a2a3e', borderRadius: 8, paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '12dp', paddingRight: '12dp', items: [{ type: 'Text', text: '+10 ml', color: 'white', fontSize: '14dp' }] }] },
+                { type: 'TouchWrapper', onPress: { type: 'SendEvent', arguments: ['log', '${payload.selectedFluid}', 10, '${payload.mode}'] }, items: [{ type: 'Frame', backgroundColor: '#2a2a3e', borderRadius: 8, paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '12dp', paddingRight: '12dp', items: [{ type: 'Text', text: '+10 ml', color: 'white', fontSize: '14dp' }] }] },
                 { type: 'Container', width: '8dp' },
-                { type: 'TouchWrapper', onPress: { type: 'SendEvent', arguments: ['log', '${payload.data.selectedFluid}', 50, '${payload.data.mode}'] }, items: [{ type: 'Frame', backgroundColor: '#2a2a3e', borderRadius: 8, paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '12dp', paddingRight: '12dp', items: [{ type: 'Text', text: '+50 ml', color: 'white', fontSize: '14dp' }] }] },
+                { type: 'TouchWrapper', onPress: { type: 'SendEvent', arguments: ['log', '${payload.selectedFluid}', 50, '${payload.mode}'] }, items: [{ type: 'Frame', backgroundColor: '#2a2a3e', borderRadius: 8, paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '12dp', paddingRight: '12dp', items: [{ type: 'Text', text: '+50 ml', color: 'white', fontSize: '14dp' }] }] },
                 { type: 'Container', width: '8dp' },
-                { type: 'TouchWrapper', onPress: { type: 'SendEvent', arguments: ['log', '${payload.data.selectedFluid}', 100, '${payload.data.mode}'] }, items: [{ type: 'Frame', backgroundColor: '#2a2a3e', borderRadius: 8, paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '12dp', paddingRight: '12dp', items: [{ type: 'Text', text: '+100 ml', color: 'white', fontSize: '14dp' }] }] }
+                { type: 'TouchWrapper', onPress: { type: 'SendEvent', arguments: ['log', '${payload.selectedFluid}', 100, '${payload.mode}'] }, items: [{ type: 'Frame', backgroundColor: '#2a2a3e', borderRadius: 8, paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '12dp', paddingRight: '12dp', items: [{ type: 'Text', text: '+100 ml', color: 'white', fontSize: '14dp' }] }] }
               ]
             }
           ]
@@ -321,7 +321,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid) {
       }
     },
     datasources: {
-      data: {
+      payload: {
         intake: intakeMl,
         limit: limitMl,
         pct: Math.round((intakeMl / limitMl) * 100),
