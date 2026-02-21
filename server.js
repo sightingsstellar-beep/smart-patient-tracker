@@ -252,7 +252,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid) {
       theme: 'dark',
       mainTemplate: {
         parameters: ['payload'],
-        item: {
+        items: [{
           // Frame gives us a proper background color on the root element
           type: 'Frame',
           width: '100vw',
@@ -327,7 +327,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid) {
               },
             ],
           },
-        },
+        }],
       },
     },
     datasources: {
@@ -381,12 +381,18 @@ app.post('/api/alexa', async (req, res) => {
         const limit = getDailyLimit();
         directives.push(buildAplDirective(summary.totalIntake, limit, 'input', null));
       }
-      return res.json(alexaResponse(
+      const launchResp = alexaResponse(
         'Wellness tracker ready. What would you like to log?',
         false,
         'You can say things like: log 120 milliliters pediasure, or log pee 85 milliliters.',
         directives
-      ));
+      );
+      console.log('[alexa] LaunchRequest — directives count:', directives.length);
+      if (directives.length > 0) {
+        const d = directives[0];
+        console.log('[alexa] APL directive type:', d.type, '| doc version:', d.document?.version, '| mainTemplate keys:', Object.keys(d.document?.mainTemplate || {}));
+      }
+      return res.json(launchResp);
     }
 
     // -- APL UserEvent: touch interactions from the screen
