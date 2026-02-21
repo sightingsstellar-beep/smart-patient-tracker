@@ -186,153 +186,157 @@ function supportsApl(req) {
   return hasAplInterface || hasViewport;
 }
 
+function aplButton(label, args) {
+  // A single tappable button: TouchWrapper > Frame > Text
+  // Uses item (singular) per APL spec for Frame and TouchWrapper.
+  return {
+    type: 'TouchWrapper',
+    onPress: { type: 'SendEvent', arguments: args },
+    item: {
+      type: 'Frame',
+      backgroundColor: '#2a3a5e',
+      borderRadius: 8,
+      paddingTop: '8dp',
+      paddingBottom: '8dp',
+      paddingLeft: '10dp',
+      paddingRight: '10dp',
+      item: { type: 'Text', text: label, color: 'white', fontSize: '14dp', textAlign: 'center' },
+    },
+  };
+}
+
+function aplSelectedButton(label, args, selected) {
+  // Button that highlights blue when selected
+  return {
+    type: 'TouchWrapper',
+    onPress: { type: 'SendEvent', arguments: args },
+    item: {
+      type: 'Frame',
+      backgroundColor: selected ? '#4a9eff' : '#2a3a5e',
+      borderRadius: 8,
+      paddingTop: '8dp',
+      paddingBottom: '8dp',
+      paddingLeft: '10dp',
+      paddingRight: '10dp',
+      item: { type: 'Text', text: label, color: 'white', fontSize: '14dp', textAlign: 'center' },
+    },
+  };
+}
+
 function buildAplDirective(intakeMl, limitMl, mode, selectedFluid) {
+  const pct = Math.min(100, Math.round((intakeMl / limitMl) * 100));
+  const isInput = (mode || 'input') === 'input';
+
+  // Fluid buttons — resolved at build time (no ternary in APL style props)
+  const inputFluids = [
+    aplSelectedButton('💧 Water',     ['select', 'water',     mode], selectedFluid === 'water'),
+    { type: 'Container', width: '6dp' },
+    aplSelectedButton('🍼 PediaSure', ['select', 'pediasure', mode], selectedFluid === 'pediasure'),
+    { type: 'Container', width: '6dp' },
+    aplSelectedButton('🥛 Milk',      ['select', 'milk',      mode], selectedFluid === 'milk'),
+  ];
+  const outputFluids = [
+    aplSelectedButton('🚽 Urine', ['select', 'urine', mode], selectedFluid === 'urine'),
+    { type: 'Container', width: '6dp' },
+    aplSelectedButton('💩 Poop',  ['select', 'poop',  mode], selectedFluid === 'poop'),
+    { type: 'Container', width: '6dp' },
+    aplSelectedButton('🤢 Vomit', ['select', 'vomit', mode], selectedFluid === 'vomit'),
+  ];
+
   return {
     type: 'Alexa.Presentation.APL.RenderDocument',
     token: 'tracker-ui',
     document: {
       type: 'APL',
-      version: '2023.3',
+      version: '1.5',
       theme: 'dark',
       mainTemplate: {
         parameters: ['payload'],
-        items: [{
-          type: 'Container',
+        item: {
+          // Frame gives us a proper background color on the root element
+          type: 'Frame',
           width: '100vw',
           height: '100vh',
           backgroundColor: '#1a1a2e',
-          alignItems: 'center',
-          justifyContent: 'center',
-          paddingTop: '40dp',
-          paddingBottom: '40dp',
-          paddingLeft: '20dp',
-          paddingRight: '20dp',
-          items: [
-            // Progress text
-            {
-              type: 'Text',
-              text: '${payload.intake} / ${payload.limit} ml · ${payload.pct}%',
-              color: '#ccc',
-              fontSize: '16dp',
-              textAlign: 'center',
-              paddingBottom: '6dp'
-            },
-            // Progress bar
-            {
-              type: 'Frame',
-              width: '80vw',
-              height: '10dp',
-              backgroundColor: '#2a2a3e',
-              borderRadius: 5,
-              items: [{
+          item: {
+            type: 'Container',
+            width: '100%',
+            height: '100%',
+            alignItems: 'center',
+            justifyContent: 'center',
+            paddingLeft: '24dp',
+            paddingRight: '24dp',
+            items: [
+              // ── Progress text ──────────────────────────────────────
+              {
+                type: 'Text',
+                text: '${payload.intake} / ${payload.limit} ml · ${payload.pct}%',
+                color: '#cccccc',
+                fontSize: '18dp',
+                textAlign: 'center',
+              },
+              { type: 'Container', height: '8dp' },
+              // ── Progress bar ───────────────────────────────────────
+              {
                 type: 'Frame',
-                width: '${payload.pct}%',
-                height: '10dp',
-                backgroundColor: '#4a9eff',
-                borderRadius: 5
-              }]
-            },
-            // Spacer
-            { type: 'Container', height: '12dp' },
-            // Mode toggle row
-            {
-              type: 'Container',
-              direction: 'row',
-              justifyContent: 'center',
-              items: [
-                {
-                  type: 'TouchWrapper',
-                  onPress: { type: 'SendEvent', arguments: ['mode', 'input'] },
-                  items: [{
-                    type: 'Frame',
-                    backgroundColor: "${payload.mode == 'input' ? '#4a9eff' : 'transparent'}",
-                    borderRadius: 8,
-                    paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '20dp', paddingRight: '20dp',
-                    items: [{
-                      type: 'Text',
-                      text: 'Input',
-                      color: "${payload.mode == 'input' ? 'white' : '#888'}",
-                      fontSize: '16dp', fontWeight: 'bold'
-                    }]
-                  }]
+                width: '100%',
+                height: '12dp',
+                backgroundColor: '#2a2a3e',
+                borderRadius: 6,
+                item: {
+                  type: 'Frame',
+                  width: '${payload.pct}%',
+                  height: '12dp',
+                  backgroundColor: '#4a9eff',
+                  borderRadius: 6,
                 },
-                { type: 'Container', width: '10dp' },
-                {
-                  type: 'TouchWrapper',
-                  onPress: { type: 'SendEvent', arguments: ['mode', 'output'] },
-                  items: [{
-                    type: 'Frame',
-                    backgroundColor: "${payload.mode == 'output' ? '#4a9eff' : 'transparent'}",
-                    borderRadius: 8,
-                    paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '20dp', paddingRight: '20dp',
-                    items: [{
-                      type: 'Text',
-                      text: 'Output',
-                      color: "${payload.mode == 'output' ? 'white' : '#888'}",
-                      fontSize: '16dp', fontWeight: 'bold'
-                    }]
-                  }]
-                }
-              ]
-            },
-            // Spacer
-            { type: 'Container', height: '12dp' },
-            // Fluid buttons - Input mode
-            {
-              type: 'Container',
-              direction: 'row',
-              justifyContent: 'center',
-              display: "${payload.mode == 'input' ? 'normal' : 'none'}",
-              items: [
-                { type: 'TouchWrapper', onPress: { type: 'SendEvent', arguments: ['select', 'water', '${payload.mode}'] }, items: [{ type: 'Frame', backgroundColor: "${payload.selectedFluid == 'water' ? '#4a9eff' : '#2a2a3e'}", borderRadius: 8, paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '8dp', paddingRight: '8dp', items: [{ type: 'Text', text: '💧 Water', color: "${payload.selectedFluid == 'water' ? 'white' : '#ccc'}", fontSize: '14dp' }] }] },
-                { type: 'Container', width: '6dp' },
-                { type: 'TouchWrapper', onPress: { type: 'SendEvent', arguments: ['select', 'pediasure', '${payload.mode}'] }, items: [{ type: 'Frame', backgroundColor: "${payload.selectedFluid == 'pediasure' ? '#4a9eff' : '#2a2a3e'}", borderRadius: 8, paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '8dp', paddingRight: '8dp', items: [{ type: 'Text', text: '🍼 PediaSure', color: "${payload.selectedFluid == 'pediasure' ? 'white' : '#ccc'}", fontSize: '14dp' }] }] },
-                { type: 'Container', width: '6dp' },
-                { type: 'TouchWrapper', onPress: { type: 'SendEvent', arguments: ['select', 'milk', '${payload.mode}'] }, items: [{ type: 'Frame', backgroundColor: "${payload.selectedFluid == 'milk' ? '#4a9eff' : '#2a2a3e'}", borderRadius: 8, paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '8dp', paddingRight: '8dp', items: [{ type: 'Text', text: '🥛 Milk', color: "${payload.selectedFluid == 'milk' ? 'white' : '#ccc'}", fontSize: '14dp' }] }] }
-              ]
-            },
-            // Fluid buttons - Output mode
-            {
-              type: 'Container',
-              direction: 'row',
-              justifyContent: 'center',
-              display: "${payload.mode == 'output' ? 'normal' : 'none'}",
-              items: [
-                { type: 'TouchWrapper', onPress: { type: 'SendEvent', arguments: ['select', 'urine', '${payload.mode}'] }, items: [{ type: 'Frame', backgroundColor: "${payload.selectedFluid == 'urine' ? '#4a9eff' : '#2a2a3e'}", borderRadius: 8, paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '8dp', paddingRight: '8dp', items: [{ type: 'Text', text: '🚽 Urine', color: "${payload.selectedFluid == 'urine' ? 'white' : '#ccc'}", fontSize: '14dp' }] }] },
-                { type: 'Container', width: '6dp' },
-                { type: 'TouchWrapper', onPress: { type: 'SendEvent', arguments: ['select', 'poop', '${payload.mode}'] }, items: [{ type: 'Frame', backgroundColor: "${payload.selectedFluid == 'poop' ? '#4a9eff' : '#2a2a3e'}", borderRadius: 8, paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '8dp', paddingRight: '8dp', items: [{ type: 'Text', text: '💩 Poop', color: "${payload.selectedFluid == 'poop' ? 'white' : '#ccc'}", fontSize: '14dp' }] }] },
-                { type: 'Container', width: '6dp' },
-                { type: 'TouchWrapper', onPress: { type: 'SendEvent', arguments: ['select', 'vomit', '${payload.mode}'] }, items: [{ type: 'Frame', backgroundColor: "${payload.selectedFluid == 'vomit' ? '#4a9eff' : '#2a2a3e'}", borderRadius: 8, paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '8dp', paddingRight: '8dp', items: [{ type: 'Text', text: '🤢 Vomit', color: "${payload.selectedFluid == 'vomit' ? 'white' : '#ccc'}", fontSize: '14dp' }] }] }
-              ]
-            },
-            // Spacer
-            { type: 'Container', height: '12dp' },
-            // Amount buttons
-            {
-              type: 'Container',
-              direction: 'row',
-              justifyContent: 'center',
-              items: [
-                { type: 'TouchWrapper', onPress: { type: 'SendEvent', arguments: ['log', '${payload.selectedFluid}', 10, '${payload.mode}'] }, items: [{ type: 'Frame', backgroundColor: '#2a2a3e', borderRadius: 8, paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '12dp', paddingRight: '12dp', items: [{ type: 'Text', text: '+10 ml', color: 'white', fontSize: '14dp' }] }] },
-                { type: 'Container', width: '8dp' },
-                { type: 'TouchWrapper', onPress: { type: 'SendEvent', arguments: ['log', '${payload.selectedFluid}', 50, '${payload.mode}'] }, items: [{ type: 'Frame', backgroundColor: '#2a2a3e', borderRadius: 8, paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '12dp', paddingRight: '12dp', items: [{ type: 'Text', text: '+50 ml', color: 'white', fontSize: '14dp' }] }] },
-                { type: 'Container', width: '8dp' },
-                { type: 'TouchWrapper', onPress: { type: 'SendEvent', arguments: ['log', '${payload.selectedFluid}', 100, '${payload.mode}'] }, items: [{ type: 'Frame', backgroundColor: '#2a2a3e', borderRadius: 8, paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '12dp', paddingRight: '12dp', items: [{ type: 'Text', text: '+100 ml', color: 'white', fontSize: '14dp' }] }] }
-              ]
-            }
-          ]
-        }]
-      }
+              },
+              { type: 'Container', height: '16dp' },
+              // ── Mode toggle ────────────────────────────────────────
+              {
+                type: 'Container',
+                direction: 'row',
+                justifyContent: 'center',
+                items: [
+                  aplSelectedButton('⬆ Input',  ['mode', 'input'],  isInput),
+                  { type: 'Container', width: '12dp' },
+                  aplSelectedButton('⬇ Output', ['mode', 'output'], !isInput),
+                ],
+              },
+              { type: 'Container', height: '12dp' },
+              // ── Fluid type buttons (resolved server-side) ──────────
+              {
+                type: 'Container',
+                direction: 'row',
+                justifyContent: 'center',
+                items: isInput ? inputFluids : outputFluids,
+              },
+              { type: 'Container', height: '12dp' },
+              // ── Amount buttons ─────────────────────────────────────
+              {
+                type: 'Container',
+                direction: 'row',
+                justifyContent: 'center',
+                items: [
+                  aplButton('+10 ml',  ['log', selectedFluid, 10,  mode]),
+                  { type: 'Container', width: '8dp' },
+                  aplButton('+50 ml',  ['log', selectedFluid, 50,  mode]),
+                  { type: 'Container', width: '8dp' },
+                  aplButton('+100 ml', ['log', selectedFluid, 100, mode]),
+                ],
+              },
+            ],
+          },
+        },
+      },
     },
     datasources: {
       payload: {
         intake: intakeMl,
         limit: limitMl,
-        pct: Math.round((intakeMl / limitMl) * 100),
-        mode: mode || 'input',
-        selectedFluid: selectedFluid || null,
-      }
-    }
+        pct,
+      },
+    },
   };
 }
 
