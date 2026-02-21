@@ -294,7 +294,19 @@ bot.on('message', async (msg) => {
 
   // Persist all actions
   const now = Date.now();
-  const dayKey = db.getDayKey();
+
+  // Support "yesterday:" prefix via date_offset
+  let dayKey;
+  if (parsed.date_offset === -1) {
+    const todayKey = db.getDayKey();
+    const [y, m, d] = todayKey.split('-').map(Number);
+    const yesterday = new Date(y, m - 1, d);
+    yesterday.setDate(yesterday.getDate() - 1);
+    dayKey = yesterday.toISOString().slice(0, 10);
+  } else {
+    dayKey = db.getDayKey();
+  }
+
   let weightAction = null;
 
   for (const action of parsed.actions) {
@@ -319,7 +331,7 @@ bot.on('message', async (msg) => {
           cyanosis: action.cyanosis,
         });
       } else if (action.type === 'gag') {
-        db.logGag(action.count, now);
+        db.logGag(action.count, now, dayKey);
       } else if (action.type === 'weight') {
         db.logWeight(dayKey, action.weight_kg, null);
         weightAction = action;
@@ -362,8 +374,9 @@ bot.on('message', async (msg) => {
 
   // Build and send confirmation
   const summary = db.getDaySummary(dayKey);
-  const confirmation = buildConfirmation(parsed.actions, summary);
-  bot.sendMessage(chatId, confirmation);
+  const confirmation = buildConfirmation(parsed.actions, summary) +
+    (parsed.date_offset === -1 ? '\n📅 _Logged for yesterday_' : '');
+  bot.sendMessage(chatId, confirmation, { parse_mode: 'Markdown' });
 
   // Warn if over daily limit
   const dailyLimit = getDailyLimit();

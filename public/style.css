@@ -755,3 +755,246 @@ body {
   text-decoration: underline;
   padding: 0;
 }
+
+/* ============================================================
+   YESTERDAY BANNER
+   ============================================================ */
+
+.yesterday-banner {
+  background: #fef7e0;
+  color: #7a5c00;
+  border-bottom: 1px solid #fbbc04;
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-align: center;
+  padding: 8px 16px;
+}
+
+/* ============================================================
+   DATE TOGGLE (Today / Yesterday)
+   ============================================================ */
+
+.date-toggle {
+  display: flex;
+  gap: 0;
+  margin-left: auto;
+  border: 1.5px solid var(--blue);
+  border-radius: 20px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.date-toggle-btn {
+  background: transparent;
+  color: var(--blue);
+  border: none;
+  padding: 5px 12px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+  line-height: 1.4;
+}
+
+.date-toggle-btn.active {
+  background: var(--blue);
+  color: white;
+}
+
+.date-toggle-btn:not(.active):hover {
+  background: var(--blue-light);
+}
+
+/* ============================================================
+   DAILY CHECKS — section label + divider
+   ============================================================ */
+
+.daily-checks-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  padding: 4px 4px 2px;
+}
+
+.section-divider {
+  height: 1px;
+  background: var(--border);
+  border: none;
+  margin: 0;
+}
+
+/* ============================================================
+   VITALS & WELLNESS — redesigned section
+   ============================================================ */
+
+/* Period toggle (Afternoon / Evening) */
+.wellness-period-toggle {
+  display: flex;
+  gap: 0;
+  margin-bottom: 14px;
+  border: 1.5px solid var(--blue);
+  border-radius: 20px;
+  overflow: hidden;
+  align-self: flex-start;
+}
+
+.period-btn {
+  background: transparent;
+  color: var(--blue);
+  border: none;
+  padding: 7px 18px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+}
+
+.period-btn.active {
+  background: var(--blue);
+  color: white;
+}
+
+.period-btn:not(.active):hover {
+  background: var(--blue-light);
+}
+
+/* Logged indicator */
+.wellness-logged-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: var(--green);
+  font-weight: 600;
+  background: var(--green-light);
+  border-radius: 8px;
+  padding: 6px 12px;
+  margin-bottom: 12px;
+}
+
+.wellness-edit-link {
+  background: none;
+  border: none;
+  color: var(--blue);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  padding: 0;
+}
+
+/* Metric groups */
+.wellness-metrics {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.wellness-metric-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.wellness-metric-label {
+  font-size: 0.78rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Button group for each metric */
+.wellness-btn-group {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.wellness-choice-btn {
+  flex: 1;
+  min-width: 60px;
+  padding: 8px 6px;
+  background: var(--grey-light);
+  color: var(--text);
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+.wellness-choice-btn:hover:not(:disabled) {
+  border-color: var(--blue);
+  color: var(--blue);
+  background: var(--blue-light);
+}
+
+.wellness-choice-btn.active {
+  background: var(--blue);
+  color: white;
+  border-color: var(--blue);
+  font-weight: 700;
+}
+
+.wellness-choice-btn--readonly {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.wellness-choice-btn.active.wellness-choice-btn--readonly {
+  opacity: 0.85;
+}
+
+/* Save button */
+.btn-save-wellness {
+  width: 100%;
+  padding: 13px;
+  background: var(--blue);
+  color: white;
+  border: none;
+  border-radius: 10px;
+  font-size: 1rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.btn-save-wellness:hover {
+  background: #1558c0;
+}
+
+.btn-save-wellness:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Save result message */
+.wellness-save-result {
+  margin-top: 10px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.wellness-save-result--ok {
+  background: var(--green-light);
+  color: var(--green);
+}
+
+.wellness-save-result--err {
+  background: var(--red-light);
+  color: var(--red);
+}

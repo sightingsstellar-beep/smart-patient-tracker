@@ -239,8 +239,8 @@ const insertGag = db.prepare(`
   INSERT INTO gag_events (timestamp, day_key) VALUES (@timestamp, @day_key)
 `);
 
-function logGag(count = 1, timestamp = Date.now()) {
-  const dayKey = getDayKey(new Date(timestamp));
+function logGag(count = 1, timestamp = Date.now(), dayKeyOverride = null) {
+  const dayKey = dayKeyOverride || getDayKey(new Date(timestamp));
   const results = [];
   for (let i = 0; i < count; i++) {
     const result = insertGag.run({ timestamp: timestamp + i, day_key: dayKey });

@@ -358,6 +358,40 @@ app.use(requireAuth);
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ---------------------------------------------------------------------------
+// Date helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns yesterday's fluid-day key string "YYYY-MM-DD".
+ * Derived from today's key so timezone logic is consistent.
+ */
+function getYesterdayKey() {
+  const todayKey = db.getDayKey();
+  const [y, m, d] = todayKey.split('-').map(Number);
+  const yesterday = new Date(y, m - 1, d);
+  yesterday.setDate(yesterday.getDate() - 1);
+  return yesterday.toISOString().slice(0, 10);
+}
+
+/**
+ * Validates an optional date field from a request body.
+ * Only today and yesterday are allowed.
+ * Returns { ok: true, date } or { ok: false, error }.
+ */
+function validateLogDate(bodyDate) {
+  const todayKey = db.getDayKey();
+  if (!bodyDate) return { ok: true, date: todayKey };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(bodyDate)) {
+    return { ok: false, error: 'Invalid date format. Use YYYY-MM-DD.' };
+  }
+  const yesterdayKey = getYesterdayKey();
+  if (bodyDate === todayKey || bodyDate === yesterdayKey) {
+    return { ok: true, date: bodyDate };
+  }
+  return { ok: false, error: 'Only today or yesterday entries are allowed' };
+}
+
+// ---------------------------------------------------------------------------
 // Settings helpers
 // ---------------------------------------------------------------------------
 
@@ -480,17 +514,26 @@ app.post('/api/log', (req, res) => {
       return res.status(400).json({ ok: false, error: 'Invalid request body' });
     }
 
+    // Validate optional date field
+    const dateResult = validateLogDate(body.date);
+    if (!dateResult.ok) {
+      return res.status(400).json({ ok: false, error: dateResult.error });
+    }
+    const dayKey = dateResult.date;
+
     const results = [];
 
-    // Require amount_ml for all fluid inputs and outputs
+    // Require amount_ml for all fluid inputs and outputs (poop is optional — no measurable amount)
     if (body.type !== 'wellness' && body.type !== 'gag') {
-      if (!body.amount_ml || typeof body.amount_ml !== 'number' || body.amount_ml <= 0) {
+      const isPoop = body.fluid_type === 'poop';
+      if (!isPoop && (!body.amount_ml || typeof body.amount_ml !== 'number' || body.amount_ml <= 0)) {
         return res.status(400).json({ ok: false, error: 'amount_ml is required for input and output entries' });
       }
     }
 
     if (body.type === 'wellness') {
       const w = db.logWellness({
+        day_key: dayKey,
         check_time: body.check_time || '5pm',
         appetite: body.appetite ?? null,
         energy: body.energy ?? null,
@@ -501,11 +544,12 @@ app.post('/api/log', (req, res) => {
       results.push({ kind: 'wellness', data: w });
     } else if (body.type === 'gag') {
       const count = Math.max(1, parseInt(body.count, 10) || 1);
-      const gags = db.logGag(count);
+      const gags = db.logGag(count, Date.now(), dayKey);
       results.push({ kind: 'gag', count, data: gags });
     } else {
       // Fluid input or output
       const entry = db.logEntry({
+        day_key: dayKey,
         entry_type: body.entry_type,
         fluid_type: body.fluid_type,
         amount_ml: body.amount_ml ?? null,
@@ -669,7 +713,14 @@ app.post('/api/weight', (req, res) => {
     if (typeof weight_kg !== 'number' || weight_kg <= 0) {
       return res.status(400).json({ ok: false, error: 'weight_kg must be a positive number' });
     }
-    const date = db.getDayKey();
+
+    // Validate optional date field
+    const dateResult = validateLogDate(req.body.date);
+    if (!dateResult.ok) {
+      return res.status(400).json({ ok: false, error: dateResult.error });
+    }
+    const date = dateResult.date;
+
     const existing = db.getWeightForDate(date);
     db.logWeight(date, weight_kg, notes ?? null);
     res.json({ ok: true, weight_kg, date, replaced: !!existing });

@@ -44,6 +44,11 @@
     </nav>
   </header>
 
+  <!-- Yellow banner — shown when logging for yesterday -->
+  <div class="yesterday-banner" id="yesterday-banner" style="display:none;">
+    ⚠️ Logging for yesterday
+  </div>
+
   <main class="main">
 
     <!-- ========== QUICK LOG ========== -->
@@ -51,8 +56,13 @@
       <div class="card-header">
         <span class="card-icon">⚡</span>
         <h2>Quick Log</h2>
+        <!-- Date toggle -->
+        <div class="date-toggle" id="date-toggle">
+          <button class="date-toggle-btn active" id="toggle-today" data-day="today">Today</button>
+          <button class="date-toggle-btn" id="toggle-yesterday" data-day="yesterday">Yesterday</button>
+        </div>
       </div>
-      <p class="quick-log-hint">Tap to log via Telegram bot, or use buttons below:</p>
+      <p class="quick-log-hint">Tap a button to log an entry:</p>
       <div class="quick-buttons">
         <button class="quick-btn" data-type="input"  data-fluid="water">💧 Water</button>
         <button class="quick-btn" data-type="input"  data-fluid="pediasure">🍼 PediaSure</button>
@@ -80,6 +90,9 @@
       </div>
     </section>
 
+    <!-- ========== DAILY CHECKS HEADER ========== -->
+    <div class="daily-checks-label">Daily Checks</div>
+
     <!-- ========== DAILY WEIGHT ========== -->
     <section class="card" id="weight-card">
       <div class="card-header">
@@ -97,6 +110,77 @@
         <button class="weight-update-link" id="weight-update-btn">Update</button>
       </div>
     </section>
+
+    <!-- ========== VITALS & WELLNESS ========== -->
+    <section class="card wellness-card" id="wellness-card">
+      <div class="card-header">
+        <span class="card-icon">❤️</span>
+        <h2>Vitals &amp; Wellness</h2>
+      </div>
+
+      <!-- Period toggle -->
+      <div class="wellness-period-toggle">
+        <button class="period-btn active" id="period-afternoon" data-period="afternoon">Afternoon</button>
+        <button class="period-btn" id="period-evening" data-period="evening">Evening</button>
+      </div>
+
+      <!-- Logged indicator -->
+      <div class="wellness-logged-indicator" id="wellness-logged-indicator" style="display:none;">
+        ✓ Already logged for this period —
+        <button class="wellness-edit-link" id="wellness-edit-btn">Edit</button>
+      </div>
+
+      <!-- Metric button groups -->
+      <div class="wellness-metrics" id="wellness-metrics">
+
+        <div class="wellness-metric-group">
+          <div class="wellness-metric-label">Cyanosis</div>
+          <div class="wellness-btn-group" data-metric="cyanosis">
+            <button class="wellness-choice-btn" data-value="1">None</button>
+            <button class="wellness-choice-btn" data-value="3">Mild</button>
+            <button class="wellness-choice-btn" data-value="6">Moderate</button>
+            <button class="wellness-choice-btn" data-value="9">Severe</button>
+          </div>
+        </div>
+
+        <div class="wellness-metric-group">
+          <div class="wellness-metric-label">Energy</div>
+          <div class="wellness-btn-group" data-metric="energy">
+            <button class="wellness-choice-btn" data-value="9">High</button>
+            <button class="wellness-choice-btn" data-value="7">Normal</button>
+            <button class="wellness-choice-btn" data-value="4">Low</button>
+            <button class="wellness-choice-btn" data-value="2">Very Low</button>
+          </div>
+        </div>
+
+        <div class="wellness-metric-group">
+          <div class="wellness-metric-label">Appetite</div>
+          <div class="wellness-btn-group" data-metric="appetite">
+            <button class="wellness-choice-btn" data-value="9">Great</button>
+            <button class="wellness-choice-btn" data-value="7">Good</button>
+            <button class="wellness-choice-btn" data-value="4">Fair</button>
+            <button class="wellness-choice-btn" data-value="2">Poor</button>
+          </div>
+        </div>
+
+        <div class="wellness-metric-group">
+          <div class="wellness-metric-label">Mood</div>
+          <div class="wellness-btn-group" data-metric="mood">
+            <button class="wellness-choice-btn" data-value="9">Happy</button>
+            <button class="wellness-choice-btn" data-value="7">Content</button>
+            <button class="wellness-choice-btn" data-value="4">Irritable</button>
+            <button class="wellness-choice-btn" data-value="2">Upset</button>
+          </div>
+        </div>
+
+      </div>
+
+      <button class="btn-save-wellness" id="save-wellness-btn">Save Wellness Check</button>
+      <div class="wellness-save-result" id="wellness-save-result" style="display:none;"></div>
+    </section>
+
+    <!-- Divider between Daily Checks and Intake sections -->
+    <div class="section-divider"></div>
 
     <!-- ========== INTAKE SECTION ========== -->
     <section class="card intake-card" id="intake-section">
@@ -148,20 +232,6 @@
         <li class="empty-state">No gag episodes today</li>
       </ul>
     </section>
-
-    <!-- ========== WELLNESS PANEL ========== -->
-    <section class="card wellness-card">
-      <div class="card-header">
-        <span class="card-icon">❤️</span>
-        <h2>Wellness Check</h2>
-        <span class="wellness-label" id="wellness-label">--</span>
-      </div>
-      <div class="wellness-grid" id="wellness-grid">
-        <div class="wellness-empty" id="wellness-empty">No wellness check logged yet</div>
-        <!-- Gauges populated by JS -->
-      </div>
-    </section>
-
 
   </main>
 

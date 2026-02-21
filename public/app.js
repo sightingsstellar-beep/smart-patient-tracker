@@ -2,7 +2,8 @@
  * app.js — Dashboard frontend
  *
  * Polls /api/today every 30 seconds and updates the UI.
- * Also handles quick-log button actions.
+ * Also handles quick-log button actions, date toggle,
+ * and the redesigned Vitals & Wellness section.
  */
 
 'use strict';
@@ -13,6 +14,38 @@
 
 let lastData = null;
 let pendingQuickLog = null; // { type, fluid_type, amount_ml }
+
+// Date toggle: 'today' or 'yesterday'
+let logDay = 'today';
+
+// Wellness state: stores already-logged data per period and edit mode
+let wellnessPeriod = 'afternoon'; // 'afternoon' | 'evening'
+let wellnessLogged = { afternoon: null, evening: null }; // loaded from API
+let wellnessEditMode = { afternoon: false, evening: false };
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function getYesterdayDateStr() {
+  // Build the yesterday key client-side using the same day-boundary logic
+  // (just date math on current date — timezone offset doesn't affect YYYY-MM-DD)
+  const now = new Date();
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  return yesterday.toISOString().slice(0, 10);
+}
+
+/**
+ * Returns the date string to submit with the current logDay state,
+ * or undefined when logging for today (server defaults to today).
+ */
+function getLogDateParam() {
+  if (logDay === 'yesterday') {
+    return getYesterdayDateStr();
+  }
+  return undefined; // omit — server uses today
+}
 
 // ---------------------------------------------------------------------------
 // Clock
@@ -86,7 +119,12 @@ function renderAll(data) {
   renderIntake(data);
   renderOutputs(data.outputs || []);
   renderGags(data.gags || [], data.gagCount || 0);
-  renderWellness(data.wellness || []);
+
+  // Update wellness state from API data and re-render
+  const wellness = data.wellness || [];
+  wellnessLogged.afternoon = wellness.find((w) => w.check_time === '5pm') || null;
+  wellnessLogged.evening   = wellness.find((w) => w.check_time === '10pm') || null;
+  renderWellnessCard();
 }
 
 // --- Intake section ---
@@ -213,62 +251,232 @@ function renderGags(gags, count) {
   }
 }
 
-// --- Wellness ---
+// ---------------------------------------------------------------------------
+// Vitals & Wellness — redesigned section
+// ---------------------------------------------------------------------------
 
-const WELLNESS_FIELDS = [
-  { key: 'appetite', label: 'Appetite' },
-  { key: 'energy',   label: 'Energy' },
-  { key: 'mood',     label: 'Mood' },
-  { key: 'cyanosis', label: 'Cyanosis' },
-];
+// Maps metric name → array of { label, value } options
+const WELLNESS_OPTIONS = {
+  cyanosis: [
+    { label: 'None',     value: 1 },
+    { label: 'Mild',     value: 3 },
+    { label: 'Moderate', value: 6 },
+    { label: 'Severe',   value: 9 },
+  ],
+  energy: [
+    { label: 'High',     value: 9 },
+    { label: 'Normal',   value: 7 },
+    { label: 'Low',      value: 4 },
+    { label: 'Very Low', value: 2 },
+  ],
+  appetite: [
+    { label: 'Great', value: 9 },
+    { label: 'Good',  value: 7 },
+    { label: 'Fair',  value: 4 },
+    { label: 'Poor',  value: 2 },
+  ],
+  mood: [
+    { label: 'Happy',     value: 9 },
+    { label: 'Content',   value: 7 },
+    { label: 'Irritable', value: 4 },
+    { label: 'Upset',     value: 2 },
+  ],
+};
 
-function gaugeColor(value) {
-  if (value <= 3) return 'gauge-low';
-  if (value <= 6) return 'gauge-mid';
-  return 'gauge-high';
+/**
+ * Given a numeric score (1-10) and the options array for a metric,
+ * return the option value closest to the score.
+ */
+function closestWellnessValue(score, options) {
+  if (score === null || score === undefined) return null;
+  let best = options[0].value;
+  let bestDist = Math.abs(score - best);
+  for (const opt of options) {
+    const dist = Math.abs(score - opt.value);
+    if (dist < bestDist) {
+      bestDist = dist;
+      best = opt.value;
+    }
+  }
+  return best;
 }
 
-function renderWellness(wellnessArr) {
-  const grid = document.getElementById('wellness-grid');
-  const emptyEl = document.getElementById('wellness-empty');
-  const labelEl = document.getElementById('wellness-label');
-
-  grid.innerHTML = '';
-
-  if (!wellnessArr || wellnessArr.length === 0) {
-    const empty = document.createElement('div');
-    empty.className = 'wellness-empty';
-    empty.textContent = 'No wellness check logged yet';
-    grid.appendChild(empty);
-    labelEl.textContent = '--';
-    return;
-  }
-
-  const latest = wellnessArr[wellnessArr.length - 1];
-  labelEl.textContent = latest.check_time + ' check';
-
-  for (const field of WELLNESS_FIELDS) {
-    const value = latest[field.key];
-    if (value === null || value === undefined) continue;
-
-    const gauge = document.createElement('div');
-    gauge.className = 'wellness-gauge';
-    const colorClass = gaugeColor(value);
-    const widthPct = (value / 10) * 100;
-
-    gauge.innerHTML = `
-      <div class="wellness-gauge-label">${field.label}</div>
-      <div>
-        <span class="wellness-gauge-value">${value}</span>
-        <span class="wellness-gauge-max">/10</span>
-      </div>
-      <div class="wellness-gauge-bar">
-        <div class="wellness-gauge-fill ${colorClass}" style="width: ${widthPct}%"></div>
-      </div>
-    `;
-    grid.appendChild(gauge);
-  }
+/**
+ * Auto-select the period based on current time:
+ * Before 8pm local time → Afternoon; 8pm or later → Evening.
+ */
+function autoSelectPeriod() {
+  const hour = new Date().getHours();
+  return hour >= 20 ? 'evening' : 'afternoon';
 }
+
+/**
+ * Initialize the wellness period on page load.
+ */
+function initWellnessPeriod() {
+  wellnessPeriod = autoSelectPeriod();
+  updatePeriodToggleUI();
+}
+
+/**
+ * Update the period toggle buttons to reflect current period.
+ */
+function updatePeriodToggleUI() {
+  document.getElementById('period-afternoon').classList.toggle('active', wellnessPeriod === 'afternoon');
+  document.getElementById('period-evening').classList.toggle('active', wellnessPeriod === 'evening');
+}
+
+/**
+ * Render the full wellness card based on current state.
+ * Handles: period toggle, button selection, read-only indicator, edit mode.
+ */
+function renderWellnessCard() {
+  updatePeriodToggleUI();
+
+  const isLogged = wellnessLogged[wellnessPeriod] !== null;
+  const isEditing = wellnessEditMode[wellnessPeriod];
+  const loggedData = wellnessLogged[wellnessPeriod];
+  const isReadOnly = isLogged && !isEditing;
+
+  // Show/hide logged indicator
+  const indicator = document.getElementById('wellness-logged-indicator');
+  indicator.style.display = isLogged ? 'flex' : 'none';
+
+  // Show/hide save button (hidden when read-only)
+  const saveBtn = document.getElementById('save-wellness-btn');
+  saveBtn.style.display = isReadOnly ? 'none' : 'block';
+
+  // Clear save result
+  const resultEl = document.getElementById('wellness-save-result');
+  resultEl.style.display = 'none';
+
+  // Render button groups
+  const groups = document.querySelectorAll('.wellness-btn-group');
+  groups.forEach((group) => {
+    const metric = group.dataset.metric;
+    const options = WELLNESS_OPTIONS[metric] || [];
+    const buttons = group.querySelectorAll('.wellness-choice-btn');
+
+    // Determine which value should be selected
+    let selectedValue = null;
+    if (isLogged) {
+      const storedScore = loggedData[metric];
+      selectedValue = closestWellnessValue(storedScore, options);
+    } else {
+      // Look for already-active button (user's current selection)
+      const activeBtn = group.querySelector('.wellness-choice-btn.active');
+      if (activeBtn) selectedValue = parseFloat(activeBtn.dataset.value);
+    }
+
+    buttons.forEach((btn) => {
+      const val = parseFloat(btn.dataset.value);
+      btn.classList.toggle('active', val === selectedValue);
+      btn.disabled = isReadOnly;
+      btn.classList.toggle('wellness-choice-btn--readonly', isReadOnly);
+    });
+  });
+}
+
+/**
+ * Get current wellness selections from button groups.
+ * Returns { cyanosis, energy, appetite, mood } as numeric scores.
+ */
+function getWellnessSelections() {
+  const result = {};
+  const groups = document.querySelectorAll('.wellness-btn-group');
+  groups.forEach((group) => {
+    const metric = group.dataset.metric;
+    const activeBtn = group.querySelector('.wellness-choice-btn.active');
+    result[metric] = activeBtn ? parseFloat(activeBtn.dataset.value) : null;
+  });
+  return result;
+}
+
+// Wire up period toggle buttons
+document.getElementById('period-afternoon').addEventListener('click', () => {
+  wellnessPeriod = 'afternoon';
+  renderWellnessCard();
+});
+
+document.getElementById('period-evening').addEventListener('click', () => {
+  wellnessPeriod = 'evening';
+  renderWellnessCard();
+});
+
+// Wire up Edit button
+document.getElementById('wellness-edit-btn').addEventListener('click', () => {
+  wellnessEditMode[wellnessPeriod] = true;
+  renderWellnessCard();
+});
+
+// Wire up wellness choice buttons (delegation)
+document.getElementById('wellness-metrics').addEventListener('click', (e) => {
+  const btn = e.target.closest('.wellness-choice-btn');
+  if (!btn || btn.disabled) return;
+  const group = btn.closest('.wellness-btn-group');
+  if (!group) return;
+  // Deselect others in group, select this one
+  group.querySelectorAll('.wellness-choice-btn').forEach((b) => b.classList.remove('active'));
+  btn.classList.add('active');
+});
+
+// Wire up Save Wellness button
+document.getElementById('save-wellness-btn').addEventListener('click', async () => {
+  const btn = document.getElementById('save-wellness-btn');
+  const resultEl = document.getElementById('wellness-save-result');
+
+  const selections = getWellnessSelections();
+  const checkTime = wellnessPeriod === 'afternoon' ? '5pm' : '10pm';
+
+  const original = btn.textContent;
+  btn.textContent = '⏳ Saving…';
+  btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'wellness',
+        check_time: checkTime,
+        appetite: selections.appetite,
+        energy: selections.energy,
+        mood: selections.mood,
+        cyanosis: selections.cyanosis,
+      }),
+    });
+
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+    btn.textContent = '✅ Saved';
+    resultEl.textContent = '✓ Wellness check saved!';
+    resultEl.className = 'wellness-save-result wellness-save-result--ok';
+    resultEl.style.display = 'block';
+
+    // Refresh data to update state
+    await fetchToday();
+
+    setTimeout(() => {
+      btn.textContent = original;
+      btn.disabled = false;
+      wellnessEditMode[wellnessPeriod] = false;
+      renderWellnessCard();
+    }, 2000);
+  } catch (err) {
+    console.error('[wellness] Save error:', err.message);
+    btn.textContent = '❌ Error';
+    resultEl.textContent = '⚠️ Failed to save. Please try again.';
+    resultEl.className = 'wellness-save-result wellness-save-result--err';
+    resultEl.style.display = 'block';
+    setTimeout(() => {
+      btn.textContent = original;
+      btn.disabled = false;
+    }, 2000);
+  }
+});
+
+// Initialize wellness period on load
+initWellnessPeriod();
 
 // ---------------------------------------------------------------------------
 // Daily Weight section
@@ -351,13 +559,16 @@ document.getElementById('weight-log-btn').addEventListener('click', async () => 
   btn.disabled = true;
 
   try {
+    const body = { weight_kg: val };
+    const dateParam = getLogDateParam();
+    if (dateParam) body.date = dateParam;
+
     const res = await fetch('/api/weight', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ weight_kg: val }),
+      body: JSON.stringify(body),
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const data = await res.json();
 
     btn.textContent = '✅ Saved';
     inputEl.value = '';
@@ -386,6 +597,23 @@ document.getElementById('weight-update-btn').addEventListener('click', () => {
 
 // Load weight on startup
 loadTodayWeight();
+
+// ---------------------------------------------------------------------------
+// Date toggle (Today / Yesterday)
+// ---------------------------------------------------------------------------
+
+function setLogDay(day) {
+  logDay = day;
+
+  document.getElementById('toggle-today').classList.toggle('active', day === 'today');
+  document.getElementById('toggle-yesterday').classList.toggle('active', day === 'yesterday');
+
+  const banner = document.getElementById('yesterday-banner');
+  banner.style.display = day === 'yesterday' ? 'block' : 'none';
+}
+
+document.getElementById('toggle-today').addEventListener('click', () => setLogDay('today'));
+document.getElementById('toggle-yesterday').addEventListener('click', () => setLogDay('yesterday'));
 
 // ---------------------------------------------------------------------------
 // Quick Log buttons
@@ -428,6 +656,10 @@ async function submitQuickLog(payload, btn) {
       amount_ml: payload.amount_ml || null,
     };
   }
+
+  // Include date when logging for yesterday
+  const dateParam = getLogDateParam();
+  if (dateParam) body.date = dateParam;
 
   const originalText = btn ? btn.textContent : '';
   if (btn) {

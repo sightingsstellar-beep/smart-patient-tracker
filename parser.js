@@ -54,6 +54,7 @@ Return ONLY a valid JSON object with this structure:
       "weight_kg": <number>
     }
   ],
+  "date_offset": 0,
   "unparseable": false,
   "raw_message": "<echo the original>"
 }
@@ -70,7 +71,8 @@ Rules:
 - If the message contains NO recognizable entries, set "unparseable": true and actions: [].
 - Do NOT include any explanation or markdown — return raw JSON only.
 - Clamp wellness scores to 1–10.
-- All amounts must be positive numbers.`;
+- All amounts must be positive numbers.
+- Yesterday date offset: if the message starts with "yesterday:", contains "yesterday she had", "log for yesterday", "for yesterday", or otherwise clearly refers to an entry that happened yesterday (not today), set "date_offset": -1. Otherwise set "date_offset": 0.`;
 
 // ---------------------------------------------------------------------------
 // Parse function
@@ -168,8 +170,11 @@ async function parseMessage(message) {
     }
   }
 
+  const dateOffset = parsed.date_offset === -1 ? -1 : 0;
+
   return {
     actions: sanitized,
+    date_offset: dateOffset,
     unparseable: sanitized.length === 0 && (parsed.unparseable !== false),
     raw_message: message,
   };

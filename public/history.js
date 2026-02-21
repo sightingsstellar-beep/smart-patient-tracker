@@ -3,6 +3,7 @@
  *
  * Fetches /api/history?days=7 on load and renders day cards.
  * Clock ticks every second. No auto-refresh (user can tap 🔄).
+ * Feature: "+ Add entry" inline form per day (today/yesterday only).
  */
 
 'use strict';
@@ -55,8 +56,29 @@ function fluidLabel(type) {
 }
 
 // ---------------------------------------------------------------------------
+// Entry type options for the add form
+// ---------------------------------------------------------------------------
+
+const ENTRY_TYPE_OPTIONS = [
+  { label: 'Water',        value: 'water',        entry_type: 'input',  fluid_type: 'water',       unit: 'ml',  needsAmount: true  },
+  { label: 'PediaSure',    value: 'pediasure',    entry_type: 'input',  fluid_type: 'pediasure',   unit: 'ml',  needsAmount: true  },
+  { label: 'Milk',         value: 'milk',         entry_type: 'input',  fluid_type: 'milk',        unit: 'ml',  needsAmount: true  },
+  { label: 'Juice',        value: 'juice',        entry_type: 'input',  fluid_type: 'juice',       unit: 'ml',  needsAmount: true  },
+  { label: 'Yogurt Drink', value: 'yogurt_drink', entry_type: 'input',  fluid_type: 'yogurt_drink',unit: 'ml',  needsAmount: true  },
+  { label: 'Urine',        value: 'urine',        entry_type: 'output', fluid_type: 'urine',       unit: 'ml',  needsAmount: true  },
+  { label: 'Poop',         value: 'poop',         entry_type: 'output', fluid_type: 'poop',        unit: 'ml',  needsAmount: false, amountOptional: true },
+  { label: 'Vomit',        value: 'vomit',        entry_type: 'output', fluid_type: 'vomit',       unit: 'ml',  needsAmount: true  },
+  { label: 'Gag',          value: 'gag',          entry_type: 'gag',    fluid_type: null,          unit: null,  needsAmount: false },
+  { label: 'Weight',       value: 'weight',       entry_type: 'weight', fluid_type: null,          unit: 'kg',  needsAmount: true  },
+];
+
+// ---------------------------------------------------------------------------
 // Data fetch
 // ---------------------------------------------------------------------------
+
+// Track today/yesterday keys for validating which days can have entries added
+let todayDayKey = null;
+let yesterdayDayKey = null;
 
 async function loadHistory() {
   const container = document.getElementById('history-container');
@@ -86,6 +108,16 @@ async function loadHistory() {
       }
     }
 
+    // Determine today and yesterday day keys from the data
+    const todayEntry = data.days.find((d) => d.isToday);
+    todayDayKey = todayEntry ? todayEntry.dayKey : null;
+    if (todayDayKey) {
+      const [y, m, d] = todayDayKey.split('-').map(Number);
+      const yd = new Date(y, m - 1, d);
+      yd.setDate(yd.getDate() - 1);
+      yesterdayDayKey = yd.toISOString().slice(0, 10);
+    }
+
     renderHistory(data.days, weightByDate);
 
     document.getElementById('last-updated').textContent = new Date().toLocaleTimeString('en-US', {
@@ -113,7 +145,8 @@ function renderHistory(days, weightByDate) {
   days.forEach((day, index) => {
     const prevDay = days[index + 1] || null; // previous day (older)
     const weightKg = weightByDate[day.dayKey] !== undefined ? weightByDate[day.dayKey] : null;
-    const card = buildDayCard(day, prevDay, weightKg);
+    const canAdd = day.dayKey === todayDayKey || day.dayKey === yesterdayDayKey;
+    const card = buildDayCard(day, prevDay, weightKg, canAdd);
     container.appendChild(card);
   });
 }
@@ -122,9 +155,10 @@ function renderHistory(days, weightByDate) {
 // Day card builder
 // ---------------------------------------------------------------------------
 
-function buildDayCard(day, prevDay, weightKg) {
+function buildDayCard(day, prevDay, weightKg, canAdd) {
   const card = document.createElement('div');
   card.className = 'day-card card' + (day.isToday ? ' is-today' : '');
+  card.dataset.dayKey = day.dayKey;
 
   // ---- Header ----
   const weightStr = weightKg !== null ? `⚖️ ${weightKg} kg` : '⚖️ —';
@@ -134,8 +168,15 @@ function buildDayCard(day, prevDay, weightKg) {
     <span class="day-label">${day.label}</span>
     <span class="day-weight-badge">${weightStr}</span>
     ${day.isToday ? '<span class="today-badge">Today</span>' : ''}
+    ${canAdd ? `<button class="h-add-entry-btn" data-day-key="${day.dayKey}" title="Add entry">+ Add</button>` : ''}
   `;
   card.appendChild(header);
+
+  // ---- Inline add form (hidden by default) ----
+  if (canAdd) {
+    const formEl = buildAddForm(day.dayKey);
+    card.appendChild(formEl);
+  }
 
   // Check if the day is completely empty
   const hasAnyData = (
@@ -153,6 +194,9 @@ function buildDayCard(day, prevDay, weightKg) {
     emptyBody.className = 'h-empty-body';
     emptyBody.textContent = 'No data logged for this day.';
     card.appendChild(emptyBody);
+
+    // Still wire up the add button if present
+    if (canAdd) wireAddButton(card, day.dayKey);
     return card;
   }
 
@@ -165,7 +209,195 @@ function buildDayCard(day, prevDay, weightKg) {
   // ---- Wire up accordion toggle ----
   setupAccordion(card);
 
+  // ---- Wire up add button ----
+  if (canAdd) wireAddButton(card, day.dayKey);
+
   return card;
+}
+
+// ---------------------------------------------------------------------------
+// Inline add form builder
+// ---------------------------------------------------------------------------
+
+function buildAddForm(dayKey) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'h-add-form-wrapper';
+  wrapper.id = `add-form-${dayKey}`;
+  wrapper.style.display = 'none';
+
+  const optionHTML = ENTRY_TYPE_OPTIONS.map(
+    (opt) => `<option value="${opt.value}">${opt.label}</option>`
+  ).join('');
+
+  wrapper.innerHTML = `
+    <form class="h-add-form" data-day-key="${dayKey}">
+      <div class="h-add-form-row">
+        <select class="h-add-type-select" name="type">
+          ${optionHTML}
+        </select>
+        <div class="h-add-amount-wrap">
+          <input type="number" class="h-add-amount-input" name="amount" min="0.1" step="0.1" placeholder="Amount" />
+          <span class="h-add-unit-label">ml</span>
+        </div>
+      </div>
+      <div class="h-add-form-actions">
+        <button type="submit" class="h-add-log-btn">Log</button>
+        <button type="button" class="h-add-cancel-link">Cancel</button>
+      </div>
+      <div class="h-add-form-result" style="display:none;"></div>
+    </form>
+  `;
+
+  return wrapper;
+}
+
+/**
+ * Wire up the "+ Add" button and form interactions for a day card.
+ */
+function wireAddButton(card, dayKey) {
+  const addBtn = card.querySelector('.h-add-entry-btn');
+  const formWrapper = card.querySelector(`#add-form-${dayKey}`);
+  if (!addBtn || !formWrapper) return;
+
+  const form = formWrapper.querySelector('.h-add-form');
+  const typeSelect = form.querySelector('.h-add-type-select');
+  const amountWrap = form.querySelector('.h-add-amount-wrap');
+  const amountInput = form.querySelector('.h-add-amount-input');
+  const unitLabel = form.querySelector('.h-add-unit-label');
+  const cancelBtn = form.querySelector('.h-add-cancel-link');
+  const resultEl = form.querySelector('.h-add-form-result');
+
+  // Show form on + Add click
+  addBtn.addEventListener('click', () => {
+    const isVisible = formWrapper.style.display !== 'none';
+    formWrapper.style.display = isVisible ? 'none' : 'block';
+    if (!isVisible) {
+      updateAddFormFields(typeSelect.value, amountWrap, unitLabel);
+      amountInput.focus();
+    }
+  });
+
+  // Cancel hides form
+  cancelBtn.addEventListener('click', () => {
+    formWrapper.style.display = 'none';
+    form.reset();
+    resultEl.style.display = 'none';
+  });
+
+  // Update amount field when type changes
+  typeSelect.addEventListener('change', () => {
+    updateAddFormFields(typeSelect.value, amountWrap, unitLabel);
+  });
+
+  // Initialize field visibility
+  updateAddFormFields(typeSelect.value, amountWrap, unitLabel);
+
+  // Form submission
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const submitBtn = form.querySelector('.h-add-log-btn');
+    const typeDef = ENTRY_TYPE_OPTIONS.find((o) => o.value === typeSelect.value);
+    if (!typeDef) return;
+
+    const amountVal = parseFloat(amountInput.value);
+    const needsAmount = typeDef.needsAmount;
+
+    // Validate amount if needed
+    if (needsAmount && (isNaN(amountVal) || amountVal <= 0)) {
+      amountInput.focus();
+      return;
+    }
+
+    submitBtn.textContent = '⏳';
+    submitBtn.disabled = true;
+    resultEl.style.display = 'none';
+
+    try {
+      let ok = false;
+      if (typeDef.entry_type === 'weight') {
+        const res = await fetch('/api/weight', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ weight_kg: amountVal, date: dayKey }),
+        });
+        ok = res.ok;
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || `HTTP ${res.status}`);
+        }
+      } else if (typeDef.entry_type === 'gag') {
+        const res = await fetch('/api/log', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type: 'gag', count: 1, date: dayKey }),
+        });
+        ok = res.ok;
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || `HTTP ${res.status}`);
+        }
+      } else {
+        const body = {
+          entry_type: typeDef.entry_type,
+          fluid_type: typeDef.fluid_type,
+          amount_ml: needsAmount ? amountVal : (isNaN(amountVal) ? null : amountVal) || null,
+          date: dayKey,
+        };
+        const res = await fetch('/api/log', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        });
+        ok = res.ok;
+        if (!res.ok) {
+          const err = await res.json().catch(() => ({}));
+          throw new Error(err.error || `HTTP ${res.status}`);
+        }
+      }
+
+      resultEl.textContent = '✓ Logged successfully';
+      resultEl.className = 'h-add-form-result h-add-form-result--ok';
+      resultEl.style.display = 'block';
+
+      submitBtn.textContent = 'Log';
+      submitBtn.disabled = false;
+      form.reset();
+      updateAddFormFields(typeSelect.value, amountWrap, unitLabel);
+
+      // Refresh history to show updated data
+      setTimeout(() => loadHistory(), 800);
+    } catch (err) {
+      console.error('[history add]', err.message);
+      resultEl.textContent = `⚠️ ${err.message}`;
+      resultEl.className = 'h-add-form-result h-add-form-result--err';
+      resultEl.style.display = 'block';
+      submitBtn.textContent = 'Log';
+      submitBtn.disabled = false;
+    }
+  });
+}
+
+/**
+ * Show/hide amount field and update unit label/placeholder based on selected type.
+ */
+function updateAddFormFields(typeValue, amountWrap, unitLabel) {
+  const typeDef = ENTRY_TYPE_OPTIONS.find((o) => o.value === typeValue);
+  if (!typeDef) return;
+
+  const amountInput = amountWrap.querySelector('.h-add-amount-input');
+
+  if (typeDef.unit === null || typeDef.entry_type === 'gag') {
+    // Gag: no amount field
+    amountWrap.style.display = 'none';
+  } else {
+    amountWrap.style.display = 'flex';
+    unitLabel.textContent = typeDef.unit;
+    // Show "optional" hint for poop
+    if (amountInput) {
+      amountInput.placeholder = typeDef.amountOptional ? 'Amount (opt.)' : 'Amount';
+      amountInput.required = !typeDef.amountOptional;
+    }
+  }
 }
 
 // ---------------------------------------------------------------------------
