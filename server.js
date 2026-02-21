@@ -179,11 +179,11 @@ function alexaResponse(ssml, shouldEndSession = true, repromptSsml = null, direc
 }
 
 function supportsApl(req) {
-  // Check both supportedInterfaces (not always populated) and context.Viewport
-  // (always present on screen devices — more reliable for Echo Spot / Echo Show).
-  const hasAplInterface = !!(req.body?.context?.System?.device?.supportedInterfaces?.['Alexa.Presentation.APL']);
-  const hasViewport = !!(req.body?.context?.Viewport);
-  return hasAplInterface || hasViewport;
+  // Per Amazon docs: ONLY send APL when supportedInterfaces declares it.
+  // Viewport presence alone is not enough — Amazon's service uses supportedInterfaces
+  // to signal that APL is cleared for this skill+device combination.
+  // Sending APL without this signal causes "problem with skill response" errors.
+  return !!(req.body?.context?.System?.device?.supportedInterfaces?.['Alexa.Presentation.APL']);
 }
 
 function aplButton(label, args) {
