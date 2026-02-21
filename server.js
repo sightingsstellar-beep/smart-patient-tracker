@@ -223,12 +223,11 @@ function aplSelectedButton(label, args, selected) {
   };
 }
 
-// DIAGNOSTIC: absolute-minimum APL to confirm the mechanism works.
-// If this renders, we'll layer the full UI back. If this fails,
-// the issue is at the response/infrastructure level, not the document.
+// DIAGNOSTIC: still minimal APL — adding required directive-level version field.
 function buildAplDirective(intakeMl, limitMl, mode, selectedFluid) {
   return {
     type: 'Alexa.Presentation.APL.RenderDocument',
+    version: '1.0',   // required directive schema version (separate from APL doc version)
     token: 'tracker-ui',
     document: {
       type: 'APL',
