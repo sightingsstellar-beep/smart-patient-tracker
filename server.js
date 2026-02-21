@@ -161,7 +161,7 @@ app.get('/logout', (req, res) => {
 /**
  * Build an Alexa JSON response with SSML speech output.
  */
-function alexaResponse(ssml, shouldEndSession = true, repromptSsml = null) {
+function alexaResponse(ssml, shouldEndSession = true, repromptSsml = null, directives = []) {
   const resp = {
     version: '1.0',
     response: {
@@ -174,7 +174,162 @@ function alexaResponse(ssml, shouldEndSession = true, repromptSsml = null) {
       outputSpeech: { type: 'SSML', ssml: `<speak>${repromptSsml}</speak>` },
     };
   }
+  if (directives.length > 0) resp.response.directives = directives;
   return resp;
+}
+
+function supportsApl(req) {
+  return !!(req.body?.context?.System?.device?.supportedInterfaces?.['Alexa.Presentation.APL']);
+}
+
+function buildAplDirective(intakeMl, limitMl, mode, selectedFluid) {
+  return {
+    type: 'Alexa.Presentation.APL.RenderDocument',
+    token: 'tracker-ui',
+    document: {
+      type: 'APL',
+      version: '2023.3',
+      theme: 'dark',
+      mainTemplate: {
+        parameters: ['payload'],
+        items: [{
+          type: 'Container',
+          width: '100vw',
+          height: '100vh',
+          backgroundColor: '#1a1a2e',
+          alignItems: 'center',
+          justifyContent: 'center',
+          paddingTop: '40dp',
+          paddingBottom: '40dp',
+          paddingLeft: '20dp',
+          paddingRight: '20dp',
+          items: [
+            // Progress text
+            {
+              type: 'Text',
+              text: '${payload.data.intake} / ${payload.data.limit} ml · ${payload.data.pct}%',
+              color: '#ccc',
+              fontSize: '16dp',
+              textAlign: 'center',
+              paddingBottom: '6dp'
+            },
+            // Progress bar
+            {
+              type: 'Frame',
+              width: '80vw',
+              height: '10dp',
+              backgroundColor: '#2a2a3e',
+              borderRadius: 5,
+              items: [{
+                type: 'Frame',
+                width: '${payload.data.pct}%',
+                height: '10dp',
+                backgroundColor: '#4a9eff',
+                borderRadius: 5
+              }]
+            },
+            // Spacer
+            { type: 'Container', height: '12dp' },
+            // Mode toggle row
+            {
+              type: 'Container',
+              direction: 'row',
+              justifyContent: 'center',
+              items: [
+                {
+                  type: 'TouchWrapper',
+                  onPress: { type: 'SendEvent', arguments: ['mode', 'input'] },
+                  items: [{
+                    type: 'Frame',
+                    backgroundColor: "${payload.data.mode == 'input' ? '#4a9eff' : 'transparent'}",
+                    borderRadius: 8,
+                    paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '20dp', paddingRight: '20dp',
+                    items: [{
+                      type: 'Text',
+                      text: 'Input',
+                      color: "${payload.data.mode == 'input' ? 'white' : '#888'}",
+                      fontSize: '16dp', fontWeight: 'bold'
+                    }]
+                  }]
+                },
+                { type: 'Container', width: '10dp' },
+                {
+                  type: 'TouchWrapper',
+                  onPress: { type: 'SendEvent', arguments: ['mode', 'output'] },
+                  items: [{
+                    type: 'Frame',
+                    backgroundColor: "${payload.data.mode == 'output' ? '#4a9eff' : 'transparent'}",
+                    borderRadius: 8,
+                    paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '20dp', paddingRight: '20dp',
+                    items: [{
+                      type: 'Text',
+                      text: 'Output',
+                      color: "${payload.data.mode == 'output' ? 'white' : '#888'}",
+                      fontSize: '16dp', fontWeight: 'bold'
+                    }]
+                  }]
+                }
+              ]
+            },
+            // Spacer
+            { type: 'Container', height: '12dp' },
+            // Fluid buttons - Input mode
+            {
+              type: 'Container',
+              direction: 'row',
+              justifyContent: 'center',
+              display: "${payload.data.mode == 'input' ? 'normal' : 'none'}",
+              items: [
+                { type: 'TouchWrapper', onPress: { type: 'SendEvent', arguments: ['select', 'water', '${payload.data.mode}'] }, items: [{ type: 'Frame', backgroundColor: "${payload.data.selectedFluid == 'water' ? '#4a9eff' : '#2a2a3e'}", borderRadius: 8, paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '8dp', paddingRight: '8dp', items: [{ type: 'Text', text: '💧 Water', color: "${payload.data.selectedFluid == 'water' ? 'white' : '#ccc'}", fontSize: '14dp' }] }] },
+                { type: 'Container', width: '6dp' },
+                { type: 'TouchWrapper', onPress: { type: 'SendEvent', arguments: ['select', 'pediasure', '${payload.data.mode}'] }, items: [{ type: 'Frame', backgroundColor: "${payload.data.selectedFluid == 'pediasure' ? '#4a9eff' : '#2a2a3e'}", borderRadius: 8, paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '8dp', paddingRight: '8dp', items: [{ type: 'Text', text: '🍼 PediaSure', color: "${payload.data.selectedFluid == 'pediasure' ? 'white' : '#ccc'}", fontSize: '14dp' }] }] },
+                { type: 'Container', width: '6dp' },
+                { type: 'TouchWrapper', onPress: { type: 'SendEvent', arguments: ['select', 'milk', '${payload.data.mode}'] }, items: [{ type: 'Frame', backgroundColor: "${payload.data.selectedFluid == 'milk' ? '#4a9eff' : '#2a2a3e'}", borderRadius: 8, paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '8dp', paddingRight: '8dp', items: [{ type: 'Text', text: '🥛 Milk', color: "${payload.data.selectedFluid == 'milk' ? 'white' : '#ccc'}", fontSize: '14dp' }] }] }
+              ]
+            },
+            // Fluid buttons - Output mode
+            {
+              type: 'Container',
+              direction: 'row',
+              justifyContent: 'center',
+              display: "${payload.data.mode == 'output' ? 'normal' : 'none'}",
+              items: [
+                { type: 'TouchWrapper', onPress: { type: 'SendEvent', arguments: ['select', 'urine', '${payload.data.mode}'] }, items: [{ type: 'Frame', backgroundColor: "${payload.data.selectedFluid == 'urine' ? '#4a9eff' : '#2a2a3e'}", borderRadius: 8, paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '8dp', paddingRight: '8dp', items: [{ type: 'Text', text: '🚽 Urine', color: "${payload.data.selectedFluid == 'urine' ? 'white' : '#ccc'}", fontSize: '14dp' }] }] },
+                { type: 'Container', width: '6dp' },
+                { type: 'TouchWrapper', onPress: { type: 'SendEvent', arguments: ['select', 'poop', '${payload.data.mode}'] }, items: [{ type: 'Frame', backgroundColor: "${payload.data.selectedFluid == 'poop' ? '#4a9eff' : '#2a2a3e'}", borderRadius: 8, paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '8dp', paddingRight: '8dp', items: [{ type: 'Text', text: '💩 Poop', color: "${payload.data.selectedFluid == 'poop' ? 'white' : '#ccc'}", fontSize: '14dp' }] }] },
+                { type: 'Container', width: '6dp' },
+                { type: 'TouchWrapper', onPress: { type: 'SendEvent', arguments: ['select', 'vomit', '${payload.data.mode}'] }, items: [{ type: 'Frame', backgroundColor: "${payload.data.selectedFluid == 'vomit' ? '#4a9eff' : '#2a2a3e'}", borderRadius: 8, paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '8dp', paddingRight: '8dp', items: [{ type: 'Text', text: '🤢 Vomit', color: "${payload.data.selectedFluid == 'vomit' ? 'white' : '#ccc'}", fontSize: '14dp' }] }] }
+              ]
+            },
+            // Spacer
+            { type: 'Container', height: '12dp' },
+            // Amount buttons
+            {
+              type: 'Container',
+              direction: 'row',
+              justifyContent: 'center',
+              items: [
+                { type: 'TouchWrapper', onPress: { type: 'SendEvent', arguments: ['log', '${payload.data.selectedFluid}', 10, '${payload.data.mode}'] }, items: [{ type: 'Frame', backgroundColor: '#2a2a3e', borderRadius: 8, paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '12dp', paddingRight: '12dp', items: [{ type: 'Text', text: '+10 ml', color: 'white', fontSize: '14dp' }] }] },
+                { type: 'Container', width: '8dp' },
+                { type: 'TouchWrapper', onPress: { type: 'SendEvent', arguments: ['log', '${payload.data.selectedFluid}', 50, '${payload.data.mode}'] }, items: [{ type: 'Frame', backgroundColor: '#2a2a3e', borderRadius: 8, paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '12dp', paddingRight: '12dp', items: [{ type: 'Text', text: '+50 ml', color: 'white', fontSize: '14dp' }] }] },
+                { type: 'Container', width: '8dp' },
+                { type: 'TouchWrapper', onPress: { type: 'SendEvent', arguments: ['log', '${payload.data.selectedFluid}', 100, '${payload.data.mode}'] }, items: [{ type: 'Frame', backgroundColor: '#2a2a3e', borderRadius: 8, paddingTop: '8dp', paddingBottom: '8dp', paddingLeft: '12dp', paddingRight: '12dp', items: [{ type: 'Text', text: '+100 ml', color: 'white', fontSize: '14dp' }] }] }
+              ]
+            }
+          ]
+        }]
+      }
+    },
+    datasources: {
+      data: {
+        intake: intakeMl,
+        limit: limitMl,
+        pct: Math.round((intakeMl / limitMl) * 100),
+        mode: mode || 'input',
+        selectedFluid: selectedFluid || null,
+      }
+    }
+  };
 }
 
 /**
@@ -206,11 +361,78 @@ app.post('/api/alexa', async (req, res) => {
 
     // -- LaunchRequest: skill opened with no command
     if (request.type === 'LaunchRequest') {
+      const directives = [];
+      if (supportsApl(req)) {
+        const summary = db.getDaySummary(db.getDayKey());
+        const limit = getDailyLimit();
+        directives.push(buildAplDirective(summary.totalIntake, limit, 'input', null));
+      }
       return res.json(alexaResponse(
         'Wellness tracker ready. What would you like to log?',
         false,
-        'You can say things like: log 120 milliliters pediasure, or log pee 85 milliliters.'
+        'You can say things like: log 120 milliliters pediasure, or log pee 85 milliliters.',
+        directives
       ));
+    }
+
+    // -- APL UserEvent: touch interactions from the screen
+    if (request.type === 'Alexa.Presentation.APL.UserEvent') {
+      const args = request.arguments || [];
+      const action = args[0];
+
+      if (action === 'mode') {
+        const newMode = args[1] || 'input';
+        const summary = db.getDaySummary(db.getDayKey());
+        const limit = getDailyLimit();
+        const apl = buildAplDirective(summary.totalIntake, limit, newMode, null);
+        const modeLabel = newMode === 'output' ? 'Output mode.' : 'Input mode.';
+        return res.json(alexaResponse(modeLabel, false, null, supportsApl(req) ? [apl] : []));
+      }
+
+      if (action === 'select') {
+        const fluid = args[1];
+        const mode = args[2] || 'input';
+        const summary = db.getDaySummary(db.getDayKey());
+        const limit = getDailyLimit();
+        const fluidLabel = formatFluidType(fluid) || fluid;
+        const apl = buildAplDirective(summary.totalIntake, limit, mode, fluid);
+        return res.json(alexaResponse(`${fluidLabel} selected.`, false, null, supportsApl(req) ? [apl] : []));
+      }
+
+      if (action === 'log') {
+        const fluid = args[1];
+        const amount = Number(args[2]);
+        const mode = args[3] || 'input';
+
+        if (!fluid || fluid === 'null' || fluid === 'undefined') {
+          const summary = db.getDaySummary(db.getDayKey());
+          const limit = getDailyLimit();
+          const apl = buildAplDirective(summary.totalIntake, limit, mode, null);
+          return res.json(alexaResponse('Please select a fluid type first.', false, 'What would you like to log?', supportsApl(req) ? [apl] : []));
+        }
+
+        const entryType = (mode === 'output') ? 'output' : 'input';
+        db.logEntry({
+          timestamp: Date.now(),
+          day_key: db.getDayKey(),
+          entry_type: entryType,
+          fluid_type: fluid,
+          amount_ml: amount,
+          source: 'alexa',
+        });
+
+        const summary = db.getDaySummary(db.getDayKey());
+        const limit = getDailyLimit();
+        const apl = buildAplDirective(summary.totalIntake, limit, mode, fluid);
+        const speech = buildAlexaSpeech(summary);
+        return res.json(alexaResponse(speech, false, null, supportsApl(req) ? [apl] : []));
+      }
+
+      // Unknown UserEvent — refresh display
+      const summary = db.getDaySummary(db.getDayKey());
+      const limit = getDailyLimit();
+      const apl = buildAplDirective(summary.totalIntake, limit, 'input', null);
+      return res.json(alexaResponse('', false, null, supportsApl(req) ? [apl] : []));
     }
 
     // -- SessionEndedRequest: Alexa closed the session
@@ -330,7 +552,11 @@ app.post('/api/alexa', async (req, res) => {
       }
 
       const summary = db.getDaySummary(dayKey);
-      return res.json(alexaResponse(buildAlexaSpeech(summary)));
+      const aplDirs = [];
+      if (supportsApl(req)) {
+        aplDirs.push(buildAplDirective(summary.totalIntake, getDailyLimit(), 'input', null));
+      }
+      return res.json(alexaResponse(buildAlexaSpeech(summary), false, null, aplDirs));
     }
 
     // Unknown intent fallback
