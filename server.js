@@ -273,7 +273,9 @@ app.post('/api/alexa', async (req, res) => {
     if (request.type === 'LaunchRequest') {
       const supportedInterfaces = req.body?.context?.System?.device?.supportedInterfaces || {};
       const viewport = req.body?.context?.Viewport || null;
+      const deviceId = req.body?.context?.System?.device?.deviceId || 'unknown';
       const aplSupported = supportsApl(req);
+      console.log('[alexa] LaunchRequest — deviceId:', deviceId);
       console.log('[alexa] LaunchRequest — supportedInterfaces:', JSON.stringify(supportedInterfaces));
       console.log('[alexa] LaunchRequest — viewport:', JSON.stringify(viewport));
       console.log('[alexa] LaunchRequest — supportsApl:', aplSupported);
