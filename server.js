@@ -223,7 +223,8 @@ function aplSelectedButton(label, args, selected) {
   };
 }
 
-// DIAGNOSTIC: still minimal APL — adding required directive-level version field.
+// DIAGNOSTIC: minimal APL with correct mainTemplate.items (array) for Layout type.
+// mainTemplate is a Layout — uses items[], not item (item is for Frame/TouchWrapper).
 function buildAplDirective(intakeMl, limitMl, mode, selectedFluid) {
   return {
     type: 'Alexa.Presentation.APL.RenderDocument',
@@ -233,10 +234,16 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid) {
       type: 'APL',
       version: '1.5',
       mainTemplate: {
-        item: {
-          type: 'Text',
-          text: 'Wellness Tracker',
-        },
+        parameters: [],
+        items: [
+          {
+            type: 'Text',
+            text: 'Wellness Tracker',
+            color: 'white',
+            fontSize: '24dp',
+            textAlign: 'center',
+          },
+        ],
       },
     },
   };
