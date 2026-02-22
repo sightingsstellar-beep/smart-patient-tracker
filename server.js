@@ -287,20 +287,14 @@ app.post('/api/alexa', async (req, res) => {
       console.log('[alexa] LaunchRequest — viewport:', JSON.stringify(viewport));
       console.log('[alexa] LaunchRequest — supportsApl:', aplSupported);
       if (aplSupported) {
-        // APL response: include speech + directive, but NO reprompt
-        // (reprompt conflicts with APL touch sessions on screen devices)
-        const summary = db.getDaySummary(db.getDayKey());
-        const limit = getDailyLimit();
-        const aplDirective = buildAplDirective(summary.totalIntake, limit, 'input', null);
-        console.log('[alexa] APL full directive JSON:', JSON.stringify(aplDirective));
-        return res.json({
-          version: '1.0',
-          response: {
-            outputSpeech: { type: 'SSML', ssml: '<speak>Wellness tracker ready.</speak>' },
-            shouldEndSession: false,
-            directives: [aplDirective],
-          },
-        });
+        // DIAGNOSTIC: APL supported but returning voice-only to confirm server works.
+        // Remove this block once APL doc format is confirmed.
+        console.log('[alexa] supportsApl=true — returning voice-only (diagnostic mode)');
+        return res.json(alexaResponse(
+          'Wellness tracker ready. APL detected. What would you like to log?',
+          false,
+          'You can say things like: log 120 milliliters pediasure.'
+        ));
       }
       return res.json(alexaResponse(
         'Wellness tracker ready. What would you like to log?',
