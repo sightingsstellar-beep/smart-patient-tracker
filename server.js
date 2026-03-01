@@ -385,41 +385,49 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
   // DISPLAY MODE — 3-column status view with AVG donut
   // ═══════════════════════════════════════════════════════════════════════════
   if (mode === 'display') {
-    const ibt = intakeByType  || {};
-    const obt = outputByType  || {};
+    const ibt     = intakeByType || {};
+    const outputs = outputByType || [];  // raw output log array (7th param repurposed)
+    const tz      = getTimezone ? getTimezone() : 'America/New_York';
 
-    // Side-panel fluid row helper
-    function fluidRow(type, label, amount, color) {
+    // Side-panel row: [dot] label  amount
+    function panelRow(color, label, amount) {
       return {
-        type: 'Container',
-        direction: 'row',
-        paddingTop: '10dp',
-        paddingBottom: '10dp',
-        alignItems: 'center',
+        type: 'Container', direction: 'row',
+        paddingTop: '7dp', paddingBottom: '7dp', alignItems: 'center',
         items: [
-          { type: 'Frame', width: '10dp', height: '10dp', borderRadius: 5,
-            backgroundColor: color, marginRight: '12dp', alignSelf: 'center' },
-          { type: 'Text', text: label, color: '#c0d0e8', fontSize: '20dp', grow: 1 },
-          { type: 'Text', text: amount, color: 'white', fontSize: '20dp', fontWeight: 'bold' },
+          { type: 'Frame', width: '9dp', height: '9dp', borderRadius: 5,
+            backgroundColor: color, marginRight: '10dp', alignSelf: 'center' },
+          { type: 'Text', text: label, color: '#c0d0e8', fontSize: '18dp', grow: 1 },
+          { type: 'Text', text: amount, color: 'white', fontSize: '18dp', fontWeight: 'bold' },
         ],
       };
     }
 
+    // Intake rows — aggregated by type, sorted largest first
     const intakeEntries = Object.entries(ibt).filter(([,ml]) => ml>0).sort((a,b)=>b[1]-a[1]);
-    const outputEntries = Object.entries(obt)
-      .filter(([,d]) => d.ml>0||d.count>0).sort((a,b)=>(b[1].ml||0)-(a[1].ml||0));
-
     const intakeRows = intakeEntries.length > 0
       ? intakeEntries.map(([t, ml]) =>
-          fluidRow(t, FLUID_LABELS[t]||t, `${ml} ml`, FLUID_COLORS[t]?.accent||'#4a9eff'))
-      : [{ type: 'Text', text: 'No intake yet', color: '#243550', fontSize: '18dp', paddingTop: '10dp' }];
+          panelRow(FLUID_COLORS[t]?.accent||'#4a9eff', FLUID_LABELS[t]||t, `${ml} ml`))
+      : [{ type: 'Text', text: 'No intake yet', color: '#243550',
+           fontSize: '17dp', paddingTop: '10dp' }];
 
-    const outputRows = outputEntries.length > 0
-      ? outputEntries.map(([t, d]) =>
-          fluidRow(t, FLUID_LABELS[t]||t, d.display, FLUID_COLORS[t]?.accent||'#f08c00'))
-      : [{ type: 'Text', text: 'No output yet', color: '#243550', fontSize: '18dp', paddingTop: '10dp' }];
+    // Output rows — individual entries, most recent first
+    const sortedOutputs = Array.isArray(outputs)
+      ? [...outputs].sort((a, b) => b.timestamp - a.timestamp)
+      : [];
+    const outputRows = sortedOutputs.length > 0
+      ? sortedOutputs.map((l) => {
+          const timeStr = new Date(l.timestamp).toLocaleTimeString('en-US',
+            { hour: 'numeric', minute: '2-digit', timeZone: tz });
+          const amtStr  = l.fluid_type === 'poop' ? '1×'
+            : l.amount_ml ? `${l.amount_ml} ml` : '—';
+          const label   = `${timeStr}  ${FLUID_LABELS[l.fluid_type]||l.fluid_type}`;
+          return panelRow(FLUID_COLORS[l.fluid_type]?.accent||'#f08c00', label, amtStr);
+        })
+      : [{ type: 'Text', text: 'No output yet', color: '#243550',
+           fontSize: '17dp', paddingTop: '10dp' }];
 
-    // AVG donut graphics (cx=185, cy=185, r=163, sw=46)
+    // AVG donut (cx=185, cy=185, r=163, sw=46)
     const donutItems = buildAvgDonutItems(185, 185, 163, 46, ibt, limitMl);
 
     return {
@@ -433,12 +441,14 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
         settings: { idleTimeoutInMilliseconds: 2147483647 },
         onMount: [
           {
-            // Invisible 60-second animation loop → fires SendEvent to refresh data
+            // screenLock keep-alive loop:
+            // Idle(29s, screenLock:true) pauses & then RESETS the interaction timer.
+            // SendEvent triggers a server refresh → new RenderDocument → onMount restarts.
+            // Net effect: timer never expires, display stays alive indefinitely.
             type: 'Sequential',
             repeatCount: -1,
             commands: [
-              { type: 'AnimateItem', componentId: 'refresh-pulse', duration: 60000,
-                value: [{ property: 'opacity', from: 1, to: 0.999 }] },
+              { type: 'Idle', delay: 29000, screenLock: true },
               { type: 'SendEvent', arguments: ['refresh', 'display'],
                 flags: { interactionMode: 'auto' } },
             ],
@@ -455,37 +465,49 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
             items: [
               headerRow,
               divider,
-              // ── 3-column body ───────────────────────────────────────────
+              // ── 3-column body ─────────────────────────────────────────
               {
                 type: 'Container', direction: 'row', grow: 1,
                 items: [
-                  // ── Left: INTAKE ─────────────────────────────────────────
+                  // ── Left: INTAKE + LOG button at bottom ───────────────
                   {
                     type: 'Container', width: '250dp', direction: 'column',
-                    paddingTop: '18dp', paddingLeft: '20dp', paddingRight: '14dp',
+                    paddingTop: '16dp', paddingLeft: '18dp', paddingRight: '12dp',
                     items: [
                       { type: 'Text', text: 'INTAKE', color: '#4a9eff',
                         fontSize: '24dp', fontWeight: 'bold', paddingBottom: '8dp' },
                       { type: 'Frame', backgroundColor: '#0f1e35', height: '2dp', marginBottom: '6dp' },
-                      ...intakeRows,
+                      // Intake rows fill available space
+                      { type: 'Container', direction: 'column', grow: 1,
+                        items: intakeRows },
+                      // LOG ENTRY button pinned to bottom-left
+                      {
+                        type: 'TouchWrapper',
+                        onPress: { type: 'SendEvent', arguments: ['mode', 'input'] },
+                        item: {
+                          type: 'Frame', backgroundColor: '#0d2a50', borderRadius: 12,
+                          paddingTop: '22dp', paddingBottom: '22dp',
+                          item: { type: 'Text', text: '📝  LOG ENTRY', color: 'white',
+                            fontSize: '22dp', fontWeight: 'bold', textAlign: 'center' },
+                        },
+                      },
                     ],
                   },
-                  // ── Center: Donut ─────────────────────────────────────────
+                  // ── Center: Donut ──────────────────────────────────────
                   {
                     type: 'Container', grow: 1, direction: 'column',
                     alignItems: 'center', justifyContent: 'center',
                     items: [
-                      // Donut + center text overlay
                       {
                         type: 'Container', width: '370dp', height: '370dp',
                         items: [
                           { type: 'VectorGraphic', source: 'donut',
                             width: '370dp', height: '370dp',
                             position: 'absolute', top: '0dp', left: '0dp' },
-                          // Center text
                           {
                             type: 'Container',
-                            position: 'absolute', top: '112dp', left: '0dp', right: '0dp',
+                            position: 'absolute', top: '112dp',
+                            left: '0dp', right: '0dp',
                             direction: 'column', alignItems: 'center',
                             items: [
                               { type: 'Text', text: String(intakeMl||0),
@@ -496,31 +518,18 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                                 color: inColor, fontSize: '38dp', fontWeight: 'bold' },
                             ],
                           },
-                          // Invisible refresh-pulse target
+                          // Invisible screenLock animation target
                           { type: 'Frame', id: 'refresh-pulse', opacity: 1,
                             width: '1dp', height: '1dp', backgroundColor: 'transparent',
                             position: 'absolute', top: '0dp', left: '0dp' },
                         ],
                       },
-                      // LOG ENTRY button below donut
-                      {
-                        type: 'TouchWrapper',
-                        onPress: { type: 'SendEvent', arguments: ['mode', 'input'] },
-                        marginTop: '10dp',
-                        item: {
-                          type: 'Frame', backgroundColor: '#0f2a50', borderRadius: 14,
-                          paddingTop: '14dp', paddingBottom: '14dp',
-                          paddingLeft: '50dp', paddingRight: '50dp',
-                          item: { type: 'Text', text: '📝  LOG ENTRY', color: 'white',
-                            fontSize: '24dp', fontWeight: 'bold' },
-                        },
-                      },
                     ],
                   },
-                  // ── Right: OUTPUT ─────────────────────────────────────────
+                  // ── Right: OUTPUT (individual entries) ────────────────
                   {
                     type: 'Container', width: '250dp', direction: 'column',
-                    paddingTop: '18dp', paddingLeft: '14dp', paddingRight: '20dp',
+                    paddingTop: '16dp', paddingLeft: '12dp', paddingRight: '18dp',
                     items: [
                       { type: 'Text', text: 'OUTPUT', color: '#f08c00',
                         fontSize: '24dp', fontWeight: 'bold', paddingBottom: '8dp' },
@@ -642,13 +651,13 @@ app.post('/api/alexa', async (req, res) => {
     const request = req.body?.request;
     if (!request) return res.status(400).json({ error: 'Invalid Alexa request' });
 
-    // Helper: build fresh display APL — available to all handlers in this request
+    // Helper: build fresh display APL with current DB state
     function freshDisplayApl() {
       const s   = db.getDaySummary(db.getDayKey());
       const lim = getDailyLimit();
       const oMl = s.outputs.reduce((acc, o) => acc + (o.amount_ml || 0), 0);
-      const obt = computeOutputByType(s.outputs);
-      return buildAplDirective(s.totalIntake, lim, 'display', null, oMl, s.intakeByType, obt);
+      // 7th param is now raw outputs array (individual entries for right panel)
+      return buildAplDirective(s.totalIntake, lim, 'display', null, oMl, s.intakeByType, s.outputs);
     }
 
     // -- LaunchRequest: show fluid status display
@@ -656,9 +665,8 @@ app.post('/api/alexa', async (req, res) => {
       const summary = db.getDaySummary(db.getDayKey());
       const limit   = getDailyLimit();
       const outputMl  = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
-      const obt = computeOutputByType(summary.outputs);
       const dirs = supportsApl(req)
-        ? [buildAplDirective(summary.totalIntake, limit, 'display', null, outputMl, summary.intakeByType, obt)]
+        ? [buildAplDirective(summary.totalIntake, limit, 'display', null, outputMl, summary.intakeByType, summary.outputs)]
         : [];
       const pn = db.getSetting('child_name');
       return res.json(alexaResponse(
