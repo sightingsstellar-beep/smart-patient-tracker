@@ -226,12 +226,14 @@ function aplSelectedButton(label, args, selected) {
 }
 
 // Build the full APL directive for Echo Show display.
-// outputMl = total output in ml for today (computed by caller from summary.outputs).
+// Echo Show 5 viewport = 960×480dp (1dp ≈ 1px). Scale accordingly.
+// outputMl = total output ml for today (computed by caller from summary.outputs).
 function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl) {
-  const pct = Math.min(100, Math.round(((intakeMl || 0) / (limitMl || 1200)) * 100));
-  const outMl = outputMl || 0;
+  const pct    = Math.min(100, Math.round(((intakeMl || 0) / (limitMl || 1200)) * 100));
+  const outMl  = outputMl || 0;
+  const inColor = pct >= 90 ? '#e74c3c' : pct >= 75 ? '#f39c12' : '#4a9eff';
 
-  // Fluid types per mode
+  // ── Fluid type definitions ─────────────────────────────────────────────────
   const inputFluids  = ['water', 'pediasure', 'milk', 'juice', 'yogurt_drink'];
   const outputFluids = ['urine', 'poop', 'vomit'];
   const fluids = mode === 'output' ? outputFluids : inputFluids;
@@ -241,120 +243,137 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl) {
   const outputAmounts = [50, 100, 150, 200, 300, 400];
   const amounts = mode === 'output' ? outputAmounts : inputAmounts;
 
-  // Helper: tappable button (TouchWrapper > Frame > Text)
+  // Per-fluid colors: dim (normal) / bright (selected)
+  const FLUID_COLORS = {
+    water:        { dim: '#0d4a8a', bright: '#2a8aff' },
+    pediasure:    { dim: '#7a4800', bright: '#f08c00' },
+    milk:         { dim: '#2a3a52', bright: '#6888aa' },
+    juice:        { dim: '#6a0808', bright: '#d93030' },
+    yogurt_drink: { dim: '#3a1260', bright: '#8a48cc' },
+    urine:        { dim: '#5a5200', bright: '#d4b800' },
+    poop:         { dim: '#3a1a06', bright: '#8b4513' },
+    vomit:        { dim: '#0a4020', bright: '#25a060' },
+  };
+
+  // ── Helper: large tappable button ─────────────────────────────────────────
   function btn(label, args, bg) {
     return {
       type: 'TouchWrapper',
       onPress: { type: 'SendEvent', arguments: args },
-      marginRight: '8dp',
+      marginRight: '12dp',
       item: {
         type: 'Frame',
         backgroundColor: bg || '#2a3a5e',
-        borderRadius: 8,
-        paddingTop: '10dp',
-        paddingBottom: '10dp',
-        paddingLeft: '14dp',
-        paddingRight: '14dp',
+        borderRadius: 12,
+        paddingTop: '18dp',
+        paddingBottom: '18dp',
+        paddingLeft: '26dp',
+        paddingRight: '26dp',
         item: {
           type: 'Text',
           text: label,
           color: 'white',
-          fontSize: '16dp',
+          fontSize: '24dp',
+          fontWeight: 'bold',
           textAlign: 'center',
         },
       },
     };
   }
 
-  // Fluid type buttons (+ Gag one-tap for input mode)
-  const fluidButtons = fluids.map((f) =>
-    btn(formatFluidType(f), ['select', f, mode], selectedFluid === f ? '#4a9eff' : '#2a3a5e')
-  );
+  // Fluid type buttons — color-coded per fluid type
+  const fluidButtons = fluids.map((f) => {
+    const colors = FLUID_COLORS[f] || { dim: '#2a3a5e', bright: '#4a9eff' };
+    return btn(formatFluidType(f), ['select', f, mode],
+      selectedFluid === f ? colors.bright : colors.dim);
+  });
   if (mode === 'input') {
-    fluidButtons.push(btn('Gag ×1', ['gag'], '#8b2020'));
+    fluidButtons.push(btn('Gag ×1', ['gag'],
+      selectedFluid === 'gag' ? '#cc2020' : '#5a0a0a'));
   }
 
-  // Amount picker buttons (shown only when a non-gag fluid is selected)
+  // Amount picker buttons (green, shown only when a fluid is selected)
   const showAmounts = selectedFluid && selectedFluid !== 'gag';
   const amountButtons = showAmounts
-    ? amounts.map((a) => btn(`${a}ml`, ['log', selectedFluid, a, mode], '#1a7a3a'))
+    ? amounts.map((a) => btn(`${a}ml`, ['log', selectedFluid, a, mode], '#0f6632'))
     : [];
 
-  // APL document content
+  // ── APL layout ─────────────────────────────────────────────────────────────
   const contentItems = [
-    // ── Top bar: title + live totals ──────────────────────────────────────────
+    // ── Header: stats bar ───────────────────────────────────────────────────
     {
       type: 'Container',
       direction: 'row',
-      backgroundColor: '#0f1a33',
-      paddingTop: '10dp',
-      paddingBottom: '10dp',
-      paddingLeft: '20dp',
-      paddingRight: '20dp',
+      backgroundColor: '#080f20',
+      paddingTop: '16dp',
+      paddingBottom: '16dp',
+      paddingLeft: '30dp',
+      paddingRight: '30dp',
       alignItems: 'center',
       items: [
         {
           type: 'Text',
           text: '💧 Fluid Tracker',
-          color: 'white',
-          fontSize: '20dp',
-          fontWeight: 'bold',
+          color: '#8aaad0',
+          fontSize: '22dp',
           grow: 1,
         },
         {
           type: 'Text',
-          text: `IN: ${intakeMl || 0}/${limitMl}ml (${pct}%)`,
-          color: '#4a9eff',
-          fontSize: '18dp',
-          marginRight: '24dp',
+          text: `IN  ${intakeMl || 0} / ${limitMl} ml  (${pct}%)`,
+          color: inColor,
+          fontSize: '30dp',
+          fontWeight: 'bold',
+          marginRight: '40dp',
         },
         {
           type: 'Text',
-          text: `OUT: ${outMl}ml`,
-          color: '#ff9944',
-          fontSize: '18dp',
+          text: `OUT  ${outMl} ml`,
+          color: '#f08c00',
+          fontSize: '30dp',
+          fontWeight: 'bold',
         },
       ],
     },
-    // ── Thin divider ──────────────────────────────────────────────────────────
-    { type: 'Frame', backgroundColor: '#2a3a5e', height: '1dp', width: '100%' },
-    // ── Mode toggle ───────────────────────────────────────────────────────────
+    // ── Divider ──────────────────────────────────────────────────────────────
+    { type: 'Frame', backgroundColor: '#1e2d4d', height: '2dp', width: '100%' },
+    // ── Mode toggle ─────────────────────────────────────────────────────────
     {
       type: 'Container',
       direction: 'row',
-      paddingTop: '12dp',
-      paddingBottom: '6dp',
-      paddingLeft: '20dp',
+      paddingTop: '18dp',
+      paddingBottom: '10dp',
+      paddingLeft: '30dp',
       items: [
-        btn('↑ Input',  ['mode', 'input'],  mode === 'input'  ? '#4a9eff' : '#2a3a5e'),
-        btn('↓ Output', ['mode', 'output'], mode === 'output' ? '#4a9eff' : '#2a3a5e'),
+        btn('↑ INPUT',  ['mode', 'input'],  mode === 'input'  ? '#1a5aaa' : '#1a2a40'),
+        btn('↓ OUTPUT', ['mode', 'output'], mode === 'output' ? '#1a5aaa' : '#1a2a40'),
       ],
     },
-    // ── Fluid type buttons ────────────────────────────────────────────────────
+    // ── Fluid type buttons ───────────────────────────────────────────────────
     {
       type: 'Container',
       direction: 'row',
-      paddingLeft: '20dp',
-      paddingBottom: '8dp',
+      paddingLeft: '30dp',
+      paddingBottom: '10dp',
       items: fluidButtons,
     },
   ];
 
-  // ── Amount picker row (only when fluid is selected) ───────────────────────
+  // ── Amount picker row ────────────────────────────────────────────────────
   if (showAmounts) {
     contentItems.push({
       type: 'Container',
       direction: 'row',
-      paddingLeft: '20dp',
-      paddingTop: '4dp',
+      paddingLeft: '30dp',
+      paddingTop: '8dp',
       alignItems: 'center',
       items: [
         {
           type: 'Text',
           text: `${formatFluidType(selectedFluid)} →`,
-          color: '#aabbdd',
-          fontSize: '15dp',
-          marginRight: '10dp',
+          color: '#6a9acc',
+          fontSize: '22dp',
+          marginRight: '14dp',
         },
         ...amountButtons,
       ],
@@ -376,7 +395,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl) {
             type: 'Container',
             width: '100vw',
             height: '100vh',
-            backgroundColor: '#1a2540',
+            backgroundColor: '#0f1a33',
             direction: 'column',
             items: contentItems,
           },
