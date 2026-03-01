@@ -361,26 +361,27 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
         color: '#4a6a8a',
         fontSize: '18dp',
       },
-      // Center the IN / OUT stats with space between
+      // Center IN / OUT with explicit spacers (justifyContent unreliable in APL)
       {
-        type: 'Container', grow: 1, direction: 'row',
-        justifyContent: 'center', alignItems: 'center',
+        type: 'Container', grow: 1, direction: 'row', alignItems: 'center',
         items: [
+          { type: 'Frame', grow: 1, height: '1dp', backgroundColor: 'transparent' },
           {
             type: 'Text',
-            text: `IN  ${intakeMl || 0} / ${limitMl} ml  (${pct}%)`,
+            text: `TOTAL IN  ${intakeMl || 0} / ${limitMl} ml  (${pct}%)`,
             color: inColor,
             fontSize: '28dp',
             fontWeight: 'bold',
-            marginRight: '60dp',
           },
+          { type: 'Frame', width: '70dp', height: '1dp', backgroundColor: 'transparent' },
           {
             type: 'Text',
-            text: `OUT  ${outMl} ml`,
+            text: `TOTAL OUT  ${outMl} ml`,
             color: '#f08c00',
             fontSize: '28dp',
             fontWeight: 'bold',
           },
+          { type: 'Frame', grow: 1, height: '1dp', backgroundColor: 'transparent' },
         ],
       },
     ],
@@ -492,8 +493,12 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                         item: {
                           type: 'Frame', backgroundColor: '#0d2a50', borderRadius: 12,
                           paddingTop: '22dp', paddingBottom: '22dp',
-                          item: { type: 'Text', text: 'LOG ENTRY', color: 'white',
-                            fontSize: '22dp', fontWeight: 'bold', textAlign: 'center' },
+                          // Nest Container with justifyContent:center to reliably center text
+                          item: {
+                            type: 'Container', direction: 'row', justifyContent: 'center',
+                            items: [{ type: 'Text', text: 'LOG ENTRY', color: 'white',
+                              fontSize: '22dp', fontWeight: 'bold' }],
+                          },
                         },
                       },
                     ],
