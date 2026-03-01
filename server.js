@@ -487,13 +487,15 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                       { type: 'Container', direction: 'column', grow: 1,
                         items: intakeRows },
                       // LOG ENTRY button pinned to bottom-left
+                      // alignSelf:stretch forces the TouchWrapper to fill the full column width
                       {
                         type: 'TouchWrapper',
+                        alignSelf: 'stretch',
                         onPress: { type: 'SendEvent', arguments: ['mode', 'input'] },
                         item: {
                           type: 'Frame', backgroundColor: '#0d2a50', borderRadius: 12,
                           paddingTop: '22dp', paddingBottom: '22dp',
-                          // Nest Container with justifyContent:center to reliably center text
+                          paddingLeft: '20dp', paddingRight: '20dp',
                           item: {
                             type: 'Container', direction: 'row', justifyContent: 'center',
                             items: [{ type: 'Text', text: 'LOG ENTRY', color: 'white',
