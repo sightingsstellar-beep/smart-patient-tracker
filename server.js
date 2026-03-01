@@ -225,37 +225,99 @@ function aplSelectedButton(label, args, selected) {
   };
 }
 
-// Build the full APL directive for Echo Show display.
-// Echo Show 5 viewport = 960×480dp (1dp ≈ 1px). Scale accordingly.
-// outputMl = total output ml for today (computed by caller from summary.outputs).
-function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl) {
-  const pct    = Math.min(100, Math.round(((intakeMl || 0) / (limitMl || 1200)) * 100));
-  const outMl  = outputMl || 0;
+// ── AVG Donut math helpers ────────────────────────────────────────────────────
+
+function avgPolar(cx, cy, r, angleDeg) {
+  const rad = angleDeg * Math.PI / 180;
+  return { x: +(cx + r * Math.cos(rad)).toFixed(2), y: +(cy + r * Math.sin(rad)).toFixed(2) };
+}
+
+function avgArcPath(cx, cy, r, a1, a2) {
+  const p1 = avgPolar(cx, cy, r, a1);
+  const p2 = avgPolar(cx, cy, r, a2);
+  const sweep = ((a2 - a1) + 360) % 360;
+  return `M ${p1.x} ${p1.y} A ${r} ${r} 0 ${sweep > 180 ? 1 : 0} 1 ${p2.x} ${p2.y}`;
+}
+
+// Builds the AVG items array for a multi-segment donut ring.
+function buildAvgDonutItems(cx, cy, r, sw, intakeByType, limit) {
+  const COLORS = {
+    water: '#2a8aff', pediasure: '#f08c00', milk: '#90aec8',
+    juice: '#e03030', yogurt_drink: '#8a48cc',
+  };
+  // Full background ring (near-complete circle trick)
+  const bgPath = `M ${cx} ${(cy - r).toFixed(2)} A ${r} ${r} 0 1 1 ${(cx - 0.01).toFixed(2)} ${(cy - r).toFixed(2)} Z`;
+  const items = [{ type: 'path', pathData: bgPath, stroke: '#0f1e35', strokeWidth: sw, fill: 'none' }];
+
+  const entries = Object.entries(intakeByType)
+    .filter(([, ml]) => ml > 0)
+    .sort((a, b) => b[1] - a[1]);
+  if (!entries.length) return items;
+
+  const GAP = entries.length > 1 ? 2 : 0;
+  let angle = -90; // start from top (12 o'clock)
+  let remaining = limit;
+
+  for (const [type, rawMl] of entries) {
+    const ml = Math.min(rawMl, remaining);
+    if (ml <= 0) break;
+    const sweep = (ml / limit) * 360;
+    if (sweep >= 1) {
+      items.push({
+        type: 'path',
+        pathData: avgArcPath(cx, cy, r, angle + GAP / 2, angle + sweep - GAP / 2),
+        stroke: COLORS[type] || '#4a9eff',
+        strokeWidth: sw,
+        fill: 'none',
+        strokeLinecap: 'round',
+      });
+    }
+    angle += sweep;
+    remaining -= ml;
+  }
+  return items;
+}
+
+// Aggregate output log rows into { type: { ml, count, display } }.
+function computeOutputByType(outputs) {
+  const map = {};
+  for (const l of outputs) {
+    if (!map[l.fluid_type]) map[l.fluid_type] = { ml: 0, count: 0 };
+    map[l.fluid_type].ml    += (l.amount_ml || 0);
+    map[l.fluid_type].count += 1;
+  }
+  for (const [type, d] of Object.entries(map)) {
+    d.display = type === 'poop' ? `${d.count}×` : `${d.ml} ml`;
+  }
+  return map;
+}
+
+// ── APL directive builder ─────────────────────────────────────────────────────
+// mode: 'display' = status view | 'input'/'output' = logging UI
+// intakeByType / outputByType only needed for display mode.
+function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, intakeByType, outputByType) {
+  const pct     = Math.min(100, Math.round(((intakeMl || 0) / (limitMl || 1200)) * 100));
+  const outMl   = outputMl || 0;
   const inColor = pct >= 90 ? '#e74c3c' : pct >= 75 ? '#f39c12' : '#4a9eff';
 
-  // ── Fluid type definitions ─────────────────────────────────────────────────
-  const inputFluids  = ['water', 'pediasure', 'milk', 'juice', 'yogurt_drink'];
-  const outputFluids = ['urine', 'poop', 'vomit'];
-  const fluids = mode === 'output' ? outputFluids : inputFluids;
-
-  // Amount presets per mode
-  const inputAmounts  = [30, 60, 90, 120, 150, 200];
-  const outputAmounts = [50, 100, 150, 200, 300, 400];
-  const amounts = mode === 'output' ? outputAmounts : inputAmounts;
-
-  // Per-fluid colors: dim (normal) / bright (selected)
+  // ── Shared fluid palette ──────────────────────────────────────────────────
+  const FLUID_LABELS = {
+    water: 'Water', pediasure: 'PediaSure', milk: 'Milk',
+    juice: 'Juice', yogurt_drink: 'Yogurt Drink',
+    urine: 'Urine', poop: 'Poop', vomit: 'Vomit',
+  };
   const FLUID_COLORS = {
-    water:        { dim: '#0d4a8a', bright: '#2a8aff' },
-    pediasure:    { dim: '#7a4800', bright: '#f08c00' },
-    milk:         { dim: '#2a3a52', bright: '#6888aa' },
-    juice:        { dim: '#6a0808', bright: '#d93030' },
-    yogurt_drink: { dim: '#3a1260', bright: '#8a48cc' },
-    urine:        { dim: '#5a5200', bright: '#d4b800' },
-    poop:         { dim: '#3a1a06', bright: '#8b4513' },
-    vomit:        { dim: '#0a4020', bright: '#25a060' },
+    water:        { dim: '#0d4a8a', bright: '#2a8aff', accent: '#2a8aff' },
+    pediasure:    { dim: '#7a4800', bright: '#f08c00', accent: '#f08c00' },
+    milk:         { dim: '#2a3a52', bright: '#6888aa', accent: '#90aec8' },
+    juice:        { dim: '#6a0808', bright: '#d93030', accent: '#e03030' },
+    yogurt_drink: { dim: '#3a1260', bright: '#8a48cc', accent: '#8a48cc' },
+    urine:        { dim: '#5a5200', bright: '#d4b800', accent: '#d4b800' },
+    poop:         { dim: '#3a1a06', bright: '#8b4513', accent: '#8b4513' },
+    vomit:        { dim: '#0a4020', bright: '#25a060', accent: '#25a060' },
   };
 
-  // ── Helper: large tappable button ─────────────────────────────────────────
+  // ── Helper: tappable button ───────────────────────────────────────────────
   function btn(label, args, bg) {
     return {
       type: 'TouchWrapper',
@@ -263,7 +325,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl) {
       marginRight: '12dp',
       item: {
         type: 'Frame',
-        backgroundColor: bg || '#2a3a5e',
+        backgroundColor: bg || '#1a2a40',
         borderRadius: 12,
         paddingTop: '18dp',
         paddingBottom: '18dp',
@@ -281,100 +343,252 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl) {
     };
   }
 
-  // Fluid type buttons — color-coded per fluid type
-  const fluidButtons = fluids.map((f) => {
-    const colors = FLUID_COLORS[f] || { dim: '#2a3a5e', bright: '#4a9eff' };
-    return btn(formatFluidType(f), ['select', f, mode],
-      selectedFluid === f ? colors.bright : colors.dim);
-  });
-  if (mode === 'input') {
-    fluidButtons.push(btn('Gag ×1', ['gag'],
-      selectedFluid === 'gag' ? '#cc2020' : '#5a0a0a'));
+  // ── Shared header row (used by both display and logging) ──────────────────
+  const patientName = db.getSetting('child_name') || null;
+  const headerRow = {
+    type: 'Container',
+    direction: 'row',
+    backgroundColor: '#050c18',
+    paddingTop: '14dp',
+    paddingBottom: '14dp',
+    paddingLeft: '28dp',
+    paddingRight: '28dp',
+    alignItems: 'center',
+    items: [
+      {
+        type: 'Text',
+        text: patientName ? `💧 ${patientName}` : '💧 Fluid Status',
+        color: '#4a6a8a',
+        fontSize: '20dp',
+        grow: 1,
+      },
+      {
+        type: 'Text',
+        text: `IN  ${intakeMl || 0} / ${limitMl} ml  (${pct}%)`,
+        color: inColor,
+        fontSize: '28dp',
+        fontWeight: 'bold',
+        marginRight: '36dp',
+      },
+      {
+        type: 'Text',
+        text: `OUT  ${outMl} ml`,
+        color: '#f08c00',
+        fontSize: '28dp',
+        fontWeight: 'bold',
+      },
+    ],
+  };
+  const divider = { type: 'Frame', backgroundColor: '#0a1830', height: '2dp' };
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // DISPLAY MODE — 3-column status view with AVG donut
+  // ═══════════════════════════════════════════════════════════════════════════
+  if (mode === 'display') {
+    const ibt = intakeByType  || {};
+    const obt = outputByType  || {};
+
+    // Side-panel fluid row helper
+    function fluidRow(type, label, amount, color) {
+      return {
+        type: 'Container',
+        direction: 'row',
+        paddingTop: '10dp',
+        paddingBottom: '10dp',
+        alignItems: 'center',
+        items: [
+          { type: 'Frame', width: '10dp', height: '10dp', borderRadius: 5,
+            backgroundColor: color, marginRight: '12dp', alignSelf: 'center' },
+          { type: 'Text', text: label, color: '#c0d0e8', fontSize: '20dp', grow: 1 },
+          { type: 'Text', text: amount, color: 'white', fontSize: '20dp', fontWeight: 'bold' },
+        ],
+      };
+    }
+
+    const intakeEntries = Object.entries(ibt).filter(([,ml]) => ml>0).sort((a,b)=>b[1]-a[1]);
+    const outputEntries = Object.entries(obt)
+      .filter(([,d]) => d.ml>0||d.count>0).sort((a,b)=>(b[1].ml||0)-(a[1].ml||0));
+
+    const intakeRows = intakeEntries.length > 0
+      ? intakeEntries.map(([t, ml]) =>
+          fluidRow(t, FLUID_LABELS[t]||t, `${ml} ml`, FLUID_COLORS[t]?.accent||'#4a9eff'))
+      : [{ type: 'Text', text: 'No intake yet', color: '#243550', fontSize: '18dp', paddingTop: '10dp' }];
+
+    const outputRows = outputEntries.length > 0
+      ? outputEntries.map(([t, d]) =>
+          fluidRow(t, FLUID_LABELS[t]||t, d.display, FLUID_COLORS[t]?.accent||'#f08c00'))
+      : [{ type: 'Text', text: 'No output yet', color: '#243550', fontSize: '18dp', paddingTop: '10dp' }];
+
+    // AVG donut graphics (cx=185, cy=185, r=163, sw=46)
+    const donutItems = buildAvgDonutItems(185, 185, 163, 46, ibt, limitMl);
+
+    return {
+      type: 'Alexa.Presentation.APL.RenderDocument',
+      version: '1.0',
+      token: 'tracker-ui',
+      document: {
+        type: 'APL',
+        version: '1.5',
+        theme: 'dark',
+        settings: { idleTimeoutInMilliseconds: 2147483647 },
+        onMount: [
+          {
+            // Invisible 60-second animation loop → fires SendEvent to refresh data
+            type: 'Sequential',
+            repeatCount: -1,
+            commands: [
+              { type: 'AnimateItem', componentId: 'refresh-pulse', duration: 60000,
+                value: [{ property: 'opacity', from: 1, to: 0.999 }] },
+              { type: 'SendEvent', arguments: ['refresh', 'display'],
+                flags: { interactionMode: 'auto' } },
+            ],
+          },
+        ],
+        graphics: {
+          donut: { type: 'AVG', version: '1.2', width: 370, height: 370, items: donutItems },
+        },
+        mainTemplate: {
+          parameters: [],
+          items: [{
+            type: 'Container', width: '100vw', height: '100vh',
+            backgroundColor: '#080f1e', direction: 'column',
+            items: [
+              headerRow,
+              divider,
+              // ── 3-column body ───────────────────────────────────────────
+              {
+                type: 'Container', direction: 'row', grow: 1,
+                items: [
+                  // ── Left: INTAKE ─────────────────────────────────────────
+                  {
+                    type: 'Container', width: '250dp', direction: 'column',
+                    paddingTop: '18dp', paddingLeft: '20dp', paddingRight: '14dp',
+                    items: [
+                      { type: 'Text', text: 'INTAKE', color: '#4a9eff',
+                        fontSize: '24dp', fontWeight: 'bold', paddingBottom: '8dp' },
+                      { type: 'Frame', backgroundColor: '#0f1e35', height: '2dp', marginBottom: '6dp' },
+                      ...intakeRows,
+                    ],
+                  },
+                  // ── Center: Donut ─────────────────────────────────────────
+                  {
+                    type: 'Container', grow: 1, direction: 'column',
+                    alignItems: 'center', justifyContent: 'center',
+                    items: [
+                      // Donut + center text overlay
+                      {
+                        type: 'Container', width: '370dp', height: '370dp',
+                        items: [
+                          { type: 'VectorGraphic', source: 'donut',
+                            width: '370dp', height: '370dp',
+                            position: 'absolute', top: '0dp', left: '0dp' },
+                          // Center text
+                          {
+                            type: 'Container',
+                            position: 'absolute', top: '112dp', left: '0dp', right: '0dp',
+                            direction: 'column', alignItems: 'center',
+                            items: [
+                              { type: 'Text', text: String(intakeMl||0),
+                                color: 'white', fontSize: '64dp', fontWeight: 'bold' },
+                              { type: 'Text', text: `ml of ${limitMl}`,
+                                color: '#2a4a6a', fontSize: '16dp', paddingBottom: '4dp' },
+                              { type: 'Text', text: `${pct}%`,
+                                color: inColor, fontSize: '38dp', fontWeight: 'bold' },
+                            ],
+                          },
+                          // Invisible refresh-pulse target
+                          { type: 'Frame', id: 'refresh-pulse', opacity: 1,
+                            width: '1dp', height: '1dp', backgroundColor: 'transparent',
+                            position: 'absolute', top: '0dp', left: '0dp' },
+                        ],
+                      },
+                      // LOG ENTRY button below donut
+                      {
+                        type: 'TouchWrapper',
+                        onPress: { type: 'SendEvent', arguments: ['mode', 'input'] },
+                        marginTop: '10dp',
+                        item: {
+                          type: 'Frame', backgroundColor: '#0f2a50', borderRadius: 14,
+                          paddingTop: '14dp', paddingBottom: '14dp',
+                          paddingLeft: '50dp', paddingRight: '50dp',
+                          item: { type: 'Text', text: '📝  LOG ENTRY', color: 'white',
+                            fontSize: '24dp', fontWeight: 'bold' },
+                        },
+                      },
+                    ],
+                  },
+                  // ── Right: OUTPUT ─────────────────────────────────────────
+                  {
+                    type: 'Container', width: '250dp', direction: 'column',
+                    paddingTop: '18dp', paddingLeft: '14dp', paddingRight: '20dp',
+                    items: [
+                      { type: 'Text', text: 'OUTPUT', color: '#f08c00',
+                        fontSize: '24dp', fontWeight: 'bold', paddingBottom: '8dp' },
+                      { type: 'Frame', backgroundColor: '#0f1e35', height: '2dp', marginBottom: '6dp' },
+                      ...outputRows,
+                    ],
+                  },
+                ],
+              },
+            ],
+          }],
+        },
+      },
+    };
   }
 
-  // Amount picker buttons (green, shown only when a fluid is selected)
+  // ═══════════════════════════════════════════════════════════════════════════
+  // LOGGING MODE — fluid type picker + amount buttons
+  // ═══════════════════════════════════════════════════════════════════════════
+  const inputFluids  = ['water', 'pediasure', 'milk', 'juice', 'yogurt_drink'];
+  const outputFluids = ['urine', 'poop', 'vomit'];
+  const fluids = mode === 'output' ? outputFluids : inputFluids;
+
+  const inputAmounts  = [30, 60, 90, 120, 150, 200];
+  const outputAmounts = [50, 100, 150, 200, 300, 400];
+  const amounts = mode === 'output' ? outputAmounts : inputAmounts;
+
+  const fluidButtons = fluids.map((f) => {
+    const c = FLUID_COLORS[f] || { dim: '#1a2a40', bright: '#4a9eff' };
+    return btn(FLUID_LABELS[f]||f, ['select', f, mode], selectedFluid === f ? c.bright : c.dim);
+  });
+  if (mode === 'input') {
+    fluidButtons.push(btn('Gag ×1', ['gag'], '#5a0a0a'));
+  }
+
   const showAmounts = selectedFluid && selectedFluid !== 'gag';
   const amountButtons = showAmounts
     ? amounts.map((a) => btn(`${a}ml`, ['log', selectedFluid, a, mode], '#0f6632'))
     : [];
 
-  // ── APL layout ─────────────────────────────────────────────────────────────
-  const contentItems = [
-    // ── Header: stats bar ───────────────────────────────────────────────────
+  const loggingItems = [
+    headerRow,
+    divider,
+    // Mode + back row
     {
-      type: 'Container',
-      direction: 'row',
-      backgroundColor: '#080f20',
-      paddingTop: '16dp',
-      paddingBottom: '16dp',
-      paddingLeft: '30dp',
-      paddingRight: '30dp',
-      alignItems: 'center',
+      type: 'Container', direction: 'row',
+      paddingTop: '16dp', paddingBottom: '10dp', paddingLeft: '28dp',
       items: [
-        {
-          type: 'Text',
-          text: '💧 Fluid Tracker',
-          color: '#8aaad0',
-          fontSize: '22dp',
-          grow: 1,
-        },
-        {
-          type: 'Text',
-          text: `IN  ${intakeMl || 0} / ${limitMl} ml  (${pct}%)`,
-          color: inColor,
-          fontSize: '30dp',
-          fontWeight: 'bold',
-          marginRight: '40dp',
-        },
-        {
-          type: 'Text',
-          text: `OUT  ${outMl} ml`,
-          color: '#f08c00',
-          fontSize: '30dp',
-          fontWeight: 'bold',
-        },
+        btn('← STATUS', ['mode', 'display'], '#0a1a2a'),
+        btn('↑ INPUT',   ['mode', 'input'],   mode === 'input'  ? '#1a5aaa' : '#1a2a40'),
+        btn('↓ OUTPUT',  ['mode', 'output'],  mode === 'output' ? '#1a5aaa' : '#1a2a40'),
       ],
     },
-    // ── Divider ──────────────────────────────────────────────────────────────
-    { type: 'Frame', backgroundColor: '#1e2d4d', height: '2dp', width: '100%' },
-    // ── Mode toggle ─────────────────────────────────────────────────────────
+    // Fluid type buttons
     {
-      type: 'Container',
-      direction: 'row',
-      paddingTop: '18dp',
-      paddingBottom: '10dp',
-      paddingLeft: '30dp',
-      items: [
-        btn('↑ INPUT',  ['mode', 'input'],  mode === 'input'  ? '#1a5aaa' : '#1a2a40'),
-        btn('↓ OUTPUT', ['mode', 'output'], mode === 'output' ? '#1a5aaa' : '#1a2a40'),
-      ],
-    },
-    // ── Fluid type buttons ───────────────────────────────────────────────────
-    {
-      type: 'Container',
-      direction: 'row',
-      paddingLeft: '30dp',
-      paddingBottom: '10dp',
+      type: 'Container', direction: 'row',
+      paddingLeft: '28dp', paddingBottom: '10dp',
       items: fluidButtons,
     },
   ];
 
-  // ── Amount picker row ────────────────────────────────────────────────────
   if (showAmounts) {
-    contentItems.push({
-      type: 'Container',
-      direction: 'row',
-      paddingLeft: '30dp',
-      paddingTop: '8dp',
-      alignItems: 'center',
+    loggingItems.push({
+      type: 'Container', direction: 'row',
+      paddingLeft: '28dp', paddingTop: '8dp', alignItems: 'center',
       items: [
-        {
-          type: 'Text',
-          text: `${formatFluidType(selectedFluid)} →`,
-          color: '#6a9acc',
-          fontSize: '22dp',
-          marginRight: '14dp',
-        },
+        { type: 'Text', text: `${FLUID_LABELS[selectedFluid]||selectedFluid} →`,
+          color: '#6a9acc', fontSize: '22dp', marginRight: '14dp' },
         ...amountButtons,
       ],
     });
@@ -388,18 +602,14 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl) {
       type: 'APL',
       version: '1.5',
       theme: 'dark',
+      settings: { idleTimeoutInMilliseconds: 2147483647 },
       mainTemplate: {
         parameters: [],
-        items: [
-          {
-            type: 'Container',
-            width: '100vw',
-            height: '100vh',
-            backgroundColor: '#0f1a33',
-            direction: 'column',
-            items: contentItems,
-          },
-        ],
+        items: [{
+          type: 'Container', width: '100vw', height: '100vh',
+          backgroundColor: '#080f1e', direction: 'column',
+          items: loggingItems,
+        }],
       },
     },
   };
@@ -432,18 +642,29 @@ app.post('/api/alexa', async (req, res) => {
     const request = req.body?.request;
     if (!request) return res.status(400).json({ error: 'Invalid Alexa request' });
 
-    // -- LaunchRequest: skill opened with no command
+    // Helper: build fresh display APL — available to all handlers in this request
+    function freshDisplayApl() {
+      const s   = db.getDaySummary(db.getDayKey());
+      const lim = getDailyLimit();
+      const oMl = s.outputs.reduce((acc, o) => acc + (o.amount_ml || 0), 0);
+      const obt = computeOutputByType(s.outputs);
+      return buildAplDirective(s.totalIntake, lim, 'display', null, oMl, s.intakeByType, obt);
+    }
+
+    // -- LaunchRequest: show fluid status display
     if (request.type === 'LaunchRequest') {
       const summary = db.getDaySummary(db.getDayKey());
-      const limit = getDailyLimit();
-      const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
+      const limit   = getDailyLimit();
+      const outputMl  = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
+      const obt = computeOutputByType(summary.outputs);
       const dirs = supportsApl(req)
-        ? [buildAplDirective(summary.totalIntake, limit, 'input', null, outputMl)]
+        ? [buildAplDirective(summary.totalIntake, limit, 'display', null, outputMl, summary.intakeByType, obt)]
         : [];
+      const pn = db.getSetting('child_name');
       return res.json(alexaResponse(
-        'Wellness tracker ready. What would you like to log?',
+        pn ? `${pn} fluid status.` : 'Wellness tracker ready.',
         false,
-        'You can say things like: log 120 milliliters pediasure, or log pee 85 milliliters.',
+        'Say log to record an entry, or tap LOG.',
         dirs
       ));
     }
@@ -455,87 +676,87 @@ app.post('/api/alexa', async (req, res) => {
 
       if (action === 'mode') {
         const newMode = args[1] || 'input';
+        if (newMode === 'display') {
+          const apl = freshDisplayApl();
+          return res.json(alexaResponse('', false, 'Say log to record an entry, or tap LOG.',
+            supportsApl(req) ? [apl] : []));
+        }
         const summary = db.getDaySummary(db.getDayKey());
-        const limit = getDailyLimit();
+        const limit   = getDailyLimit();
         const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
         const apl = buildAplDirective(summary.totalIntake, limit, newMode, null, outputMl);
         const modeLabel = newMode === 'output' ? 'Output mode.' : 'Input mode.';
-        return res.json(alexaResponse(modeLabel, false, 'What would you like to log?', supportsApl(req) ? [apl] : []));
+        return res.json(alexaResponse(modeLabel, false, 'What would you like to log?',
+          supportsApl(req) ? [apl] : []));
       }
 
       if (action === 'select') {
         const fluid = args[1];
-        const mode = args[2] || 'input';
-        const summary = db.getDaySummary(db.getDayKey());
-        const limit = getDailyLimit();
+        const mode  = args[2] || 'input';
+        const summary  = db.getDaySummary(db.getDayKey());
+        const limit    = getDailyLimit();
         const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
         const fluidLabel = formatFluidType(fluid) || fluid;
         const apl = buildAplDirective(summary.totalIntake, limit, mode, fluid, outputMl);
-        // Store pending fluid so a voice amount response can complete the log
-        const sessionAttrs = { pendingFluid: fluid, pendingMode: mode };
         return res.json(alexaResponse(
           `${fluidLabel} selected. How many milliliters?`,
-          false,
-          'How many milliliters?',
+          false, 'How many milliliters?',
           supportsApl(req) ? [apl] : [],
-          sessionAttrs
+          { pendingFluid: fluid, pendingMode: mode }
         ));
       }
 
       if (action === 'gag') {
-        // One-tap gag log — no amount needed
         db.logGag(1, Date.now());
-        const summary = db.getDaySummary(db.getDayKey());
-        const limit = getDailyLimit();
-        const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
-        const apl = buildAplDirective(summary.totalIntake, limit, 'input', null, outputMl);
-        return res.json(alexaResponse(
-          'Gag logged.',
-          false,
-          'What would you like to log next?',
-          supportsApl(req) ? [apl] : []
-        ));
+        const apl = freshDisplayApl();
+        return res.json(alexaResponse('Gag logged.', false,
+          'Say log to record an entry, or tap LOG.',
+          supportsApl(req) ? [apl] : []));
       }
 
       if (action === 'log') {
-        const fluid = args[1];
+        const fluid  = args[1];
         const amount = Number(args[2]);
-        const mode = args[3] || 'input';
+        const mode   = args[3] || 'input';
 
         if (!fluid || fluid === 'null' || fluid === 'undefined') {
-          const summary = db.getDaySummary(db.getDayKey());
-          const limit = getDailyLimit();
+          const summary  = db.getDaySummary(db.getDayKey());
+          const limit    = getDailyLimit();
           const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
           const apl = buildAplDirective(summary.totalIntake, limit, mode, null, outputMl);
-          return res.json(alexaResponse('Please select a fluid type first.', false, 'What would you like to log?', supportsApl(req) ? [apl] : []));
+          return res.json(alexaResponse('Please select a fluid type first.',
+            false, 'What would you like to log?', supportsApl(req) ? [apl] : []));
         }
 
-        const entryType = (mode === 'output') ? 'output' : 'input';
         db.logEntry({
-          timestamp: Date.now(),
-          day_key: db.getDayKey(),
-          entry_type: entryType,
-          fluid_type: fluid,
-          amount_ml: amount,
-          source: 'alexa',
+          timestamp: Date.now(), day_key: db.getDayKey(),
+          entry_type: mode === 'output' ? 'output' : 'input',
+          fluid_type: fluid, amount_ml: amount, source: 'alexa',
         });
 
-        const summary = db.getDaySummary(db.getDayKey());
-        const limit = getDailyLimit();
-        const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
-        // Reset to fluid row (not amount picker) after logging — stay in current mode
-        const apl = buildAplDirective(summary.totalIntake, limit, mode, null, outputMl);
-        const speech = buildAlexaSpeech(summary);
-        return res.json(alexaResponse(speech, false, 'What would you like to log next?', supportsApl(req) ? [apl] : []));
+        // Return to display after logging so totals are visible immediately
+        const apl    = freshDisplayApl();
+        const s2     = db.getDaySummary(db.getDayKey());
+        const speech = buildAlexaSpeech(s2);
+        return res.json(alexaResponse(speech, false,
+          'Say log to record an entry, or tap LOG.',
+          supportsApl(req) ? [apl] : []));
+      }
+
+      if (action === 'refresh') {
+        // Auto-refresh from onMount animation loop (or manual)
+        const apl = freshDisplayApl();
+        return res.json(alexaResponse('', false,
+          'Say log to record an entry, or tap LOG.',
+          supportsApl(req) ? [apl] : []));
       }
 
       // Unknown UserEvent — refresh display
       {
-        const summary = db.getDaySummary(db.getDayKey());
-        const limit = getDailyLimit();
-        const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
-        const apl = buildAplDirective(summary.totalIntake, limit, 'input', null, outputMl);
-        return res.json(alexaResponse('', false, 'What would you like to log?', supportsApl(req) ? [apl] : []));
+        const apl = freshDisplayApl();
+        return res.json(alexaResponse('', false,
+          'Say log to record an entry, or tap LOG.',
+          supportsApl(req) ? [apl] : []));
       }
     }
 
@@ -609,7 +830,9 @@ app.post('/api/alexa', async (req, res) => {
             ? [buildAplDirective(summary.totalIntake, getDailyLimit(), pendingMode, null, outputMl)]
             : [];
           // Clear pending fluid from session attributes
-          return res.json(alexaResponse(buildAlexaSpeech(summary), false, 'What would you like to log next?', dirs, {}));
+          const dispApl = supportsApl(req) ? [freshDisplayApl()] : [];
+          return res.json(alexaResponse(buildAlexaSpeech(summary), false,
+            'Say log to record an entry, or tap LOG.', dispApl, {}));
         }
       }
 
@@ -685,13 +908,10 @@ app.post('/api/alexa', async (req, res) => {
         return res.json(alexaResponse(`Weight logged. ${weightLogged} kilograms.`));
       }
 
-      const summary = db.getDaySummary(dayKey);
-      const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
-      const aplDirs = [];
-      if (supportsApl(req)) {
-        aplDirs.push(buildAplDirective(summary.totalIntake, getDailyLimit(), 'input', null, outputMl));
-      }
-      return res.json(alexaResponse(buildAlexaSpeech(summary), false, 'What would you like to log next?', aplDirs));
+      const summary  = db.getDaySummary(dayKey);
+      const aplDirs  = supportsApl(req) ? [freshDisplayApl()] : [];
+      return res.json(alexaResponse(buildAlexaSpeech(summary), false,
+        'Say log to record an entry, or tap LOG.', aplDirs));
     }
 
     // Unknown intent fallback
