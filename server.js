@@ -486,8 +486,9 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                       // Intake rows fill available space
                       { type: 'Container', direction: 'column', grow: 1,
                         items: intakeRows },
-                      // LOG ENTRY button pinned to bottom-left
-                      // alignSelf:stretch forces the TouchWrapper to fill the full column width
+                      // LOG ENTRY button — alignSelf:stretch fills the column width.
+                      // width:'100%' on the inner Container forces it to measure against
+                      // the Frame's content width so justifyContent:center has space to work.
                       {
                         type: 'TouchWrapper',
                         alignSelf: 'stretch',
@@ -495,9 +496,11 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                         item: {
                           type: 'Frame', backgroundColor: '#0d2a50', borderRadius: 12,
                           paddingTop: '22dp', paddingBottom: '22dp',
-                          paddingLeft: '20dp', paddingRight: '20dp',
                           item: {
-                            type: 'Container', direction: 'row', justifyContent: 'center',
+                            type: 'Container',
+                            width: '100%',
+                            direction: 'row',
+                            justifyContent: 'center',
                             items: [{ type: 'Text', text: 'LOG ENTRY', color: 'white',
                               fontSize: '22dp', fontWeight: 'bold' }],
                           },
