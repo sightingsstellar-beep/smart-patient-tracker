@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=960, initial-scale=1.0">
+  <title>Fluid Status</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #0f1a33;
+      color: white;
+      font-family: -apple-system, 'Segoe UI', Arial, sans-serif;
+      width: 960px;
+      height: 480px;
+      overflow: hidden;
+    }
+
+    /* ── Header ─────────────────────────────────────── */
+    .header {
+      background: #0a1224;
+      padding: 0 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      height: 48px;
+      border-bottom: 1px solid #1e2d4d;
+    }
+    .header h1 {
+      font-size: 19px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+    .header .updated {
+      font-size: 13px;
+      color: #5a7aaa;
+    }
+    .header .updated span {
+      color: #8aabcc;
+    }
+
+    /* ── Main 3-column grid ──────────────────────────── */
+    .main {
+      display: grid;
+      grid-template-columns: 220px 1fr 1fr;
+      height: calc(480px - 48px);
+    }
+
+    /* ── Arc panel ────────────────────────────────────── */
+    .arc-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 12px 16px;
+      border-right: 1px solid #1e2d4d;
+      gap: 6px;
+    }
+    .arc-panel svg { flex-shrink: 0; }
+    .arc-totals {
+      text-align: center;
+      line-height: 1.3;
+    }
+    .arc-totals .big {
+      font-size: 22px;
+      font-weight: 700;
+    }
+    .arc-totals .sub {
+      font-size: 12px;
+      color: #5a7aaa;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Breakdown panels ─────────────────────────────── */
+    .breakdown-panel {
+      padding: 14px 18px 10px;
+      border-right: 1px solid #1e2d4d;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .breakdown-panel:last-child {
+      border-right: none;
+    }
+    .panel-title {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      color: #4a9eff;
+      padding-bottom: 8px;
+      border-bottom: 1px solid #1a2a44;
+      margin-bottom: 6px;
+      font-weight: 600;
+      flex-shrink: 0;
+    }
+    .fluid-rows {
+      flex: 1;
+      overflow: hidden;
+    }
+    .fluid-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 7px 0;
+      border-bottom: 1px solid #0d1828;
+    }
+    .fluid-row:last-child { border-bottom: none; }
+    .fluid-row .name {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 15px;
+      color: #ccd8ee;
+    }
+    .fluid-row .amount {
+      font-size: 15px;
+      font-weight: 600;
+      color: white;
+    }
+    .dot {
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .no-data {
+      color: #3a5070;
+      font-size: 14px;
+      font-style: italic;
+      padding-top: 8px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1 id="patient-title">💧 Fluid Status</h1>
+    <div class="updated">Updated: <span id="last-updated">—</span></div>
+  </div>
+
+  <div class="main">
+
+    <!-- Arc panel -->
+    <div class="arc-panel">
+      <svg id="arc-svg" width="152" height="152" viewBox="0 0 152 152">
+        <!-- track -->
+        <circle cx="76" cy="76" r="62" fill="none" stroke="#1a2d4d" stroke-width="13"/>
+        <!-- progress -->
+        <circle id="arc-ring" cx="76" cy="76" r="62" fill="none"
+          stroke="#4a9eff" stroke-width="13" stroke-linecap="round"
+          stroke-dasharray="0 390"
+          transform="rotate(-90 76 76)"/>
+        <!-- pct text -->
+        <text id="arc-pct" x="76" y="70" text-anchor="middle"
+          fill="white" font-size="28" font-weight="bold"
+          font-family="-apple-system, Arial, sans-serif">0%</text>
+        <!-- ml text -->
+        <text id="arc-ml" x="76" y="92" text-anchor="middle"
+          fill="#5a7aaa" font-size="12"
+          font-family="-apple-system, Arial, sans-serif">0 ml in</text>
+      </svg>
+      <div class="arc-totals">
+        <div class="big" id="intake-fraction">0 / 1200 ml</div>
+        <div class="sub">daily target</div>
+      </div>
+    </div>
+
+    <!-- Intake breakdown -->
+    <div class="breakdown-panel">
+      <div class="panel-title">↑ Intake by type</div>
+      <div class="fluid-rows" id="intake-rows">
+        <div class="no-data">No intake logged today</div>
+      </div>
+    </div>
+
+    <!-- Output breakdown -->
+    <div class="breakdown-panel">
+      <div class="panel-title">↓ Output by type</div>
+      <div class="fluid-rows" id="output-rows">
+        <div class="no-data">No output logged today</div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const TOKEN = new URLSearchParams(location.search).get('token') || '';
+    const CIRC  = 2 * Math.PI * 62; // ≈ 389.6
+
+    const INPUT_COLORS = {
+      water:        '#4a9eff',
+      pediasure:    '#f39c12',
+      milk:         '#dce6f0',
+      juice:        '#e74c3c',
+      yogurt_drink: '#9b59b6',
+    };
+    const OUTPUT_COLORS = {
+      urine: '#f1c40f',
+      poop:  '#a0522d',
+      vomit: '#2ecc71',
+    };
+    const LABELS = {
+      water: 'Water', pediasure: 'PediaSure', milk: 'Milk',
+      juice: 'Juice', yogurt_drink: 'Yogurt Drink',
+      urine: 'Urine', poop: 'Poop', vomit: 'Vomit',
+    };
+
+    async function refresh() {
+      try {
+        const r = await fetch('/api/display-data?token=' + encodeURIComponent(TOKEN));
+        if (!r.ok) { console.error('Display data error:', r.status); return; }
+        const d = await r.json();
+        render(d);
+        document.getElementById('last-updated').textContent =
+          new Date().toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      } catch (e) {
+        console.error('Refresh failed:', e);
+      }
+    }
+
+    function render(d) {
+      const pct  = Math.min(100, Math.round(((d.totalIntake || 0) / (d.dailyLimit || 1200)) * 100));
+      const dash = (pct / 100) * CIRC;
+      const color = pct >= 90 ? '#e74c3c' : pct >= 75 ? '#f39c12' : '#4a9eff';
+
+      const ring = document.getElementById('arc-ring');
+      ring.setAttribute('stroke-dasharray', `${dash.toFixed(1)} ${CIRC.toFixed(1)}`);
+      ring.setAttribute('stroke', color);
+
+      document.getElementById('arc-pct').textContent        = pct + '%';
+      document.getElementById('arc-pct').setAttribute('fill', color);
+      document.getElementById('arc-ml').textContent         = (d.totalIntake || 0) + ' ml in';
+      document.getElementById('intake-fraction').textContent = `${d.totalIntake || 0} / ${d.dailyLimit} ml`;
+
+      if (d.patientName) {
+        document.getElementById('patient-title').textContent = '💧 ' + d.patientName + ' — Fluid Status';
+      }
+
+      // Intake rows
+      const intakeEl = document.getElementById('intake-rows');
+      const intakeEntries = Object.entries(d.intakeByType || {}).sort((a, b) => b[1] - a[1]);
+      if (intakeEntries.length > 0) {
+        intakeEl.innerHTML = intakeEntries.map(([type, ml]) => `
+          <div class="fluid-row">
+            <span class="name">
+              <span class="dot" style="background:${INPUT_COLORS[type] || '#7a9acc'}"></span>
+              ${LABELS[type] || type}
+            </span>
+            <span class="amount">${ml} ml</span>
+          </div>`).join('');
+      } else {
+        intakeEl.innerHTML = '<div class="no-data">No intake logged today</div>';
+      }
+
+      // Output rows
+      const outputEl = document.getElementById('output-rows');
+      const outputEntries = Object.entries(d.outputByType || {}).sort((a, b) => (b[1].ml || 0) - (a[1].ml || 0));
+      if (outputEntries.length > 0) {
+        outputEl.innerHTML = outputEntries.map(([type, data]) => `
+          <div class="fluid-row">
+            <span class="name">
+              <span class="dot" style="background:${OUTPUT_COLORS[type] || '#7a9acc'}"></span>
+              ${LABELS[type] || type}
+            </span>
+            <span class="amount">${data.display}</span>
+          </div>`).join('');
+      } else {
+        outputEl.innerHTML = '<div class="no-data">No output logged today</div>';
+      }
+    }
+
+    // Initial load + auto-refresh every 60s
+    refresh();
+    setInterval(refresh, 60 * 1000);
+  </script>
+</body>
+</html>

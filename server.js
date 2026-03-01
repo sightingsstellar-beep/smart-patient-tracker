@@ -686,6 +686,48 @@ app.post('/api/alexa', async (req, res) => {
   }
 });
 
+// ---------------------------------------------------------------------------
+// Display kiosk — token-authenticated, no login required
+// ---------------------------------------------------------------------------
+
+app.get('/display', (req, res) => {
+  const displayToken = process.env.DISPLAY_TOKEN;
+  if (!displayToken || req.query.token !== displayToken) {
+    return res.status(401).send('Unauthorized');
+  }
+  res.sendFile(path.join(__dirname, 'public', 'display.html'));
+});
+
+app.get('/api/display-data', (req, res) => {
+  const displayToken = process.env.DISPLAY_TOKEN;
+  if (!displayToken || req.query.token !== displayToken) {
+    return res.status(403).json({ error: 'Forbidden' });
+  }
+
+  const summary = db.getDaySummary(db.getDayKey());
+  const limit = getDailyLimit();
+
+  // Output breakdown by type (ml + count for poop)
+  const outputByType = {};
+  for (const l of summary.outputs) {
+    if (!outputByType[l.fluid_type]) outputByType[l.fluid_type] = { ml: 0, count: 0 };
+    outputByType[l.fluid_type].ml    += (l.amount_ml || 0);
+    outputByType[l.fluid_type].count += 1;
+  }
+  // Format display string per type
+  for (const [type, data] of Object.entries(outputByType)) {
+    data.display = type === 'poop' ? `${data.count}×` : `${data.ml} ml`;
+  }
+
+  return res.json({
+    totalIntake:  summary.totalIntake,
+    dailyLimit:   limit,
+    intakeByType: summary.intakeByType,
+    outputByType,
+    patientName:  db.getSetting('child_name') || null,
+  });
+});
+
 // Auth gate — everything below this line requires a valid session or API key
 function requireAuth(req, res, next) {
   // API key auth (programmatic access — Mr. Stellar)
