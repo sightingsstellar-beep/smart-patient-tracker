@@ -359,23 +359,29 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
         type: 'Text',
         text: patientName ? `💧 ${patientName}` : '💧 Fluid Status',
         color: '#4a6a8a',
-        fontSize: '20dp',
-        grow: 1,
+        fontSize: '18dp',
       },
+      // Center the IN / OUT stats with space between
       {
-        type: 'Text',
-        text: `IN  ${intakeMl || 0} / ${limitMl} ml  (${pct}%)`,
-        color: inColor,
-        fontSize: '28dp',
-        fontWeight: 'bold',
-        marginRight: '36dp',
-      },
-      {
-        type: 'Text',
-        text: `OUT  ${outMl} ml`,
-        color: '#f08c00',
-        fontSize: '28dp',
-        fontWeight: 'bold',
+        type: 'Container', grow: 1, direction: 'row',
+        justifyContent: 'center', alignItems: 'center',
+        items: [
+          {
+            type: 'Text',
+            text: `IN  ${intakeMl || 0} / ${limitMl} ml  (${pct}%)`,
+            color: inColor,
+            fontSize: '28dp',
+            fontWeight: 'bold',
+            marginRight: '60dp',
+          },
+          {
+            type: 'Text',
+            text: `OUT  ${outMl} ml`,
+            color: '#f08c00',
+            fontSize: '28dp',
+            fontWeight: 'bold',
+          },
+        ],
       },
     ],
   };
@@ -419,8 +425,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
       ? sortedOutputs.map((l) => {
           const timeStr = new Date(l.timestamp).toLocaleTimeString('en-US',
             { hour: 'numeric', minute: '2-digit', timeZone: tz });
-          const amtStr  = l.fluid_type === 'poop' ? '1×'
-            : l.amount_ml ? `${l.amount_ml} ml` : '—';
+          const amtStr  = l.amount_ml ? `${l.amount_ml} ml` : '—';
           const label   = `${timeStr}  ${FLUID_LABELS[l.fluid_type]||l.fluid_type}`;
           return panelRow(FLUID_COLORS[l.fluid_type]?.accent||'#f08c00', label, amtStr);
         })
@@ -487,7 +492,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                         item: {
                           type: 'Frame', backgroundColor: '#0d2a50', borderRadius: 12,
                           paddingTop: '22dp', paddingBottom: '22dp',
-                          item: { type: 'Text', text: '📝  LOG ENTRY', color: 'white',
+                          item: { type: 'Text', text: 'LOG ENTRY', color: 'white',
                             fontSize: '22dp', fontWeight: 'bold', textAlign: 'center' },
                         },
                       },
