@@ -162,9 +162,10 @@ app.get('/logout', (req, res) => {
 /**
  * Build an Alexa JSON response with SSML speech output.
  */
-function alexaResponse(ssml, shouldEndSession = true, repromptSsml = null, directives = []) {
+function alexaResponse(ssml, shouldEndSession = true, repromptSsml = null, directives = [], sessionAttributes = {}) {
   const resp = {
     version: '1.0',
+    sessionAttributes,
     response: {
       outputSpeech: { type: 'SSML', ssml: `<speak>${ssml}</speak>` },
       shouldEndSession,
@@ -224,25 +225,160 @@ function aplSelectedButton(label, args, selected) {
   };
 }
 
-// DIAGNOSTIC: minimal APL with correct mainTemplate.items (array) for Layout type.
-// mainTemplate is a Layout — uses items[], not item (item is for Frame/TouchWrapper).
-function buildAplDirective(intakeMl, limitMl, mode, selectedFluid) {
+// Build the full APL directive for Echo Show display.
+// outputMl = total output in ml for today (computed by caller from summary.outputs).
+function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl) {
+  const pct = Math.min(100, Math.round(((intakeMl || 0) / (limitMl || 1200)) * 100));
+  const outMl = outputMl || 0;
+
+  // Fluid types per mode
+  const inputFluids  = ['water', 'pediasure', 'milk', 'juice', 'yogurt_drink'];
+  const outputFluids = ['urine', 'poop', 'vomit'];
+  const fluids = mode === 'output' ? outputFluids : inputFluids;
+
+  // Amount presets per mode
+  const inputAmounts  = [30, 60, 90, 120, 150, 200];
+  const outputAmounts = [50, 100, 150, 200, 300, 400];
+  const amounts = mode === 'output' ? outputAmounts : inputAmounts;
+
+  // Helper: tappable button (TouchWrapper > Frame > Text)
+  function btn(label, args, bg) {
+    return {
+      type: 'TouchWrapper',
+      onPress: { type: 'SendEvent', arguments: args },
+      marginRight: '8dp',
+      item: {
+        type: 'Frame',
+        backgroundColor: bg || '#2a3a5e',
+        borderRadius: 8,
+        paddingTop: '10dp',
+        paddingBottom: '10dp',
+        paddingLeft: '14dp',
+        paddingRight: '14dp',
+        item: {
+          type: 'Text',
+          text: label,
+          color: 'white',
+          fontSize: '16dp',
+          textAlign: 'center',
+        },
+      },
+    };
+  }
+
+  // Fluid type buttons (+ Gag one-tap for input mode)
+  const fluidButtons = fluids.map((f) =>
+    btn(formatFluidType(f), ['select', f, mode], selectedFluid === f ? '#4a9eff' : '#2a3a5e')
+  );
+  if (mode === 'input') {
+    fluidButtons.push(btn('Gag ×1', ['gag'], '#8b2020'));
+  }
+
+  // Amount picker buttons (shown only when a non-gag fluid is selected)
+  const showAmounts = selectedFluid && selectedFluid !== 'gag';
+  const amountButtons = showAmounts
+    ? amounts.map((a) => btn(`${a}ml`, ['log', selectedFluid, a, mode], '#1a7a3a'))
+    : [];
+
+  // APL document content
+  const contentItems = [
+    // ── Top bar: title + live totals ──────────────────────────────────────────
+    {
+      type: 'Container',
+      direction: 'row',
+      backgroundColor: '#0f1a33',
+      paddingTop: '10dp',
+      paddingBottom: '10dp',
+      paddingLeft: '20dp',
+      paddingRight: '20dp',
+      alignItems: 'center',
+      items: [
+        {
+          type: 'Text',
+          text: '💧 Fluid Tracker',
+          color: 'white',
+          fontSize: '20dp',
+          fontWeight: 'bold',
+          grow: 1,
+        },
+        {
+          type: 'Text',
+          text: `IN: ${intakeMl || 0}/${limitMl}ml (${pct}%)`,
+          color: '#4a9eff',
+          fontSize: '18dp',
+          marginRight: '24dp',
+        },
+        {
+          type: 'Text',
+          text: `OUT: ${outMl}ml`,
+          color: '#ff9944',
+          fontSize: '18dp',
+        },
+      ],
+    },
+    // ── Thin divider ──────────────────────────────────────────────────────────
+    { type: 'Frame', backgroundColor: '#2a3a5e', height: '1dp', width: '100%' },
+    // ── Mode toggle ───────────────────────────────────────────────────────────
+    {
+      type: 'Container',
+      direction: 'row',
+      paddingTop: '12dp',
+      paddingBottom: '6dp',
+      paddingLeft: '20dp',
+      items: [
+        btn('↑ Input',  ['mode', 'input'],  mode === 'input'  ? '#4a9eff' : '#2a3a5e'),
+        btn('↓ Output', ['mode', 'output'], mode === 'output' ? '#4a9eff' : '#2a3a5e'),
+      ],
+    },
+    // ── Fluid type buttons ────────────────────────────────────────────────────
+    {
+      type: 'Container',
+      direction: 'row',
+      paddingLeft: '20dp',
+      paddingBottom: '8dp',
+      items: fluidButtons,
+    },
+  ];
+
+  // ── Amount picker row (only when fluid is selected) ───────────────────────
+  if (showAmounts) {
+    contentItems.push({
+      type: 'Container',
+      direction: 'row',
+      paddingLeft: '20dp',
+      paddingTop: '4dp',
+      alignItems: 'center',
+      items: [
+        {
+          type: 'Text',
+          text: `${formatFluidType(selectedFluid)} →`,
+          color: '#aabbdd',
+          fontSize: '15dp',
+          marginRight: '10dp',
+        },
+        ...amountButtons,
+      ],
+    });
+  }
+
   return {
     type: 'Alexa.Presentation.APL.RenderDocument',
-    version: '1.0',   // required directive schema version (separate from APL doc version)
+    version: '1.0',
     token: 'tracker-ui',
     document: {
       type: 'APL',
       version: '1.5',
+      theme: 'dark',
       mainTemplate: {
         parameters: [],
         items: [
           {
-            type: 'Text',
-            text: 'Wellness Tracker',
-            color: 'white',
-            fontSize: '24dp',
-            textAlign: 'center',
+            type: 'Container',
+            width: '100vw',
+            height: '100vh',
+            backgroundColor: '#1a2540',
+            direction: 'column',
+            items: contentItems,
           },
         ],
       },
@@ -279,10 +415,17 @@ app.post('/api/alexa', async (req, res) => {
 
     // -- LaunchRequest: skill opened with no command
     if (request.type === 'LaunchRequest') {
+      const summary = db.getDaySummary(db.getDayKey());
+      const limit = getDailyLimit();
+      const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
+      const dirs = supportsApl(req)
+        ? [buildAplDirective(summary.totalIntake, limit, 'input', null, outputMl)]
+        : [];
       return res.json(alexaResponse(
         'Wellness tracker ready. What would you like to log?',
         false,
-        'You can say things like: log 120 milliliters pediasure, or log pee 85 milliliters.'
+        'You can say things like: log 120 milliliters pediasure, or log pee 85 milliliters.',
+        dirs
       ));
     }
 
@@ -295,9 +438,10 @@ app.post('/api/alexa', async (req, res) => {
         const newMode = args[1] || 'input';
         const summary = db.getDaySummary(db.getDayKey());
         const limit = getDailyLimit();
-        const apl = buildAplDirective(summary.totalIntake, limit, newMode, null);
+        const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
+        const apl = buildAplDirective(summary.totalIntake, limit, newMode, null, outputMl);
         const modeLabel = newMode === 'output' ? 'Output mode.' : 'Input mode.';
-        return res.json(alexaResponse(modeLabel, false, null, supportsApl(req) ? [apl] : []));
+        return res.json(alexaResponse(modeLabel, false, 'What would you like to log?', supportsApl(req) ? [apl] : []));
       }
 
       if (action === 'select') {
@@ -305,9 +449,33 @@ app.post('/api/alexa', async (req, res) => {
         const mode = args[2] || 'input';
         const summary = db.getDaySummary(db.getDayKey());
         const limit = getDailyLimit();
+        const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
         const fluidLabel = formatFluidType(fluid) || fluid;
-        const apl = buildAplDirective(summary.totalIntake, limit, mode, fluid);
-        return res.json(alexaResponse(`${fluidLabel} selected.`, false, null, supportsApl(req) ? [apl] : []));
+        const apl = buildAplDirective(summary.totalIntake, limit, mode, fluid, outputMl);
+        // Store pending fluid so a voice amount response can complete the log
+        const sessionAttrs = { pendingFluid: fluid, pendingMode: mode };
+        return res.json(alexaResponse(
+          `${fluidLabel} selected. How many milliliters?`,
+          false,
+          'How many milliliters?',
+          supportsApl(req) ? [apl] : [],
+          sessionAttrs
+        ));
+      }
+
+      if (action === 'gag') {
+        // One-tap gag log — no amount needed
+        db.logGag(1, Date.now());
+        const summary = db.getDaySummary(db.getDayKey());
+        const limit = getDailyLimit();
+        const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
+        const apl = buildAplDirective(summary.totalIntake, limit, 'input', null, outputMl);
+        return res.json(alexaResponse(
+          'Gag logged.',
+          false,
+          'What would you like to log next?',
+          supportsApl(req) ? [apl] : []
+        ));
       }
 
       if (action === 'log') {
@@ -318,7 +486,8 @@ app.post('/api/alexa', async (req, res) => {
         if (!fluid || fluid === 'null' || fluid === 'undefined') {
           const summary = db.getDaySummary(db.getDayKey());
           const limit = getDailyLimit();
-          const apl = buildAplDirective(summary.totalIntake, limit, mode, null);
+          const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
+          const apl = buildAplDirective(summary.totalIntake, limit, mode, null, outputMl);
           return res.json(alexaResponse('Please select a fluid type first.', false, 'What would you like to log?', supportsApl(req) ? [apl] : []));
         }
 
@@ -334,16 +503,21 @@ app.post('/api/alexa', async (req, res) => {
 
         const summary = db.getDaySummary(db.getDayKey());
         const limit = getDailyLimit();
-        const apl = buildAplDirective(summary.totalIntake, limit, mode, fluid);
+        const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
+        // Reset to fluid row (not amount picker) after logging — stay in current mode
+        const apl = buildAplDirective(summary.totalIntake, limit, mode, null, outputMl);
         const speech = buildAlexaSpeech(summary);
-        return res.json(alexaResponse(speech, false, null, supportsApl(req) ? [apl] : []));
+        return res.json(alexaResponse(speech, false, 'What would you like to log next?', supportsApl(req) ? [apl] : []));
       }
 
       // Unknown UserEvent — refresh display
-      const summary = db.getDaySummary(db.getDayKey());
-      const limit = getDailyLimit();
-      const apl = buildAplDirective(summary.totalIntake, limit, 'input', null);
-      return res.json(alexaResponse('', false, null, supportsApl(req) ? [apl] : []));
+      {
+        const summary = db.getDaySummary(db.getDayKey());
+        const limit = getDailyLimit();
+        const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
+        const apl = buildAplDirective(summary.totalIntake, limit, 'input', null, outputMl);
+        return res.json(alexaResponse('', false, 'What would you like to log?', supportsApl(req) ? [apl] : []));
+      }
     }
 
     // -- SessionEndedRequest: Alexa closed the session
@@ -391,6 +565,33 @@ app.post('/api/alexa', async (req, res) => {
           false,
           'What would you like to log?'
         ));
+      }
+
+      // If a fluid was pre-selected via touch, check if this utterance is just a number (amount response)
+      const sessionAttrs = req.body?.session?.attributes || {};
+      const pendingFluid = sessionAttrs.pendingFluid;
+      const pendingMode  = sessionAttrs.pendingMode || 'input';
+      if (pendingFluid) {
+        const numMatch = entryText.match(/^(\d+(?:\.\d+)?)(?:\s*(?:ml|milliliters?))?$/i);
+        if (numMatch) {
+          const amount = Math.round(parseFloat(numMatch[1]));
+          const entryType = pendingMode === 'output' ? 'output' : 'input';
+          db.logEntry({
+            timestamp: Date.now(),
+            day_key: db.getDayKey(),
+            entry_type: entryType,
+            fluid_type: pendingFluid,
+            amount_ml: amount,
+            source: 'alexa',
+          });
+          const summary = db.getDaySummary(db.getDayKey());
+          const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
+          const dirs = supportsApl(req)
+            ? [buildAplDirective(summary.totalIntake, getDailyLimit(), pendingMode, null, outputMl)]
+            : [];
+          // Clear pending fluid from session attributes
+          return res.json(alexaResponse(buildAlexaSpeech(summary), false, 'What would you like to log next?', dirs, {}));
+        }
       }
 
       // Parse via existing NLP pipeline
@@ -466,11 +667,12 @@ app.post('/api/alexa', async (req, res) => {
       }
 
       const summary = db.getDaySummary(dayKey);
+      const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
       const aplDirs = [];
       if (supportsApl(req)) {
-        aplDirs.push(buildAplDirective(summary.totalIntake, getDailyLimit(), 'input', null));
+        aplDirs.push(buildAplDirective(summary.totalIntake, getDailyLimit(), 'input', null, outputMl));
       }
-      return res.json(alexaResponse(buildAlexaSpeech(summary), false, null, aplDirs));
+      return res.json(alexaResponse(buildAlexaSpeech(summary), false, 'What would you like to log next?', aplDirs));
     }
 
     // Unknown intent fallback
