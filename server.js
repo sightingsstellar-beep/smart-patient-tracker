@@ -451,7 +451,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
     const donutCx     = donutR + donutSw / 2;
     const donutCy     = donutR + donutSw / 2;
     const donutSize   = Math.round((donutR + donutSw / 2) * 2);
-    const centerColW  = donutSize + 40;   // fixed center width — guarantees equal side cols
+    const centerColW  = donutSize + 64;   // fixed center width; extra padding for breathing room
 
     // Entry row typography — 18dp minimum for medical readability at arm's length
     const entryFontSize     = '18dp';
@@ -551,8 +551,8 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
       alignItems: 'center',
       justifyContent: 'center',
       paddingTop: '12dp',
-      paddingLeft: '8dp',
-      paddingRight: '8dp',
+      paddingLeft: '24dp',
+      paddingRight: '24dp',
       items: [
         {
           type: 'Container',
@@ -655,7 +655,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                 paddingBottom: '72dp',
                 items: [
                   {
-                    type: 'Container', grow: 1, direction: 'column',
+                    type: 'Container', grow: 1, shrink: 1, width: '0dp', direction: 'column',
                     paddingTop: '10dp',
                     items: [
                       colLabel('INTAKE', '#4a9eff'),
@@ -668,7 +668,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                   centerCol,
                   { type: 'Frame', width: '2dp', backgroundColor: '#0a1830' },
                   {
-                    type: 'Container', grow: 1, direction: 'column',
+                    type: 'Container', grow: 1, shrink: 1, width: '0dp', direction: 'column',
                     paddingTop: '10dp',
                     items: [
                       colLabel('OUTPUT', '#f08c00'),
