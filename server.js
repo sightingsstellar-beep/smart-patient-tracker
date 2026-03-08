@@ -481,7 +481,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
               {
                 type: 'Container', direction: 'row', grow: 1,
                 items: [
-                  // ── Left: INTAKE + LOG button at bottom ───────────────
+                  // ── Left: INTAKE ───────────────────────────────────────
                   {
                     type: 'Container', width: '250dp', direction: 'column',
                     paddingTop: '16dp', paddingLeft: '18dp', paddingRight: '12dp',
@@ -489,48 +489,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                       { type: 'Text', text: 'INTAKE', color: '#4a9eff',
                         fontSize: '24dp', fontWeight: 'bold', paddingBottom: '8dp' },
                       { type: 'Frame', backgroundColor: '#0f1e35', height: '2dp', marginBottom: '6dp' },
-                      // Intake rows fill available space
-                      { type: 'Container', direction: 'column', grow: 1,
-                        items: intakeRows },
-                      // FULL LOG button — drills into chronological entry list
-                      {
-                        type: 'TouchWrapper',
-                        alignSelf: 'stretch',
-                        marginBottom: '10dp',
-                        onPress: { type: 'SendEvent', arguments: ['mode', 'fulllog'] },
-                        item: {
-                          type: 'Frame', backgroundColor: '#0d3030', borderRadius: 12,
-                          paddingTop: '18dp', paddingBottom: '18dp',
-                          item: {
-                            type: 'Container',
-                            width: '100%',
-                            direction: 'row',
-                            justifyContent: 'center',
-                            items: [{ type: 'Text', text: 'FULL LOG', color: '#7ad4cc',
-                              fontSize: '20dp', fontWeight: 'bold' }],
-                          },
-                        },
-                      },
-                      // LOG ENTRY button — alignSelf:stretch fills the column width.
-                      // width:'100%' on the inner Container forces it to measure against
-                      // the Frame's content width so justifyContent:center has space to work.
-                      {
-                        type: 'TouchWrapper',
-                        alignSelf: 'stretch',
-                        onPress: { type: 'SendEvent', arguments: ['mode', 'input'] },
-                        item: {
-                          type: 'Frame', backgroundColor: '#0d2a50', borderRadius: 12,
-                          paddingTop: '22dp', paddingBottom: '22dp',
-                          item: {
-                            type: 'Container',
-                            width: '100%',
-                            direction: 'row',
-                            justifyContent: 'center',
-                            items: [{ type: 'Text', text: 'LOG ENTRY', color: 'white',
-                              fontSize: '22dp', fontWeight: 'bold' }],
-                          },
-                        },
-                      },
+                      { type: 'Container', direction: 'column', grow: 1, items: intakeRows },
                     ],
                   },
                   // ── Center: Donut ──────────────────────────────────────
@@ -558,7 +517,6 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                                 color: inColor, fontSize: '38dp', fontWeight: 'bold' },
                             ],
                           },
-                          // Invisible screenLock animation target
                           { type: 'Frame', id: 'refresh-pulse', opacity: 1,
                             width: '1dp', height: '1dp', backgroundColor: 'transparent',
                             position: 'absolute', top: '0dp', left: '0dp' },
@@ -566,7 +524,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                       },
                     ],
                   },
-                  // ── Right: OUTPUT (individual entries) + VOICE LOG button ──
+                  // ── Right: OUTPUT ──────────────────────────────────────
                   {
                     type: 'Container', width: '250dp', direction: 'column',
                     paddingTop: '16dp', paddingLeft: '12dp', paddingRight: '18dp',
@@ -574,30 +532,62 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                       { type: 'Text', text: 'OUTPUT', color: '#f08c00',
                         fontSize: '24dp', fontWeight: 'bold', paddingBottom: '8dp' },
                       { type: 'Frame', backgroundColor: '#0f1e35', height: '2dp', marginBottom: '6dp' },
-                      // Output rows fill available space
                       { type: 'Container', grow: 1, direction: 'column', items: outputRows },
-                      // VOICE LOG button — tapping opens the microphone
-                      {
-                        type: 'TouchWrapper',
-                        alignSelf: 'stretch',
-                        onPress: { type: 'SendEvent', arguments: ['voice'] },
-                        item: {
-                          type: 'Frame',
-                          backgroundColor: '#0d1a40',
-                          borderRadius: 12,
-                          paddingTop: '22dp',
-                          paddingBottom: '22dp',
-                          item: {
-                            type: 'Container',
-                            width: '100%',
-                            direction: 'row',
-                            justifyContent: 'center',
-                            items: [{ type: 'Text', text: '🎤 VOICE LOG',
-                              color: '#8ab4f8', fontSize: '22dp', fontWeight: 'bold' }],
-                          },
-                        },
-                      },
                     ],
+                  },
+                ],
+              },
+              // ── Bottom button bar ──────────────────────────────────────
+              { type: 'Frame', backgroundColor: '#0a1830', height: '2dp' },
+              {
+                type: 'Container', direction: 'row',
+                backgroundColor: '#050c18',
+                paddingTop: '12dp', paddingBottom: '12dp',
+                paddingLeft: '20dp', paddingRight: '20dp',
+                items: [
+                  // LOG — touch-based logging UI
+                  {
+                    type: 'TouchWrapper', grow: 1, marginRight: '10dp',
+                    onPress: { type: 'SendEvent', arguments: ['mode', 'input'] },
+                    item: {
+                      type: 'Frame', backgroundColor: '#0d2a50', borderRadius: 12,
+                      paddingTop: '20dp', paddingBottom: '20dp',
+                      item: { type: 'Text', text: 'LOG', color: 'white',
+                        fontSize: '22dp', fontWeight: 'bold', textAlign: 'center' },
+                    },
+                  },
+                  // VOICE — opens mic for spoken log entry
+                  {
+                    type: 'TouchWrapper', grow: 1, marginRight: '10dp',
+                    onPress: { type: 'SendEvent', arguments: ['voice'] },
+                    item: {
+                      type: 'Frame', backgroundColor: '#0d1a40', borderRadius: 12,
+                      paddingTop: '20dp', paddingBottom: '20dp',
+                      item: { type: 'Text', text: '🎤  VOICE', color: '#8ab4f8',
+                        fontSize: '22dp', fontWeight: 'bold', textAlign: 'center' },
+                    },
+                  },
+                  // HISTORY — chronological full log view
+                  {
+                    type: 'TouchWrapper', grow: 1, marginRight: '10dp',
+                    onPress: { type: 'SendEvent', arguments: ['mode', 'fulllog'] },
+                    item: {
+                      type: 'Frame', backgroundColor: '#0d3030', borderRadius: 12,
+                      paddingTop: '20dp', paddingBottom: '20dp',
+                      item: { type: 'Text', text: 'HISTORY', color: '#7ad4cc',
+                        fontSize: '22dp', fontWeight: 'bold', textAlign: 'center' },
+                    },
+                  },
+                  // QUIT — ends the skill session
+                  {
+                    type: 'TouchWrapper', grow: 1,
+                    onPress: { type: 'SendEvent', arguments: ['quit'] },
+                    item: {
+                      type: 'Frame', backgroundColor: '#1a0808', borderRadius: 12,
+                      paddingTop: '20dp', paddingBottom: '20dp',
+                      item: { type: 'Text', text: 'QUIT', color: '#cc5555',
+                        fontSize: '22dp', fontWeight: 'bold', textAlign: 'center' },
+                    },
                   },
                 ],
               },
@@ -952,6 +942,11 @@ app.post('/api/alexa', async (req, res) => {
         const speech = buildAlexaSpeech(s2);
         return res.json(alexaResponse(speech, null, null,
           supportsApl(req) ? [apl] : []));
+      }
+
+      // Quit button tapped — end the session gracefully
+      if (action === 'quit') {
+        return res.json(alexaResponse('Goodbye.', true));
       }
 
       // Voice log button tapped — open the mic for a spoken log entry
