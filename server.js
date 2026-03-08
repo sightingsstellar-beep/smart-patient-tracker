@@ -581,45 +581,59 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // FULL LOG MODE — chronological list of all today's entries (inputs + outputs)
+  // FULL LOG MODE — inputs left column, outputs right column
   // ═══════════════════════════════════════════════════════════════════════════
   if (mode === 'fulllog') {
     const tz = getTimezone ? getTimezone() : 'America/New_York';
-    const rawInputs  = Array.isArray(allInputs)   ? allInputs   : [];
-    const rawOutputs = Array.isArray(outputByType) ? outputByType : [];
-    const allEntries = [...rawInputs, ...rawOutputs].sort((a, b) => b.timestamp - a.timestamp);
+    const rawInputs  = Array.isArray(allInputs)   ? [...allInputs].sort((a,b)  => b.timestamp - a.timestamp) : [];
+    const rawOutputs = Array.isArray(outputByType) ? [...outputByType].sort((a,b) => b.timestamp - a.timestamp) : [];
 
-    function logEntryRow(entry) {
+    // Build a row for a single entry within its column (no type tag needed — already grouped)
+    function logCol(entry) {
       const timeStr = new Date(entry.timestamp).toLocaleTimeString('en-US',
         { hour: 'numeric', minute: '2-digit', timeZone: tz });
-      const amtStr  = entry.amount_ml ? `${entry.amount_ml} ml` : '—';
-      const color   = FLUID_COLORS[entry.fluid_type]?.accent
+      const amtStr = entry.amount_ml ? `${entry.amount_ml} ml` : '—';
+      const color  = FLUID_COLORS[entry.fluid_type]?.accent
         || (entry.entry_type === 'input' ? '#4a9eff' : '#f08c00');
-      const typeTag = entry.entry_type === 'input' ? '↑' : '↓';
-      const label   = FLUID_LABELS[entry.fluid_type] || entry.fluid_type;
+      const label  = FLUID_LABELS[entry.fluid_type] || entry.fluid_type;
       return {
         type: 'Container', direction: 'row', alignItems: 'center',
-        paddingTop: '12dp', paddingBottom: '12dp',
-        paddingLeft: '28dp', paddingRight: '28dp',
+        paddingTop: '11dp', paddingBottom: '11dp',
+        paddingLeft: '16dp', paddingRight: '16dp',
         items: [
-          { type: 'Text', text: timeStr, color: '#7a9abc', fontSize: '24dp', width: '120dp' },
-          { type: 'Frame', width: '11dp', height: '11dp', borderRadius: 6,
-            backgroundColor: color, marginRight: '14dp', alignSelf: 'center' },
-          { type: 'Text', text: `${typeTag}  ${label}`, color: '#c0d0e8',
-            fontSize: '24dp', grow: 1 },
-          { type: 'Text', text: amtStr, color: 'white',
-            fontSize: '24dp', fontWeight: 'bold' },
+          { type: 'Frame', width: '10dp', height: '10dp', borderRadius: 5,
+            backgroundColor: color, marginRight: '10dp', alignSelf: 'center' },
+          { type: 'Text', text: label, color: '#c0d0e8', fontSize: '22dp', grow: 1 },
+          { type: 'Container', direction: 'column', alignItems: 'flexEnd',
+            items: [
+              { type: 'Text', text: amtStr, color: 'white',
+                fontSize: '22dp', fontWeight: 'bold' },
+              { type: 'Text', text: timeStr, color: '#4a6a8a', fontSize: '17dp' },
+            ],
+          },
         ],
       };
     }
 
-    const rowDivider = { type: 'Frame', height: '1dp', backgroundColor: '#0f1e35',
-      marginLeft: '28dp', marginRight: '28dp' };
+    const colDivider = { type: 'Frame', height: '1dp', backgroundColor: '#0f1e35',
+      marginLeft: '16dp', marginRight: '16dp' };
 
-    const entryItems = allEntries.length > 0
-      ? allEntries.flatMap((e, i) => i === 0 ? [logEntryRow(e)] : [rowDivider, logEntryRow(e)])
-      : [{ type: 'Text', text: 'No entries logged today.',
-           color: '#243550', fontSize: '24dp', paddingTop: '24dp', paddingLeft: '28dp' }];
+    function buildColItems(entries, emptyText) {
+      if (entries.length === 0) {
+        return [{ type: 'Text', text: emptyText, color: '#243550',
+          fontSize: '20dp', paddingTop: '16dp', paddingLeft: '16dp' }];
+      }
+      return entries.flatMap((e, i) => i === 0 ? [logCol(e)] : [colDivider, logCol(e)]);
+    }
+
+    const inputColItems  = buildColItems(rawInputs,  'No inputs yet');
+    const outputColItems = buildColItems(rawOutputs, 'No outputs yet');
+
+    // Vertical center divider between columns
+    const centerDivider = {
+      type: 'Frame', width: '2dp', backgroundColor: '#0a1830',
+      marginTop: '8dp', marginBottom: '8dp',
+    };
 
     return {
       type: 'Alexa.Presentation.APL.RenderDocument',
@@ -641,19 +655,56 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
               // Back button row
               {
                 type: 'Container', direction: 'row',
-                paddingTop: '12dp', paddingBottom: '8dp', paddingLeft: '20dp',
+                paddingTop: '10dp', paddingBottom: '8dp', paddingLeft: '20dp',
                 items: [
                   btn('← STATUS', ['mode', 'display'], '#0a1a2a'),
                 ],
               },
               { type: 'Frame', backgroundColor: '#0a1830', height: '2dp' },
-              // Scrollable entry list
+              // Two-column body
               {
-                type: 'ScrollView', grow: 1,
-                item: {
-                  type: 'Container', direction: 'column',
-                  items: entryItems,
-                },
+                type: 'Container', direction: 'row', grow: 1,
+                items: [
+                  // ── Left: INPUTS ──────────────────────────────────────
+                  {
+                    type: 'Container', grow: 1, direction: 'column',
+                    paddingTop: '10dp',
+                    items: [
+                      { type: 'Text', text: 'INPUTS', color: '#4a9eff',
+                        fontSize: '22dp', fontWeight: 'bold',
+                        paddingLeft: '16dp', paddingBottom: '8dp' },
+                      { type: 'Frame', backgroundColor: '#0f1e35', height: '2dp',
+                        marginLeft: '16dp', marginRight: '16dp', marginBottom: '4dp' },
+                      {
+                        type: 'ScrollView', grow: 1,
+                        item: {
+                          type: 'Container', direction: 'column',
+                          items: inputColItems,
+                        },
+                      },
+                    ],
+                  },
+                  centerDivider,
+                  // ── Right: OUTPUTS ─────────────────────────────────────
+                  {
+                    type: 'Container', grow: 1, direction: 'column',
+                    paddingTop: '10dp',
+                    items: [
+                      { type: 'Text', text: 'OUTPUTS', color: '#f08c00',
+                        fontSize: '22dp', fontWeight: 'bold',
+                        paddingLeft: '16dp', paddingBottom: '8dp' },
+                      { type: 'Frame', backgroundColor: '#0f1e35', height: '2dp',
+                        marginLeft: '16dp', marginRight: '16dp', marginBottom: '4dp' },
+                      {
+                        type: 'ScrollView', grow: 1,
+                        item: {
+                          type: 'Container', direction: 'column',
+                          items: outputColItems,
+                        },
+                      },
+                    ],
+                  },
+                ],
               },
             ],
           }],
