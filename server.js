@@ -168,9 +168,15 @@ function alexaResponse(ssml, shouldEndSession = true, repromptSsml = null, direc
     sessionAttributes,
     response: {
       outputSpeech: { type: 'SSML', ssml: `<speak>${ssml}</speak>` },
-      shouldEndSession,
     },
   };
+  // null = omit shouldEndSession entirely — keeps session alive for APL touch
+  // events without opening the microphone (touch-first mode).
+  // false = keep session alive AND open the mic.
+  // true  = end session.
+  if (shouldEndSession !== null) {
+    resp.response.shouldEndSession = shouldEndSession;
+  }
   if (repromptSsml) {
     resp.response.reprompt = {
       outputSpeech: { type: 'SSML', ssml: `<speak>${repromptSsml}</speak>` },
@@ -560,7 +566,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                       },
                     ],
                   },
-                  // ── Right: OUTPUT (individual entries) ────────────────
+                  // ── Right: OUTPUT (individual entries) + VOICE LOG button ──
                   {
                     type: 'Container', width: '250dp', direction: 'column',
                     paddingTop: '16dp', paddingLeft: '12dp', paddingRight: '18dp',
@@ -568,7 +574,29 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                       { type: 'Text', text: 'OUTPUT', color: '#f08c00',
                         fontSize: '24dp', fontWeight: 'bold', paddingBottom: '8dp' },
                       { type: 'Frame', backgroundColor: '#0f1e35', height: '2dp', marginBottom: '6dp' },
-                      ...outputRows,
+                      // Output rows fill available space
+                      { type: 'Container', grow: 1, direction: 'column', items: outputRows },
+                      // VOICE LOG button — tapping opens the microphone
+                      {
+                        type: 'TouchWrapper',
+                        alignSelf: 'stretch',
+                        onPress: { type: 'SendEvent', arguments: ['voice'] },
+                        item: {
+                          type: 'Frame',
+                          backgroundColor: '#0d1a40',
+                          borderRadius: 12,
+                          paddingTop: '22dp',
+                          paddingBottom: '22dp',
+                          item: {
+                            type: 'Container',
+                            width: '100%',
+                            direction: 'row',
+                            justifyContent: 'center',
+                            items: [{ type: 'Text', text: '🎤 VOICE LOG',
+                              color: '#8ab4f8', fontSize: '22dp', fontWeight: 'bold' }],
+                          },
+                        },
+                      },
                     ],
                   },
                 ],
@@ -835,19 +863,19 @@ app.post('/api/alexa', async (req, res) => {
       return buildAplDirective(s.totalIntake, lim, 'fulllog', null, oMl, null, s.outputs, s.inputs);
     }
 
-    // -- LaunchRequest: show fluid status display
+    // -- LaunchRequest: show fluid status display (mic closed — touch-first)
     if (request.type === 'LaunchRequest') {
       const summary = db.getDaySummary(db.getDayKey());
       const limit   = getDailyLimit();
       const outputMl  = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
       const dirs = supportsApl(req)
-        ? [buildAplDirective(summary.totalIntake, limit, 'display', null, outputMl, summary.intakeByType, summary.outputs)]
+        ? [buildAplDirective(summary.totalIntake, limit, 'display', null, outputMl, summary.intakeByType, summary.outputs, summary.inputs)]
         : [];
       const pn = db.getSetting('child_name');
       return res.json(alexaResponse(
         pn ? `${pn} fluid status.` : 'Wellness tracker ready.',
-        false,
-        'Say log to record an entry, or tap LOG.',
+        null,   // omit shouldEndSession — display stays up, mic stays closed
+        null,
         dirs
       ));
     }
@@ -861,20 +889,19 @@ app.post('/api/alexa', async (req, res) => {
         const newMode = args[1] || 'input';
         if (newMode === 'display') {
           const apl = freshDisplayApl();
-          return res.json(alexaResponse('', false, 'Say log to record an entry, or tap LOG.',
+          return res.json(alexaResponse('', null, null,
             supportsApl(req) ? [apl] : []));
         }
         if (newMode === 'fulllog') {
           const apl = freshFullLogApl();
-          return res.json(alexaResponse('', false, null,
+          return res.json(alexaResponse('', null, null,
             supportsApl(req) ? [apl] : []));
         }
         const summary = db.getDaySummary(db.getDayKey());
         const limit   = getDailyLimit();
         const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
         const apl = buildAplDirective(summary.totalIntake, limit, newMode, null, outputMl);
-        const modeLabel = newMode === 'output' ? 'Output mode.' : 'Input mode.';
-        return res.json(alexaResponse(modeLabel, false, 'What would you like to log?',
+        return res.json(alexaResponse('', null, null,
           supportsApl(req) ? [apl] : []));
       }
 
@@ -884,11 +911,9 @@ app.post('/api/alexa', async (req, res) => {
         const summary  = db.getDaySummary(db.getDayKey());
         const limit    = getDailyLimit();
         const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
-        const fluidLabel = formatFluidType(fluid) || fluid;
         const apl = buildAplDirective(summary.totalIntake, limit, mode, fluid, outputMl);
-        return res.json(alexaResponse(
-          `${fluidLabel} selected. How many milliliters?`,
-          false, 'How many milliliters?',
+        // Mic stays closed — amount is selected via touch buttons
+        return res.json(alexaResponse('', null, null,
           supportsApl(req) ? [apl] : [],
           { pendingFluid: fluid, pendingMode: mode }
         ));
@@ -897,8 +922,7 @@ app.post('/api/alexa', async (req, res) => {
       if (action === 'gag') {
         db.logGag(1, Date.now());
         const apl = freshDisplayApl();
-        return res.json(alexaResponse('Gag logged.', false,
-          'Say log to record an entry, or tap LOG.',
+        return res.json(alexaResponse('Gag logged.', null, null,
           supportsApl(req) ? [apl] : []));
       }
 
@@ -913,7 +937,7 @@ app.post('/api/alexa', async (req, res) => {
           const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
           const apl = buildAplDirective(summary.totalIntake, limit, mode, null, outputMl);
           return res.json(alexaResponse('Please select a fluid type first.',
-            false, 'What would you like to log?', supportsApl(req) ? [apl] : []));
+            null, null, supportsApl(req) ? [apl] : []));
         }
 
         db.logEntry({
@@ -926,24 +950,31 @@ app.post('/api/alexa', async (req, res) => {
         const apl    = freshDisplayApl();
         const s2     = db.getDaySummary(db.getDayKey());
         const speech = buildAlexaSpeech(s2);
-        return res.json(alexaResponse(speech, false,
-          'Say log to record an entry, or tap LOG.',
+        return res.json(alexaResponse(speech, null, null,
           supportsApl(req) ? [apl] : []));
+      }
+
+      // Voice log button tapped — open the mic for a spoken log entry
+      if (action === 'voice') {
+        return res.json(alexaResponse(
+          'Go ahead.',
+          false,  // shouldEndSession: false — this opens the microphone
+          'What would you like to log?',
+          []
+        ));
       }
 
       if (action === 'refresh') {
         // Auto-refresh from onMount animation loop (or manual)
         const apl = freshDisplayApl();
-        return res.json(alexaResponse('', false,
-          'Say log to record an entry, or tap LOG.',
+        return res.json(alexaResponse('', null, null,
           supportsApl(req) ? [apl] : []));
       }
 
       // Unknown UserEvent — refresh display
       {
         const apl = freshDisplayApl();
-        return res.json(alexaResponse('', false,
-          'Say log to record an entry, or tap LOG.',
+        return res.json(alexaResponse('', null, null,
           supportsApl(req) ? [apl] : []));
       }
     }
@@ -1017,10 +1048,9 @@ app.post('/api/alexa', async (req, res) => {
           const dirs = supportsApl(req)
             ? [buildAplDirective(summary.totalIntake, getDailyLimit(), pendingMode, null, outputMl)]
             : [];
-          // Clear pending fluid from session attributes
+          // Clear pending fluid from session attributes; return to display, mic closed
           const dispApl = supportsApl(req) ? [freshDisplayApl()] : [];
-          return res.json(alexaResponse(buildAlexaSpeech(summary), false,
-            'Say log to record an entry, or tap LOG.', dispApl, {}));
+          return res.json(alexaResponse(buildAlexaSpeech(summary), null, null, dispApl, {}));
         }
       }
 
@@ -1037,7 +1067,7 @@ app.post('/api/alexa', async (req, res) => {
         return res.json(alexaResponse(
           "I couldn't understand that entry. Try saying things like: " +
           '120 milliliters pediasure, or pee 80 milliliters.',
-          false,
+          false,                          // keep mic open to retry
           'What would you like to log?'
         ));
       }
@@ -1052,7 +1082,7 @@ app.post('/api/alexa', async (req, res) => {
         const label = formatFluidType(missingAmount.fluid_type);
         return res.json(alexaResponse(
           `I need a measurement for ${label}. How many milliliters was it?`,
-          false,
+          false,                          // keep mic open for amount follow-up
           `How many milliliters of ${label}?`
         ));
       }
@@ -1098,8 +1128,8 @@ app.post('/api/alexa', async (req, res) => {
 
       const summary  = db.getDaySummary(dayKey);
       const aplDirs  = supportsApl(req) ? [freshDisplayApl()] : [];
-      return res.json(alexaResponse(buildAlexaSpeech(summary), false,
-        'Say log to record an entry, or tap LOG.', aplDirs));
+      // Logged successfully — return to display, mic closed
+      return res.json(alexaResponse(buildAlexaSpeech(summary), null, null, aplDirs));
     }
 
     // Unknown intent fallback
