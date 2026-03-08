@@ -561,27 +561,25 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                     alignItems: 'center',
                     items: [
                       {
-                        type: 'TouchWrapper', grow: 1, marginRight: '10dp',
+                        type: 'TouchWrapper', grow: 3, marginRight: '10dp',
                         onPress: { type: 'SendEvent', arguments: ['mode', 'input'] },
                         item: {
                           type: 'Frame', backgroundColor: '#0d2a50', borderRadius: 10,
+                          alignSelf: 'stretch',
                           paddingTop: '14dp', paddingBottom: '14dp',
-                          item: { type: 'Container', direction: 'row',
-                            alignItems: 'center', justifyContent: 'center',
-                            items: [{ type: 'Text', text: 'LOG', color: 'white',
-                              fontSize: '20dp', fontWeight: 'bold' }] },
+                          item: { type: 'Text', text: 'Log by Tap', color: 'white',
+                            fontSize: '20dp', fontWeight: 'bold', textAlign: 'center' },
                         },
                       },
                       {
-                        type: 'TouchWrapper', grow: 1, marginRight: '10dp',
+                        type: 'TouchWrapper', grow: 3, marginRight: '10dp',
                         onPress: { type: 'SendEvent', arguments: ['voice'] },
                         item: {
                           type: 'Frame', backgroundColor: '#0d1a40', borderRadius: 10,
+                          alignSelf: 'stretch',
                           paddingTop: '14dp', paddingBottom: '14dp',
-                          item: { type: 'Container', direction: 'row',
-                            alignItems: 'center', justifyContent: 'center',
-                            items: [{ type: 'Text', text: '🎤  VOICE', color: '#8ab4f8',
-                              fontSize: '20dp', fontWeight: 'bold' }] },
+                          item: { type: 'Text', text: '🎤  Log by Voice', color: '#8ab4f8',
+                            fontSize: '20dp', fontWeight: 'bold', textAlign: 'center' },
                         },
                       },
                       {
@@ -589,11 +587,10 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                         onPress: { type: 'SendEvent', arguments: ['mode', 'fulllog'] },
                         item: {
                           type: 'Frame', backgroundColor: '#0d3030', borderRadius: 10,
+                          alignSelf: 'stretch',
                           paddingTop: '14dp', paddingBottom: '14dp',
-                          item: { type: 'Container', direction: 'row',
-                            alignItems: 'center', justifyContent: 'center',
-                            items: [{ type: 'Text', text: 'HISTORY', color: '#7ad4cc',
-                              fontSize: '20dp', fontWeight: 'bold' }] },
+                          item: { type: 'Text', text: 'History', color: '#7ad4cc',
+                            fontSize: '20dp', fontWeight: 'bold', textAlign: 'center' },
                         },
                       },
                       {
@@ -601,11 +598,10 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                         onPress: { type: 'SendEvent', arguments: ['quit'] },
                         item: {
                           type: 'Frame', backgroundColor: '#1a0808', borderRadius: 10,
+                          alignSelf: 'stretch',
                           paddingTop: '14dp', paddingBottom: '14dp',
-                          item: { type: 'Container', direction: 'row',
-                            alignItems: 'center', justifyContent: 'center',
-                            items: [{ type: 'Text', text: 'QUIT', color: '#cc5555',
-                              fontSize: '20dp', fontWeight: 'bold' }] },
+                          item: { type: 'Text', text: 'Quit', color: '#cc5555',
+                            fontSize: '20dp', fontWeight: 'bold', textAlign: 'center' },
                         },
                       },
                     ],
@@ -753,61 +749,153 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
-  // LOGGING MODE — fluid type picker + amount buttons
+  // LOGGING MODE — full-screen fluid picker + amount grid
   // ═══════════════════════════════════════════════════════════════════════════
+
+  const FLUID_EMOJI = {
+    water: '💧', pediasure: '🍼', milk: '🥛', juice: '🧃',
+    yogurt_drink: '🥣', vitamin_water: '💦',
+    urine: '🚽', poop: '💩', vomit: '🤮',
+  };
+
+  // Big fluid tile for the log grid
+  function fluidTile(f, selFluid, tileMode) {
+    const c = FLUID_COLORS[f] || { dim: '#1a2a40', bright: '#4a9eff', accent: '#4a9eff' };
+    const selected = selFluid === f;
+    return {
+      type: 'TouchWrapper', grow: 1, marginRight: '10dp', marginBottom: '10dp',
+      onPress: { type: 'SendEvent', arguments: ['select', f, tileMode] },
+      item: {
+        type: 'Frame',
+        backgroundColor: selected ? c.bright : c.dim,
+        borderRadius: 16,
+        borderWidth: selected ? '3dp' : '0dp',
+        borderColor: c.accent,
+        alignSelf: 'stretch',
+        paddingTop: '18dp', paddingBottom: '18dp',
+        item: {
+          type: 'Container', direction: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          items: [
+            { type: 'Text', text: FLUID_EMOJI[f] || '', fontSize: '34dp', textAlign: 'center' },
+            { type: 'Text', text: FLUID_LABELS[f] || f, color: 'white',
+              fontSize: '19dp', fontWeight: 'bold', textAlign: 'center' },
+          ],
+        },
+      },
+    };
+  }
+
+  // Amount tile
+  function amountTile(a, selFluid, tileMode) {
+    return {
+      type: 'TouchWrapper', grow: 1, marginRight: '10dp', marginBottom: '10dp',
+      onPress: { type: 'SendEvent', arguments: ['log', selFluid, a, tileMode] },
+      item: {
+        type: 'Frame', backgroundColor: '#0f5028', borderRadius: 12,
+        alignSelf: 'stretch',
+        paddingTop: '14dp', paddingBottom: '10dp',
+        item: {
+          type: 'Container', direction: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          items: [
+            { type: 'Text', text: `${a}`, color: 'white', fontSize: '26dp', fontWeight: 'bold', textAlign: 'center' },
+            { type: 'Text', text: 'ml', color: '#7adaaa', fontSize: '15dp', textAlign: 'center' },
+          ],
+        },
+      },
+    };
+  }
+
+  // Nav button
+  function navBtn(label, args, active) {
+    return {
+      type: 'TouchWrapper', marginRight: '10dp',
+      onPress: { type: 'SendEvent', arguments: args },
+      item: {
+        type: 'Frame',
+        backgroundColor: active ? '#1a4a8a' : '#0a1a2a',
+        borderRadius: 10, alignSelf: 'stretch',
+        paddingTop: '12dp', paddingBottom: '12dp',
+        paddingLeft: '22dp', paddingRight: '22dp',
+        item: { type: 'Text', text: label, color: active ? 'white' : '#5a7aaa',
+          fontSize: '18dp', fontWeight: 'bold', textAlign: 'center' },
+      },
+    };
+  }
+
   const inputFluids  = ['water', 'pediasure', 'milk', 'juice', 'yogurt_drink', 'vitamin_water'];
   const outputFluids = ['urine', 'poop', 'vomit'];
   const fluids = mode === 'output' ? outputFluids : inputFluids;
 
-  const inputAmounts  = [30, 60, 90, 120, 150, 200];
-  const outputAmounts = [50, 100, 150, 200, 300, 400];
+  const inputAmounts  = [10, 20, 30, 45, 60, 90, 120, 150, 180, 200, 250, 300];
+  const outputAmounts = [25, 50, 75, 100, 125, 150, 175, 200, 250, 300, 350, 400];
   const amounts = mode === 'output' ? outputAmounts : inputAmounts;
 
-  const fluidButtons = fluids.map((f) => {
-    const c = FLUID_COLORS[f] || { dim: '#1a2a40', bright: '#4a9eff' };
-    return btn(FLUID_LABELS[f]||f, ['select', f, mode], selectedFluid === f ? c.bright : c.dim);
-  });
-  if (mode === 'input') {
-    fluidButtons.push(btn('Gag ×1', ['gag'], '#5a0a0a'));
+  // Split fluids into rows of 3
+  const fluidRows = [];
+  for (let i = 0; i < fluids.length; i += 3) {
+    const rowFluids = fluids.slice(i, i + 3);
+    // Pad to 3 with invisible spacers if needed
+    while (rowFluids.length < 3) rowFluids.push(null);
+    fluidRows.push(rowFluids);
   }
 
   const showAmounts = selectedFluid && selectedFluid !== 'gag';
-  const amountButtons = showAmounts
-    ? amounts.map((a) => btn(`${a}ml`, ['log', selectedFluid, a, mode], '#0f6632'))
+  // Split amounts into rows of 6
+  const amountRows = [];
+  for (let i = 0; i < amounts.length; i += 6) {
+    amountRows.push(amounts.slice(i, i + 6));
+  }
+
+  // Fluid grid rows
+  const fluidGridRows = fluidRows.map((row) => ({
+    type: 'Container', direction: 'row',
+    paddingLeft: '20dp', paddingRight: '20dp',
+    items: row.map((f) => f
+      ? fluidTile(f, selectedFluid, mode)
+      : { type: 'Frame', grow: 1, marginRight: '10dp', marginBottom: '10dp', backgroundColor: 'transparent' }
+    ),
+  }));
+
+  // Amount grid rows
+  const amountGridRows = showAmounts
+    ? amountRows.map((row) => ({
+        type: 'Container', direction: 'row',
+        paddingLeft: '20dp', paddingRight: '20dp',
+        items: row.map((a) => amountTile(a, selectedFluid, mode)),
+      }))
     : [];
 
-  const loggingItems = [
-    headerRow,
-    divider,
-    // Mode + back row
-    {
-      type: 'Container', direction: 'row',
-      paddingTop: '16dp', paddingBottom: '10dp', paddingLeft: '28dp',
-      items: [
-        btn('← STATUS', ['mode', 'display'], '#0a1a2a'),
-        btn('↑ INPUT',   ['mode', 'input'],   mode === 'input'  ? '#1a5aaa' : '#1a2a40'),
-        btn('↓ OUTPUT',  ['mode', 'output'],  mode === 'output' ? '#1a5aaa' : '#1a2a40'),
-      ],
-    },
-    // Fluid type buttons
-    {
-      type: 'Container', direction: 'row',
-      paddingLeft: '28dp', paddingBottom: '10dp',
-      items: fluidButtons,
-    },
-  ];
+  // Gag button (input mode only)
+  const gagRow = mode === 'input' ? [{
+    type: 'Container', direction: 'row',
+    paddingLeft: '20dp', paddingRight: '20dp',
+    items: [{
+      type: 'TouchWrapper', grow: 1,
+      onPress: { type: 'SendEvent', arguments: ['gag'] },
+      item: {
+        type: 'Frame', backgroundColor: '#3a0a0a', borderRadius: 12,
+        alignSelf: 'stretch',
+        paddingTop: '14dp', paddingBottom: '14dp',
+        item: { type: 'Container', direction: 'row', alignItems: 'center', justifyContent: 'center',
+          items: [{ type: 'Text', text: '🤢  Gag Episode  ×1', color: '#ff8888',
+            fontSize: '20dp', fontWeight: 'bold', textAlign: 'center' }] },
+      },
+    }],
+  }] : [];
 
-  if (showAmounts) {
-    loggingItems.push({
-      type: 'Container', direction: 'row',
-      paddingLeft: '28dp', paddingTop: '8dp', alignItems: 'center',
-      items: [
-        { type: 'Text', text: `${FLUID_LABELS[selectedFluid]||selectedFluid} →`,
-          color: '#6a9acc', fontSize: '22dp', marginRight: '14dp' },
-        ...amountButtons,
-      ],
-    });
-  }
+  // Section label
+  const sectionLabel = selectedFluid
+    ? { type: 'Text',
+        text: `${FLUID_EMOJI[selectedFluid] || ''}  ${FLUID_LABELS[selectedFluid] || selectedFluid} — select amount:`,
+        color: FLUID_COLORS[selectedFluid]?.accent || '#4a9eff',
+        fontSize: '22dp', fontWeight: 'bold',
+        paddingLeft: '22dp', paddingBottom: '10dp', paddingTop: '4dp' }
+    : { type: 'Text',
+        text: mode === 'output' ? 'Select output type:' : 'Select fluid type:',
+        color: '#5a7aaa', fontSize: '20dp',
+        paddingLeft: '22dp', paddingBottom: '10dp', paddingTop: '4dp' };
 
   return {
     type: 'Alexa.Presentation.APL.RenderDocument',
@@ -823,7 +911,30 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
         items: [{
           type: 'Container', width: '100vw', height: '100vh',
           backgroundColor: '#080f1e', direction: 'column',
-          items: loggingItems,
+          items: [
+            headerRow,
+            divider,
+            // ── Nav bar ──────────────────────────────────────────────────
+            {
+              type: 'Container', direction: 'row',
+              paddingTop: '12dp', paddingBottom: '10dp', paddingLeft: '20dp',
+              alignItems: 'center',
+              items: [
+                navBtn('← Status', ['mode', 'display'], false),
+                navBtn('↑ Intake',  ['mode', 'input'],   mode === 'input'),
+                navBtn('↓ Output',  ['mode', 'output'],  mode === 'output'),
+              ],
+            },
+            { type: 'Frame', backgroundColor: '#0a1830', height: '2dp' },
+            // ── Section label ─────────────────────────────────────────────
+            sectionLabel,
+            // ── Fluid grid (hidden when amount picking) ───────────────────
+            ...( showAmounts ? [] : fluidGridRows ),
+            // ── Amount grid (shown after fluid selected) ──────────────────
+            ...amountGridRows,
+            // ── Gag button ────────────────────────────────────────────────
+            ...gagRow,
+          ],
         }],
       },
     },
