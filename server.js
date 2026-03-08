@@ -445,26 +445,30 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
     const tz = getTimezone ? getTimezone() : 'America/New_York';
     const isLarge = (viewport === 'hub_large');
 
-    const archR = isLarge ? 103 : 78;
-    const archSw = isLarge ? 28 : 22;
-    const archCx = archR + archSw / 2;
-    const archCy = archR + archSw / 2;
-    const archW = Math.round((archR + archSw / 2) * 2);
-    const archH = Math.round(archR + archSw / 2) + 2;
-    const centerColW = archW + 32;
+    // Full circle donut params
+    const donutR    = isLarge ? 105 : 73;
+    const donutSw   = isLarge ? 30  : 22;
+    const donutCx   = donutR + donutSw / 2;
+    const donutCy   = donutR + donutSw / 2;
+    const donutSize = Math.round((donutR + donutSw / 2) * 2);
 
-    const entryFontSize = isLarge ? '18dp' : '15dp';
-    const entryTimeFontSize = isLarge ? '14dp' : '12dp';
-    const entryPadV = isLarge ? '9dp' : '6dp';
-    const entryDotSize = isLarge ? '9dp' : '7dp';
+    // Entry row typography — 18dp minimum for medical readability at arm's length
+    const entryFontSize     = '18dp';
+    const entryTimeFontSize = '14dp';
+    const entryPadV         = isLarge ? '9dp' : '8dp';
+    const entryDotSize      = isLarge ? '9dp' : '8dp';
 
-    const archBigFont = isLarge ? '38dp' : '28dp';
-    const archSubFont = isLarge ? '11dp' : '10dp';
-    const archPctFont = isLarge ? '22dp' : '18dp';
-    const archTextTop = isLarge ? '45dp' : '34dp';
+    // Gauge center text
+    const donutBigFont  = isLarge ? '42dp' : '30dp';
+    const donutSubFont  = isLarge ? '12dp' : '10dp';
+    const donutPctFont  = isLarge ? '24dp' : '20dp';
+    // Vertically center the text stack inside the circle
+    const textStackH    = isLarge ? 94 : 74;   // approx px: bigFont + sub + pct + gaps
+    const donutTextTop  = `${Math.round(donutCy - textStackH / 2)}dp`;
 
-    const legendFont = isLarge ? '13dp' : '11dp';
-    const sectionFont = isLarge ? '18dp' : '14dp';
+    // Legend and labels
+    const legendFont    = isLarge ? '13dp' : '12dp';
+    const sectionFont   = isLarge ? '18dp' : '16dp';
 
     function entryRow(entry, fallbackColor) {
       const timeStr = new Date(entry.timestamp).toLocaleTimeString('en-US',
@@ -505,7 +509,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
       : [{ type: 'Text', text: 'No output yet', color: '#243550', fontSize: entryFontSize,
            paddingTop: '14dp', paddingLeft: '14dp' }];
 
-    const archItems = buildArchItems(archCx, archCy, archR, archSw, ibt, limitMl);
+    const donutItems = buildAvgDonutItems(donutCx, donutCy, donutR, donutSw, ibt, limitMl);
 
     const legendItems = Object.entries(ibt)
       .filter(([, ml]) => ml > 0)
@@ -541,30 +545,57 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
 
     const centerCol = {
       type: 'Container',
-      width: `${centerColW}dp`,
+      grow: 2,
       direction: 'column',
       alignItems: 'center',
+      justifyContent: 'center',
       paddingTop: '12dp',
       paddingLeft: '8dp',
       paddingRight: '8dp',
       items: [
         {
-          type: 'Container', width: `${archW}dp`, height: `${archH}dp`,
+          type: 'Container',
+          width: `${donutSize}dp`,
+          height: `${donutSize}dp`,
           items: [
-            { type: 'VectorGraphic', source: 'donut',
-              width: `${archW}dp`, height: `${archH}dp`,
-              position: 'absolute', top: '0dp', left: '0dp' },
+            {
+              type: 'VectorGraphic',
+              source: 'donut',
+              width: `${donutSize}dp`,
+              height: `${donutSize}dp`,
+              position: 'absolute',
+              top: '0dp',
+              left: '0dp',
+            },
             {
               type: 'Container',
-              position: 'absolute', top: archTextTop, left: '0dp', right: '0dp',
-              direction: 'column', alignItems: 'center',
+              position: 'absolute',
+              top: donutTextTop,
+              left: '0dp',
+              right: '0dp',
+              direction: 'column',
+              alignItems: 'center',
               items: [
-                { type: 'Text', text: String(intakeMl || 0),
-                  color: 'white', fontSize: archBigFont, fontWeight: 'bold' },
-                { type: 'Text', text: `ml of ${limitMl}`,
-                  color: '#2a4a6a', fontSize: archSubFont },
-                { type: 'Text', text: `${pct}%`,
-                  color: inColor, fontSize: archPctFont, fontWeight: 'bold' },
+                {
+                  type: 'Text',
+                  text: String(intakeMl || 0),
+                  color: 'white',
+                  fontSize: donutBigFont,
+                  fontWeight: 'bold',
+                },
+                {
+                  type: 'Text',
+                  text: `ml of ${limitMl}`,
+                  color: '#2a4a6a',
+                  fontSize: donutSubFont,
+                },
+                {
+                  type: 'Text',
+                  text: `${pct}%`,
+                  color: inColor,
+                  fontSize: donutPctFont,
+                  fontWeight: 'bold',
+                },
               ],
             },
           ],
@@ -608,7 +639,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
         ],
         graphics: {
           donut: { type: 'AVG', version: '1.2',
-            width: archW, height: archH, items: archItems },
+            width: donutSize, height: donutSize, items: donutItems },
         },
         mainTemplate: {
           parameters: [],
