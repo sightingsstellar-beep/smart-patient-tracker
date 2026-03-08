@@ -194,6 +194,12 @@ function supportsApl(req) {
   return !!(req.body?.context?.System?.device?.supportedInterfaces?.['Alexa.Presentation.APL']);
 }
 
+function getViewportProfile(req) {
+  const px = req.body?.context?.Viewport?.pixelWidth || 0;
+  if (px >= 1200) return 'hub_large';
+  return 'hub_small';
+}
+
 function aplButton(label, args) {
   // A single tappable button: TouchWrapper > Frame > Text
   // Uses item (singular) per APL spec for Frame and TouchWrapper.
@@ -301,7 +307,7 @@ function computeOutputByType(outputs) {
 // ── APL directive builder ─────────────────────────────────────────────────────
 // mode: 'display' = status view | 'input'/'output' = logging UI
 // intakeByType / outputByType only needed for display mode.
-function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, intakeByType, outputByType, allInputs) {
+function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, intakeByType, outputByType, allInputs, viewport) {
   const pct     = Math.min(100, Math.round(((intakeMl || 0) / (limitMl || 1200)) * 100));
   const outMl   = outputMl || 0;
   const inColor = pct >= 90 ? '#e74c3c' : pct >= 75 ? '#f39c12' : '#4a9eff';
@@ -446,6 +452,206 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
         })
       : [{ type: 'Text', text: 'No output yet', color: '#243550',
            fontSize: '17dp', paddingTop: '10dp' }];
+
+    function logColRow(entry, fallbackColor) {
+      const timeStr = new Date(entry.timestamp).toLocaleTimeString('en-US',
+        { hour: 'numeric', minute: '2-digit', timeZone: tz });
+      const amtStr = entry.amount_ml ? `${entry.amount_ml} ml` : '—';
+      const color  = FLUID_COLORS[entry.fluid_type]?.accent || fallbackColor;
+      const label  = FLUID_LABELS[entry.fluid_type] || entry.fluid_type;
+      return {
+        type: 'Container', direction: 'row', alignItems: 'center',
+        paddingTop: '10dp', paddingBottom: '10dp',
+        paddingLeft: '14dp', paddingRight: '14dp',
+        items: [
+          { type: 'Frame', width: '10dp', height: '10dp', borderRadius: 5,
+            backgroundColor: color, marginRight: '10dp' },
+          { type: 'Text', text: label, color: '#c0d0e8', fontSize: '20dp', grow: 1 },
+          { type: 'Container', alignItems: 'flexEnd',
+            items: [
+              { type: 'Text', text: amtStr, color: 'white',
+                fontSize: '20dp', fontWeight: 'bold', textAlign: 'right' },
+              { type: 'Text', text: timeStr, color: '#4a6a8a',
+                fontSize: '16dp', textAlign: 'right' },
+            ],
+          },
+        ],
+      };
+    }
+
+    if (viewport === 'hub_large') {
+      const inputEntries = Array.isArray(allInputs) ? [...allInputs].sort((a, b) => b.timestamp - a.timestamp) : [];
+      const outputEntriesRaw = Array.isArray(outputs) ? [...outputs].sort((a, b) => b.timestamp - a.timestamp) : [];
+      const inputLogRows = inputEntries.length > 0
+        ? inputEntries.map((e) => logColRow(e, '#4a9eff'))
+        : [{ type: 'Text', text: 'No intake logs yet', color: '#243550',
+             fontSize: '19dp', paddingTop: '14dp', paddingLeft: '14dp' }];
+      const outputLogRows = outputEntriesRaw.length > 0
+        ? outputEntriesRaw.map((e) => logColRow(e, '#f08c00'))
+        : [{ type: 'Text', text: 'No output logs yet', color: '#243550',
+             fontSize: '19dp', paddingTop: '14dp', paddingLeft: '14dp' }];
+      const donutItemsLarge = buildAvgDonutItems(120, 120, 103, 30, ibt, limitMl);
+
+      return {
+        type: 'Alexa.Presentation.APL.RenderDocument',
+        version: '1.0',
+        token: 'tracker-ui',
+        document: {
+          type: 'APL',
+          version: '1.5',
+          theme: 'dark',
+          settings: { idleTimeoutInMilliseconds: 2147483647 },
+          onMount: [
+            {
+              type: 'Sequential',
+              repeatCount: -1,
+              commands: [
+                { type: 'Idle', delay: 29000, screenLock: true },
+                { type: 'SendEvent', arguments: ['refresh', 'display'],
+                  flags: { interactionMode: 'auto' } },
+              ],
+            },
+          ],
+          graphics: {
+            donut: { type: 'AVG', version: '1.2', width: 240, height: 240, items: donutItemsLarge },
+          },
+          mainTemplate: {
+            parameters: [],
+            items: [{
+              type: 'Container', width: '100vw', height: '100vh',
+              backgroundColor: '#080f1e', direction: 'column',
+              items: [
+                headerRow,
+                divider,
+                {
+                  type: 'Container', direction: 'row', grow: 1, paddingBottom: '72dp',
+                  items: [
+                    {
+                      type: 'Container', width: '264dp', direction: 'column',
+                      paddingTop: '12dp', paddingLeft: '14dp', paddingRight: '12dp',
+                      items: [
+                        {
+                          type: 'Container', width: '240dp', height: '240dp', alignSelf: 'center',
+                          items: [
+                            { type: 'VectorGraphic', source: 'donut', width: '240dp', height: '240dp',
+                              position: 'absolute', top: '0dp', left: '0dp' },
+                            {
+                              type: 'Container',
+                              position: 'absolute', top: '73dp', left: '0dp', right: '0dp',
+                              direction: 'column', alignItems: 'center',
+                              items: [
+                                { type: 'Text', text: String(intakeMl || 0),
+                                  color: 'white', fontSize: '42dp', fontWeight: 'bold' },
+                                { type: 'Text', text: `ml of ${limitMl}`,
+                                  color: '#2a4a6a', fontSize: '12dp' },
+                                { type: 'Text', text: `${pct}%`,
+                                  color: inColor, fontSize: '26dp', fontWeight: 'bold' },
+                              ],
+                            },
+                          ],
+                        },
+                        { type: 'Text', text: 'INTAKE', color: '#4a9eff',
+                          fontSize: '24dp', fontWeight: 'bold', paddingTop: '12dp' },
+                        { type: 'Container', direction: 'column', items: intakeRows },
+                        { type: 'Text', text: 'OUTPUT', color: '#f08c00',
+                          fontSize: '24dp', fontWeight: 'bold', paddingTop: '14dp' },
+                        { type: 'Container', direction: 'column', items: outputRows },
+                      ],
+                    },
+                    { type: 'Frame', width: '2dp', backgroundColor: '#0a1830' },
+                    {
+                      type: 'Container', grow: 1, direction: 'column',
+                      paddingTop: '12dp',
+                      items: [
+                        { type: 'Text', text: 'INTAKE', color: '#4a9eff',
+                          fontSize: '22dp', fontWeight: 'bold',
+                          paddingLeft: '14dp', paddingRight: '14dp' },
+                        { type: 'Frame', backgroundColor: '#0f1e35', height: '1dp',
+                          marginTop: '8dp', marginBottom: '6dp', marginLeft: '14dp', marginRight: '14dp' },
+                        {
+                          type: 'Sequence', grow: 1, scrollDirection: 'vertical',
+                          items: inputLogRows,
+                        },
+                      ],
+                    },
+                    { type: 'Frame', width: '2dp', backgroundColor: '#0a1830' },
+                    {
+                      type: 'Container', grow: 1, direction: 'column',
+                      paddingTop: '12dp',
+                      items: [
+                        { type: 'Text', text: 'OUTPUT', color: '#f08c00',
+                          fontSize: '22dp', fontWeight: 'bold',
+                          paddingLeft: '14dp', paddingRight: '14dp' },
+                        { type: 'Frame', backgroundColor: '#0f1e35', height: '1dp',
+                          marginTop: '8dp', marginBottom: '6dp', marginLeft: '14dp', marginRight: '14dp' },
+                        {
+                          type: 'Sequence', grow: 1, scrollDirection: 'vertical',
+                          items: outputLogRows,
+                        },
+                      ],
+                    },
+                  ],
+                },
+                {
+                  type: 'Container',
+                  position: 'absolute',
+                  bottom: '0dp', left: '0dp', right: '0dp',
+                  direction: 'column',
+                  items: [
+                    { type: 'Frame', backgroundColor: '#0a1830', height: '2dp' },
+                    {
+                      type: 'Container', direction: 'row',
+                      backgroundColor: '#050c18',
+                      height: '72dp',
+                      paddingLeft: '16dp', paddingRight: '16dp',
+                      alignItems: 'center',
+                      items: [
+                        {
+                          type: 'TouchWrapper', grow: 3, marginRight: '10dp',
+                          onPress: { type: 'SendEvent', arguments: ['mode', 'input'] },
+                          item: {
+                            type: 'Frame', backgroundColor: '#0d2a50', borderRadius: 10,
+                            alignSelf: 'stretch', width: '100%',
+                            paddingTop: '14dp', paddingBottom: '14dp',
+                            item: { type: 'Text', text: 'Log by Tap', color: 'white',
+                              width: '100%', fontSize: '20dp', fontWeight: 'bold',
+                              textAlign: 'center', textAlignVertical: 'center' },
+                          },
+                        },
+                        {
+                          type: 'TouchWrapper', grow: 3, marginRight: '10dp',
+                          onPress: { type: 'SendEvent', arguments: ['voice'] },
+                          item: {
+                            type: 'Frame', backgroundColor: '#0d1a40', borderRadius: 10,
+                            alignSelf: 'stretch', width: '100%',
+                            paddingTop: '14dp', paddingBottom: '14dp',
+                            item: { type: 'Text', text: 'Log by Voice', color: '#8ab4f8',
+                              width: '100%', fontSize: '20dp', fontWeight: 'bold',
+                              textAlign: 'center', textAlignVertical: 'center' },
+                          },
+                        },
+                        {
+                          type: 'TouchWrapper', grow: 1,
+                          onPress: { type: 'SendEvent', arguments: ['quit'] },
+                          item: {
+                            type: 'Frame', backgroundColor: '#1a0808', borderRadius: 10,
+                            alignSelf: 'stretch', width: '100%',
+                            paddingTop: '14dp', paddingBottom: '14dp',
+                            item: { type: 'Text', text: 'Quit', color: '#cc5555',
+                              width: '100%', fontSize: '20dp', fontWeight: 'bold',
+                              textAlign: 'center', textAlignVertical: 'center' },
+                          },
+                        },
+                      ],
+                    },
+                  ],
+                },
+              ],
+            }],
+          },
+        },
+      };
+    }
 
     // AVG donut (cx=185, cy=185, r=163, sw=46)
     const donutItems = buildAvgDonutItems(185, 185, 163, 46, ibt, limitMl);
@@ -983,7 +1189,7 @@ app.post('/api/alexa', async (req, res) => {
       const lim = getDailyLimit();
       const oMl = s.outputs.reduce((acc, o) => acc + (o.amount_ml || 0), 0);
       // 7th param = raw outputs array (right panel), 8th = raw inputs array (fulllog mode)
-      return buildAplDirective(s.totalIntake, lim, 'display', null, oMl, s.intakeByType, s.outputs, s.inputs);
+      return buildAplDirective(s.totalIntake, lim, 'display', null, oMl, s.intakeByType, s.outputs, s.inputs, getViewportProfile(req));
     }
 
     // Helper: build full log APL with current DB state
@@ -1000,7 +1206,7 @@ app.post('/api/alexa', async (req, res) => {
       const limit   = getDailyLimit();
       const outputMl  = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
       const dirs = supportsApl(req)
-        ? [buildAplDirective(summary.totalIntake, limit, 'display', null, outputMl, summary.intakeByType, summary.outputs, summary.inputs)]
+        ? [buildAplDirective(summary.totalIntake, limit, 'display', null, outputMl, summary.intakeByType, summary.outputs, summary.inputs, getViewportProfile(req))]
         : [];
       const pn = db.getSetting('child_name');
       return res.json(alexaResponse(
