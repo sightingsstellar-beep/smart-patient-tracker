@@ -64,7 +64,7 @@ Rules:
 - A single message can produce multiple actions (e.g., "89g urine and 100ml water" → one output + one input).
 - For inputs: map common synonyms: "pee" / "peed" / "wet diaper" → urine (output), "pediasure" / "pedi" → pediasure, "vitamin water" → vitamin_water, "yogurt drink" / "drinkable yogurt" → yogurt_drink, "formula" → pediasure.
 - Output amounts (urine, vomit) are measured in grams (g), not ml. Accept "50g urine", "she peed 50g", "80 grams vomit", or a plain number (e.g. "urine 45"). Store the gram value in amount_ml (field name unchanged for schema compatibility).
-- "poop" / "pooped" / "BM" / "bowel movement" / "stool" → output type "poop". Amount is usually null unless stated.
+- "poop" / "pooped" / "BM" / "bowel movement" / "stool" → output type "poop". Amount in ml is REQUIRED — if no amount given, set unparseable: true for that action.
 - Poop subtypes:
   - "diarrhea" / "loose stool" / "watery poop" / "runny" → fluid_type "poop", subtype "diarrhea"
   - "undigested" / "food in stool" / "didn't digest" / "undigested poop" → fluid_type "poop", subtype "undigested"
@@ -72,7 +72,7 @@ Rules:
 - Gag: "gagged" / "gag x2" / "she gagged once" / "gagging episode" → type "gag" with count.
 - Wellness check: extract appetite, energy, mood, cyanosis scores (1-10). "cyan" = cyanosis. Infer check_time from context or default to "5pm".
 - Amounts: "about", "roughly", "approximately", "~" are fine — use the number.
-- amount_ml is REQUIRED for every input (in ml) and every output EXCEPT poop (in grams). Poop amount is optional and may be null (also in grams if provided).
+- amount_ml is REQUIRED for every input and every output including poop (all in ml). If an amount is missing for any entry, set unparseable: true.
 - Weight: "weight 14.2" / "weight is 14.3 kg" / "she weighs 14.2" / "14.2 kg weight" → type "weight" with weight_kg as a positive number in kg. If given in lbs, convert to kg (divide by 2.205) and round to 2 decimal places. weight_kg is REQUIRED — if no number given, set unparseable: true.
 - If the message contains NO recognizable entries, set "unparseable": true and actions: [].
 - Do NOT include any explanation or markdown — return raw JSON only.

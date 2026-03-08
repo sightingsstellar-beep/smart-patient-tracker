@@ -441,7 +441,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
     });
     const outputRows = outputEntries.length > 0
       ? outputEntries.map(([t, d]) => {
-          const amtStr = t === 'poop' ? `${d.count}×` : `${d.total} ml`;
+          const amtStr = `${d.total} ml`;
           return panelRow(FLUID_COLORS[t]?.accent || '#f08c00', FLUID_LABELS[t] || t, amtStr);
         })
       : [{ type: 'Text', text: 'No output yet', color: '#243550',
@@ -1091,7 +1091,7 @@ app.post('/api/alexa', async (req, res) => {
       // Reject if any input/output is missing an amount
       const missingAmount = parsed.actions.find((a) => {
         if (a.type === 'input') return !a.amount_ml;
-        if (a.type === 'output') return a.fluid_type !== 'poop' && !a.amount_ml;
+        if (a.type === 'output') return !a.amount_ml;  // poop included — amount always required
         return false;
       });
       if (missingAmount) {
@@ -1714,7 +1714,7 @@ app.post('/api/chat', async (req, res) => {
     // Require a measurement for every input and output
     const missingAmount = parsed.actions.find((a) => {
       if (a.type === 'input') return !a.amount_ml;
-      if (a.type === 'output') return a.fluid_type !== 'poop' && !a.amount_ml;
+      if (a.type === 'output') return !a.amount_ml;  // poop included — amount always required
       return false;
     });
     if (missingAmount) {
