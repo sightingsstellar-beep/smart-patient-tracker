@@ -290,6 +290,43 @@ function buildAvgDonutItems(cx, cy, r, sw, intakeByType, limit) {
   return items;
 }
 
+function buildArchItems(cx, cy, r, sw, intakeByType, limit) {
+  const COLORS = {
+    water: '#2a8aff', pediasure: '#f08c00', milk: '#90aec8',
+    juice: '#e03030', yogurt_drink: '#8a48cc',
+  };
+  const bgPath = `M ${(cx - r).toFixed(2)} ${cy.toFixed(2)} A ${r} ${r} 0 0 1 ${(cx + r).toFixed(2)} ${cy.toFixed(2)}`;
+  const items = [{ type: 'path', pathData: bgPath, stroke: '#0f1e35', strokeWidth: sw, fill: 'none', strokeLinecap: 'round' }];
+
+  const entries = Object.entries(intakeByType)
+    .filter(([, ml]) => ml > 0)
+    .sort((a, b) => b[1] - a[1]);
+  if (!entries.length) return items;
+
+  const GAP = entries.length > 1 ? 1.5 : 0;
+  let angle = 180;
+  let remaining = limit;
+
+  for (const [type, rawMl] of entries) {
+    const ml = Math.min(rawMl, remaining);
+    if (ml <= 0) break;
+    const sweep = (ml / limit) * 180;
+    if (sweep >= 0.5) {
+      items.push({
+        type: 'path',
+        pathData: avgArcPath(cx, cy, r, angle + GAP / 2, angle + sweep - GAP / 2),
+        stroke: COLORS[type] || '#4a9eff',
+        strokeWidth: sw,
+        fill: 'none',
+        strokeLinecap: 'round',
+      });
+    }
+    angle += sweep;
+    remaining -= ml;
+  }
+  return items;
+}
+
 // Aggregate output log rows into { type: { ml, count, display } }.
 function computeOutputByType(outputs) {
   const map = {};
@@ -490,7 +527,32 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
         ? outputEntriesRaw.map((e) => logColRow(e, '#f08c00'))
         : [{ type: 'Text', text: 'No output logs yet', color: '#243550',
              fontSize: '19dp', paddingTop: '14dp', paddingLeft: '14dp' }];
-      const donutItemsLarge = buildAvgDonutItems(120, 120, 103, 30, ibt, limitMl);
+      const archItems = buildArchItems(120, 118, 103, 30, ibt, limitMl);
+
+      function panelRowCompact(color, label, amount) {
+        return {
+          type: 'Container', direction: 'row',
+          paddingTop: '3dp', paddingBottom: '3dp', alignItems: 'center',
+          items: [
+            { type: 'Frame', width: '8dp', height: '8dp', borderRadius: 4,
+              backgroundColor: color, marginRight: '8dp', alignSelf: 'center' },
+            { type: 'Text', text: label, color: '#c0d0e8', fontSize: '16dp', grow: 1 },
+            { type: 'Text', text: amount, color: 'white', fontSize: '16dp', fontWeight: 'bold' },
+          ],
+        };
+      }
+      const intakeRowsCompact = intakeEntries.length > 0
+        ? intakeEntries.map(([t, ml]) =>
+            panelRowCompact(FLUID_COLORS[t]?.accent || '#4a9eff', FLUID_LABELS[t] || t, `${ml} ml`))
+        : [{ type: 'Text', text: 'No intake yet', color: '#243550',
+             fontSize: '15dp', paddingTop: '10dp' }];
+      const outputRowsCompact = outputEntries.length > 0
+        ? outputEntries.map(([t, d]) => {
+            const amtStr = `${d.total} ml`;
+            return panelRowCompact(FLUID_COLORS[t]?.accent || '#f08c00', FLUID_LABELS[t] || t, amtStr);
+          })
+        : [{ type: 'Text', text: 'No output yet', color: '#243550',
+             fontSize: '15dp', paddingTop: '10dp' }];
 
       return {
         type: 'Alexa.Presentation.APL.RenderDocument',
@@ -513,7 +575,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
             },
           ],
           graphics: {
-            donut: { type: 'AVG', version: '1.2', width: 240, height: 240, items: donutItemsLarge },
+            donut: { type: 'AVG', version: '1.2', width: 240, height: 122, items: archItems },
           },
           mainTemplate: {
             parameters: [],
@@ -527,17 +589,17 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                   type: 'Container', direction: 'row', grow: 1, paddingBottom: '72dp',
                   items: [
                     {
-                      type: 'Container', width: '264dp', direction: 'column',
+                      type: 'Container', grow: 1, direction: 'column',
                       paddingTop: '12dp', paddingLeft: '14dp', paddingRight: '12dp',
                       items: [
                         {
-                          type: 'Container', width: '240dp', height: '240dp', alignSelf: 'center',
+                          type: 'Container', width: '240dp', height: '122dp', alignSelf: 'center',
                           items: [
-                            { type: 'VectorGraphic', source: 'donut', width: '240dp', height: '240dp',
+                            { type: 'VectorGraphic', source: 'donut', width: '240dp', height: '122dp',
                               position: 'absolute', top: '0dp', left: '0dp' },
                             {
                               type: 'Container',
-                              position: 'absolute', top: '73dp', left: '0dp', right: '0dp',
+                              position: 'absolute', top: '55dp', left: '0dp', right: '0dp',
                               direction: 'column', alignItems: 'center',
                               items: [
                                 { type: 'Text', text: String(intakeMl || 0),
@@ -552,10 +614,10 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                         },
                         { type: 'Text', text: 'INTAKE', color: '#4a9eff',
                           fontSize: '24dp', fontWeight: 'bold', paddingTop: '12dp' },
-                        { type: 'Container', direction: 'column', items: intakeRows },
+                        { type: 'Container', direction: 'column', items: intakeRowsCompact },
                         { type: 'Text', text: 'OUTPUT', color: '#f08c00',
                           fontSize: '24dp', fontWeight: 'bold', paddingTop: '14dp' },
-                        { type: 'Container', direction: 'column', items: outputRows },
+                        { type: 'Container', direction: 'column', items: outputRowsCompact },
                       ],
                     },
                     { type: 'Frame', width: '2dp', backgroundColor: '#0a1830' },
