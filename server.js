@@ -480,7 +480,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
               divider,
               // ── 3-column body ─────────────────────────────────────────
               {
-                type: 'Container', direction: 'row', grow: 1,
+                type: 'Container', direction: 'row', grow: 1, paddingBottom: '74dp',
                 items: [
                   // ── Left: INTAKE ───────────────────────────────────────
                   {
@@ -538,59 +538,62 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                   },
                 ],
               },
-              // ── Bottom button bar (fixed height so grow:1 body doesn't overflow) ──
-              { type: 'Frame', backgroundColor: '#0a1830', height: '2dp', shrink: 0 },
+              // ── Bottom button bar — absolutely pinned to bottom of 100vh parent ──
               {
-                type: 'Container', direction: 'row',
-                backgroundColor: '#050c18',
-                height: '72dp',
-                shrink: 0,
-                paddingLeft: '16dp', paddingRight: '16dp',
-                alignItems: 'center',
+                type: 'Container',
+                position: 'absolute',
+                bottom: '0dp', left: '0dp', right: '0dp',
+                direction: 'column',
                 items: [
-                  // LOG — touch-based logging UI
+                  { type: 'Frame', backgroundColor: '#0a1830', height: '2dp' },
                   {
-                    type: 'TouchWrapper', grow: 1, marginRight: '10dp',
-                    onPress: { type: 'SendEvent', arguments: ['mode', 'input'] },
-                    item: {
-                      type: 'Frame', backgroundColor: '#0d2a50', borderRadius: 10,
-                      paddingTop: '14dp', paddingBottom: '14dp',
-                      item: { type: 'Text', text: 'LOG', color: 'white',
-                        fontSize: '20dp', fontWeight: 'bold', textAlign: 'center' },
-                    },
-                  },
-                  // VOICE — opens mic for spoken log entry
-                  {
-                    type: 'TouchWrapper', grow: 1, marginRight: '10dp',
-                    onPress: { type: 'SendEvent', arguments: ['voice'] },
-                    item: {
-                      type: 'Frame', backgroundColor: '#0d1a40', borderRadius: 10,
-                      paddingTop: '14dp', paddingBottom: '14dp',
-                      item: { type: 'Text', text: '🎤  VOICE', color: '#8ab4f8',
-                        fontSize: '20dp', fontWeight: 'bold', textAlign: 'center' },
-                    },
-                  },
-                  // HISTORY — chronological full log view
-                  {
-                    type: 'TouchWrapper', grow: 1, marginRight: '10dp',
-                    onPress: { type: 'SendEvent', arguments: ['mode', 'fulllog'] },
-                    item: {
-                      type: 'Frame', backgroundColor: '#0d3030', borderRadius: 10,
-                      paddingTop: '14dp', paddingBottom: '14dp',
-                      item: { type: 'Text', text: 'HISTORY', color: '#7ad4cc',
-                        fontSize: '20dp', fontWeight: 'bold', textAlign: 'center' },
-                    },
-                  },
-                  // QUIT — ends the skill session
-                  {
-                    type: 'TouchWrapper', grow: 1,
-                    onPress: { type: 'SendEvent', arguments: ['quit'] },
-                    item: {
-                      type: 'Frame', backgroundColor: '#1a0808', borderRadius: 10,
-                      paddingTop: '14dp', paddingBottom: '14dp',
-                      item: { type: 'Text', text: 'QUIT', color: '#cc5555',
-                        fontSize: '20dp', fontWeight: 'bold', textAlign: 'center' },
-                    },
+                    type: 'Container', direction: 'row',
+                    backgroundColor: '#050c18',
+                    height: '72dp',
+                    paddingLeft: '16dp', paddingRight: '16dp',
+                    alignItems: 'center',
+                    items: [
+                      {
+                        type: 'TouchWrapper', grow: 1, marginRight: '10dp',
+                        onPress: { type: 'SendEvent', arguments: ['mode', 'input'] },
+                        item: {
+                          type: 'Frame', backgroundColor: '#0d2a50', borderRadius: 10,
+                          paddingTop: '14dp', paddingBottom: '14dp',
+                          item: { type: 'Text', text: 'LOG', color: 'white',
+                            fontSize: '20dp', fontWeight: 'bold', textAlign: 'center' },
+                        },
+                      },
+                      {
+                        type: 'TouchWrapper', grow: 1, marginRight: '10dp',
+                        onPress: { type: 'SendEvent', arguments: ['voice'] },
+                        item: {
+                          type: 'Frame', backgroundColor: '#0d1a40', borderRadius: 10,
+                          paddingTop: '14dp', paddingBottom: '14dp',
+                          item: { type: 'Text', text: '🎤  VOICE', color: '#8ab4f8',
+                            fontSize: '20dp', fontWeight: 'bold', textAlign: 'center' },
+                        },
+                      },
+                      {
+                        type: 'TouchWrapper', grow: 1, marginRight: '10dp',
+                        onPress: { type: 'SendEvent', arguments: ['mode', 'fulllog'] },
+                        item: {
+                          type: 'Frame', backgroundColor: '#0d3030', borderRadius: 10,
+                          paddingTop: '14dp', paddingBottom: '14dp',
+                          item: { type: 'Text', text: 'HISTORY', color: '#7ad4cc',
+                            fontSize: '20dp', fontWeight: 'bold', textAlign: 'center' },
+                        },
+                      },
+                      {
+                        type: 'TouchWrapper', grow: 1,
+                        onPress: { type: 'SendEvent', arguments: ['quit'] },
+                        item: {
+                          type: 'Frame', backgroundColor: '#1a0808', borderRadius: 10,
+                          paddingTop: '14dp', paddingBottom: '14dp',
+                          item: { type: 'Text', text: 'QUIT', color: '#cc5555',
+                            fontSize: '20dp', fontWeight: 'bold', textAlign: 'center' },
+                        },
+                      },
+                    ],
                   },
                 ],
               },
