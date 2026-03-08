@@ -295,7 +295,7 @@ function computeOutputByType(outputs) {
 // ── APL directive builder ─────────────────────────────────────────────────────
 // mode: 'display' = status view | 'input'/'output' = logging UI
 // intakeByType / outputByType only needed for display mode.
-function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, intakeByType, outputByType) {
+function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, intakeByType, outputByType, allInputs) {
   const pct     = Math.min(100, Math.round(((intakeMl || 0) / (limitMl || 1200)) * 100));
   const outMl   = outputMl || 0;
   const inColor = pct >= 90 ? '#e74c3c' : pct >= 75 ? '#f39c12' : '#4a9eff';
@@ -506,6 +506,25 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                           },
                         },
                       },
+                      // FULL LOG button — drills into chronological entry list
+                      {
+                        type: 'TouchWrapper',
+                        alignSelf: 'stretch',
+                        marginTop: '10dp',
+                        onPress: { type: 'SendEvent', arguments: ['mode', 'fulllog'] },
+                        item: {
+                          type: 'Frame', backgroundColor: '#0d3030', borderRadius: 12,
+                          paddingTop: '18dp', paddingBottom: '18dp',
+                          item: {
+                            type: 'Container',
+                            width: '100%',
+                            direction: 'row',
+                            justifyContent: 'center',
+                            items: [{ type: 'Text', text: 'FULL LOG', color: '#7ad4cc',
+                              fontSize: '20dp', fontWeight: 'bold' }],
+                          },
+                        },
+                      },
                     ],
                   },
                   // ── Center: Donut ──────────────────────────────────────
@@ -553,6 +572,88 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                     ],
                   },
                 ],
+              },
+            ],
+          }],
+        },
+      },
+    };
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // FULL LOG MODE — chronological list of all today's entries (inputs + outputs)
+  // ═══════════════════════════════════════════════════════════════════════════
+  if (mode === 'fulllog') {
+    const tz = getTimezone ? getTimezone() : 'America/New_York';
+    const rawInputs  = Array.isArray(allInputs)   ? allInputs   : [];
+    const rawOutputs = Array.isArray(outputByType) ? outputByType : [];
+    const allEntries = [...rawInputs, ...rawOutputs].sort((a, b) => b.timestamp - a.timestamp);
+
+    function logEntryRow(entry) {
+      const timeStr = new Date(entry.timestamp).toLocaleTimeString('en-US',
+        { hour: 'numeric', minute: '2-digit', timeZone: tz });
+      const amtStr  = entry.amount_ml ? `${entry.amount_ml} ml` : '—';
+      const color   = FLUID_COLORS[entry.fluid_type]?.accent
+        || (entry.entry_type === 'input' ? '#4a9eff' : '#f08c00');
+      const typeTag = entry.entry_type === 'input' ? '↑' : '↓';
+      const label   = FLUID_LABELS[entry.fluid_type] || entry.fluid_type;
+      return {
+        type: 'Container', direction: 'row', alignItems: 'center',
+        paddingTop: '12dp', paddingBottom: '12dp',
+        paddingLeft: '28dp', paddingRight: '28dp',
+        items: [
+          { type: 'Text', text: timeStr, color: '#7a9abc', fontSize: '24dp', width: '120dp' },
+          { type: 'Frame', width: '11dp', height: '11dp', borderRadius: 6,
+            backgroundColor: color, marginRight: '14dp', alignSelf: 'center' },
+          { type: 'Text', text: `${typeTag}  ${label}`, color: '#c0d0e8',
+            fontSize: '24dp', grow: 1 },
+          { type: 'Text', text: amtStr, color: 'white',
+            fontSize: '24dp', fontWeight: 'bold' },
+        ],
+      };
+    }
+
+    const rowDivider = { type: 'Frame', height: '1dp', backgroundColor: '#0f1e35',
+      marginLeft: '28dp', marginRight: '28dp' };
+
+    const entryItems = allEntries.length > 0
+      ? allEntries.flatMap((e, i) => i === 0 ? [logEntryRow(e)] : [rowDivider, logEntryRow(e)])
+      : [{ type: 'Text', text: 'No entries logged today.',
+           color: '#243550', fontSize: '24dp', paddingTop: '24dp', paddingLeft: '28dp' }];
+
+    return {
+      type: 'Alexa.Presentation.APL.RenderDocument',
+      version: '1.0',
+      token: 'tracker-ui',
+      document: {
+        type: 'APL',
+        version: '1.5',
+        theme: 'dark',
+        settings: { idleTimeoutInMilliseconds: 2147483647 },
+        mainTemplate: {
+          parameters: [],
+          items: [{
+            type: 'Container', width: '100vw', height: '100vh',
+            backgroundColor: '#080f1e', direction: 'column',
+            items: [
+              headerRow,
+              divider,
+              // Back button row
+              {
+                type: 'Container', direction: 'row',
+                paddingTop: '12dp', paddingBottom: '8dp', paddingLeft: '20dp',
+                items: [
+                  btn('← STATUS', ['mode', 'display'], '#0a1a2a'),
+                ],
+              },
+              { type: 'Frame', backgroundColor: '#0a1830', height: '2dp' },
+              // Scrollable entry list
+              {
+                type: 'ScrollView', grow: 1,
+                item: {
+                  type: 'Container', direction: 'column',
+                  items: entryItems,
+                },
               },
             ],
           }],
@@ -671,8 +772,16 @@ app.post('/api/alexa', async (req, res) => {
       const s   = db.getDaySummary(db.getDayKey());
       const lim = getDailyLimit();
       const oMl = s.outputs.reduce((acc, o) => acc + (o.amount_ml || 0), 0);
-      // 7th param is now raw outputs array (individual entries for right panel)
-      return buildAplDirective(s.totalIntake, lim, 'display', null, oMl, s.intakeByType, s.outputs);
+      // 7th param = raw outputs array (right panel), 8th = raw inputs array (fulllog mode)
+      return buildAplDirective(s.totalIntake, lim, 'display', null, oMl, s.intakeByType, s.outputs, s.inputs);
+    }
+
+    // Helper: build full log APL with current DB state
+    function freshFullLogApl() {
+      const s   = db.getDaySummary(db.getDayKey());
+      const lim = getDailyLimit();
+      const oMl = s.outputs.reduce((acc, o) => acc + (o.amount_ml || 0), 0);
+      return buildAplDirective(s.totalIntake, lim, 'fulllog', null, oMl, null, s.outputs, s.inputs);
     }
 
     // -- LaunchRequest: show fluid status display
@@ -702,6 +811,11 @@ app.post('/api/alexa', async (req, res) => {
         if (newMode === 'display') {
           const apl = freshDisplayApl();
           return res.json(alexaResponse('', false, 'Say log to record an entry, or tap LOG.',
+            supportsApl(req) ? [apl] : []));
+        }
+        if (newMode === 'fulllog') {
+          const apl = freshFullLogApl();
+          return res.json(alexaResponse('', false, null,
             supportsApl(req) ? [apl] : []));
         }
         const summary = db.getDaySummary(db.getDayKey());
