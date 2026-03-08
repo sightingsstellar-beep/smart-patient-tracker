@@ -398,20 +398,19 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
   const headerRow = {
     type: 'Container',
     direction: 'row',
-    backgroundColor: '#050c18',
-    paddingTop: '14dp',
-    paddingBottom: '14dp',
-    paddingLeft: '28dp',
-    paddingRight: '28dp',
+    backgroundColor: '#d0e8ff',
+    paddingTop: '12dp',
+    paddingBottom: '12dp',
+    paddingLeft: '24dp',
+    paddingRight: '24dp',
     alignItems: 'center',
     items: [
       {
         type: 'Text',
-        text: patientName ? `💧 ${patientName}` : '💧 Fluid Status',
-        color: '#4a6a8a',
-        fontSize: '18dp',
+        text: patientName ? `💧 ${patientName}` : '💧 Fluid Tracker',
+        color: '#0a2040',
+        fontSize: '17dp',
       },
-      // Center IN / OUT with explicit spacers (justifyContent unreliable in APL)
       {
         type: 'Container', grow: 1, direction: 'row', alignItems: 'center',
         items: [
@@ -420,15 +419,15 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
             type: 'Text',
             text: `TOTAL IN  ${intakeMl || 0} / ${limitMl} ml  (${pct}%)`,
             color: inColor,
-            fontSize: '28dp',
+            fontSize: '24dp',
             fontWeight: 'bold',
           },
-          { type: 'Frame', width: '70dp', height: '1dp', backgroundColor: 'transparent' },
+          { type: 'Frame', width: '60dp', height: '1dp', backgroundColor: 'transparent' },
           {
             type: 'Text',
             text: `TOTAL OUT  ${outMl} ml`,
-            color: '#f08c00',
-            fontSize: '28dp',
+            color: '#b05800',
+            fontSize: '24dp',
             fontWeight: 'bold',
           },
           { type: 'Frame', grow: 1, height: '1dp', backgroundColor: 'transparent' },
@@ -436,287 +435,156 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
       },
     ],
   };
-  const divider = { type: 'Frame', backgroundColor: '#0a1830', height: '2dp' };
+  const divider = { type: 'Frame', backgroundColor: '#a8c8e8', height: '2dp' };
 
   // ═══════════════════════════════════════════════════════════════════════════
   // DISPLAY MODE — 3-column status view with AVG donut
   // ═══════════════════════════════════════════════════════════════════════════
   if (mode === 'display') {
-    const ibt     = intakeByType || {};
-    const outputs = outputByType || [];  // raw output log array (7th param repurposed)
-    const tz      = getTimezone ? getTimezone() : 'America/New_York';
+    const ibt = intakeByType || {};
+    const tz = getTimezone ? getTimezone() : 'America/New_York';
+    const isLarge = (viewport === 'hub_large');
 
-    // Side-panel row: [dot] label  amount
-    function panelRow(color, label, amount) {
-      return {
-        type: 'Container', direction: 'row',
-        paddingTop: '7dp', paddingBottom: '7dp', alignItems: 'center',
-        items: [
-          { type: 'Frame', width: '9dp', height: '9dp', borderRadius: 5,
-            backgroundColor: color, marginRight: '10dp', alignSelf: 'center' },
-          { type: 'Text', text: label, color: '#c0d0e8', fontSize: '18dp', grow: 1 },
-          { type: 'Text', text: amount, color: 'white', fontSize: '18dp', fontWeight: 'bold' },
-        ],
-      };
-    }
+    const archR = isLarge ? 103 : 78;
+    const archSw = isLarge ? 28 : 22;
+    const archCx = archR + archSw / 2;
+    const archCy = archR + archSw / 2;
+    const archW = Math.round((archR + archSw / 2) * 2);
+    const archH = Math.round(archR + archSw / 2) + 2;
+    const centerColW = archW + 32;
 
-    // Intake rows — aggregated by type, sorted largest first
-    const intakeEntries = Object.entries(ibt).filter(([,ml]) => ml>0).sort((a,b)=>b[1]-a[1]);
-    const intakeRows = intakeEntries.length > 0
-      ? intakeEntries.map(([t, ml]) =>
-          panelRow(FLUID_COLORS[t]?.accent||'#4a9eff', FLUID_LABELS[t]||t, `${ml} ml`))
-      : [{ type: 'Text', text: 'No intake yet', color: '#243550',
-           fontSize: '17dp', paddingTop: '10dp' }];
+    const entryFontSize = isLarge ? '18dp' : '15dp';
+    const entryTimeFontSize = isLarge ? '14dp' : '12dp';
+    const entryPadV = isLarge ? '9dp' : '6dp';
+    const entryDotSize = isLarge ? '9dp' : '7dp';
 
-    // Output rows — aggregated by type (totals), matching intake panel style
-    const outputAgg = {};
-    for (const o of (Array.isArray(outputs) ? outputs : [])) {
-      const t = o.fluid_type;
-      if (!outputAgg[t]) outputAgg[t] = { total: 0, count: 0 };
-      outputAgg[t].total += (o.amount_ml || 0);
-      outputAgg[t].count += 1;
-    }
-    const outputOrder = ['urine', 'poop', 'vomit'];
-    const outputEntries = Object.entries(outputAgg).sort((a, b) => {
-      const ai = outputOrder.indexOf(a[0]);
-      const bi = outputOrder.indexOf(b[0]);
-      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
-    });
-    const outputRows = outputEntries.length > 0
-      ? outputEntries.map(([t, d]) => {
-          const amtStr = `${d.total} ml`;
-          return panelRow(FLUID_COLORS[t]?.accent || '#f08c00', FLUID_LABELS[t] || t, amtStr);
-        })
-      : [{ type: 'Text', text: 'No output yet', color: '#243550',
-           fontSize: '17dp', paddingTop: '10dp' }];
+    const archBigFont = isLarge ? '38dp' : '28dp';
+    const archSubFont = isLarge ? '11dp' : '10dp';
+    const archPctFont = isLarge ? '22dp' : '18dp';
+    const archTextTop = isLarge ? '45dp' : '34dp';
 
-    function logColRow(entry, fallbackColor) {
+    const legendFont = isLarge ? '13dp' : '11dp';
+    const sectionFont = isLarge ? '18dp' : '14dp';
+
+    function entryRow(entry, fallbackColor) {
       const timeStr = new Date(entry.timestamp).toLocaleTimeString('en-US',
         { hour: 'numeric', minute: '2-digit', timeZone: tz });
       const amtStr = entry.amount_ml ? `${entry.amount_ml} ml` : '—';
-      const color  = FLUID_COLORS[entry.fluid_type]?.accent || fallbackColor;
-      const label  = FLUID_LABELS[entry.fluid_type] || entry.fluid_type;
+      const color = FLUID_COLORS[entry.fluid_type]?.accent || fallbackColor;
+      const label = FLUID_LABELS[entry.fluid_type] || entry.fluid_type;
       return {
         type: 'Container', direction: 'row', alignItems: 'center',
-        paddingTop: '10dp', paddingBottom: '10dp',
-        paddingLeft: '14dp', paddingRight: '14dp',
+        paddingTop: entryPadV, paddingBottom: entryPadV,
+        paddingLeft: '12dp', paddingRight: '12dp',
         items: [
-          { type: 'Frame', width: '10dp', height: '10dp', borderRadius: 5,
-            backgroundColor: color, marginRight: '10dp' },
-          { type: 'Text', text: label, color: '#c0d0e8', fontSize: '20dp', grow: 1 },
-          { type: 'Container', alignItems: 'flexEnd',
-            items: [
-              { type: 'Text', text: amtStr, color: 'white',
-                fontSize: '20dp', fontWeight: 'bold', textAlign: 'right' },
-              { type: 'Text', text: timeStr, color: '#4a6a8a',
-                fontSize: '16dp', textAlign: 'right' },
-            ],
-          },
+          { type: 'Frame', width: entryDotSize, height: entryDotSize, borderRadius: 5,
+            backgroundColor: color, marginRight: '8dp', alignSelf: 'center' },
+          { type: 'Text', text: label, color: '#c0d0e8', fontSize: entryFontSize, grow: 1 },
+          { type: 'Container', alignItems: 'flexEnd', items: [
+            { type: 'Text', text: amtStr, color: 'white',
+              fontSize: entryFontSize, fontWeight: 'bold', textAlign: 'right' },
+            { type: 'Text', text: timeStr, color: '#4a6a8a',
+              fontSize: entryTimeFontSize, textAlign: 'right' },
+          ] },
         ],
       };
     }
+    const entryDivider = { type: 'Frame', height: '1dp', backgroundColor: '#0f1e35',
+      marginLeft: '12dp', marginRight: '12dp' };
 
-    if (viewport === 'hub_large') {
-      const inputEntries = Array.isArray(allInputs) ? [...allInputs].sort((a, b) => b.timestamp - a.timestamp) : [];
-      const outputEntriesRaw = Array.isArray(outputs) ? [...outputs].sort((a, b) => b.timestamp - a.timestamp) : [];
-      const inputLogRows = inputEntries.length > 0
-        ? inputEntries.map((e) => logColRow(e, '#4a9eff'))
-        : [{ type: 'Text', text: 'No intake logs yet', color: '#243550',
-             fontSize: '19dp', paddingTop: '14dp', paddingLeft: '14dp' }];
-      const outputLogRows = outputEntriesRaw.length > 0
-        ? outputEntriesRaw.map((e) => logColRow(e, '#f08c00'))
-        : [{ type: 'Text', text: 'No output logs yet', color: '#243550',
-             fontSize: '19dp', paddingTop: '14dp', paddingLeft: '14dp' }];
-      const archItems = buildArchItems(120, 118, 103, 30, ibt, limitMl);
+    const sortedInputs = Array.isArray(allInputs) ? [...allInputs].sort((a, b) => b.timestamp - a.timestamp) : [];
+    const sortedOutputs = Array.isArray(outputByType) ? [...outputByType].sort((a, b) => b.timestamp - a.timestamp) : [];
 
-      function panelRowCompact(color, label, amount) {
-        return {
-          type: 'Container', direction: 'row',
-          paddingTop: '3dp', paddingBottom: '3dp', alignItems: 'center',
+    const inputListItems = sortedInputs.length > 0
+      ? sortedInputs.flatMap((e, i) => i === 0 ? [entryRow(e, '#4a9eff')] : [entryDivider, entryRow(e, '#4a9eff')])
+      : [{ type: 'Text', text: 'No intake yet', color: '#243550', fontSize: entryFontSize,
+           paddingTop: '14dp', paddingLeft: '14dp' }];
+
+    const outputListItems = sortedOutputs.length > 0
+      ? sortedOutputs.flatMap((e, i) => i === 0 ? [entryRow(e, '#f08c00')] : [entryDivider, entryRow(e, '#f08c00')])
+      : [{ type: 'Text', text: 'No output yet', color: '#243550', fontSize: entryFontSize,
+           paddingTop: '14dp', paddingLeft: '14dp' }];
+
+    const archItems = buildArchItems(archCx, archCy, archR, archSw, ibt, limitMl);
+
+    const legendItems = Object.entries(ibt)
+      .filter(([, ml]) => ml > 0)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 6)
+      .map(([t]) => ({
+        color: FLUID_COLORS[t]?.accent || '#4a9eff',
+        label: FLUID_LABELS[t] || t,
+      }));
+
+    const legendRows = [];
+    for (let i = 0; i < legendItems.length; i += 2) {
+      const rowItems = [legendItems[i], legendItems[i + 1]].filter(Boolean).map((li) => ({
+        type: 'Container', direction: 'row', alignItems: 'center',
+        grow: 1, paddingRight: '6dp',
+        items: [
+          { type: 'Frame', width: '7dp', height: '7dp', borderRadius: 4,
+            backgroundColor: li.color, marginRight: '5dp' },
+          { type: 'Text', text: li.label, color: '#8ab4cc', fontSize: legendFont },
+        ],
+      }));
+      legendRows.push({
+        type: 'Container', direction: 'row',
+        paddingTop: '3dp', paddingBottom: '1dp',
+        paddingLeft: '4dp', paddingRight: '4dp',
+        items: rowItems,
+      });
+    }
+
+    const legendSection = legendRows.length > 0
+      ? { type: 'Container', direction: 'column', paddingTop: '8dp', items: legendRows }
+      : { type: 'Frame', height: '1dp', backgroundColor: 'transparent' };
+
+    const centerCol = {
+      type: 'Container',
+      width: `${centerColW}dp`,
+      direction: 'column',
+      alignItems: 'center',
+      paddingTop: '12dp',
+      paddingLeft: '8dp',
+      paddingRight: '8dp',
+      items: [
+        {
+          type: 'Container', width: `${archW}dp`, height: `${archH}dp`,
           items: [
-            { type: 'Frame', width: '8dp', height: '8dp', borderRadius: 4,
-              backgroundColor: color, marginRight: '8dp', alignSelf: 'center' },
-            { type: 'Text', text: label, color: '#c0d0e8', fontSize: '16dp', grow: 1 },
-            { type: 'Text', text: amount, color: 'white', fontSize: '16dp', fontWeight: 'bold' },
-          ],
-        };
-      }
-      const intakeRowsCompact = intakeEntries.length > 0
-        ? intakeEntries.map(([t, ml]) =>
-            panelRowCompact(FLUID_COLORS[t]?.accent || '#4a9eff', FLUID_LABELS[t] || t, `${ml} ml`))
-        : [{ type: 'Text', text: 'No intake yet', color: '#243550',
-             fontSize: '15dp', paddingTop: '10dp' }];
-      const outputRowsCompact = outputEntries.length > 0
-        ? outputEntries.map(([t, d]) => {
-            const amtStr = `${d.total} ml`;
-            return panelRowCompact(FLUID_COLORS[t]?.accent || '#f08c00', FLUID_LABELS[t] || t, amtStr);
-          })
-        : [{ type: 'Text', text: 'No output yet', color: '#243550',
-             fontSize: '15dp', paddingTop: '10dp' }];
-
-      return {
-        type: 'Alexa.Presentation.APL.RenderDocument',
-        version: '1.0',
-        token: 'tracker-ui',
-        document: {
-          type: 'APL',
-          version: '1.5',
-          theme: 'dark',
-          settings: { idleTimeoutInMilliseconds: 2147483647 },
-          onMount: [
+            { type: 'VectorGraphic', source: 'donut',
+              width: `${archW}dp`, height: `${archH}dp`,
+              position: 'absolute', top: '0dp', left: '0dp' },
             {
-              type: 'Sequential',
-              repeatCount: -1,
-              commands: [
-                { type: 'Idle', delay: 29000, screenLock: true },
-                { type: 'SendEvent', arguments: ['refresh', 'display'],
-                  flags: { interactionMode: 'auto' } },
+              type: 'Container',
+              position: 'absolute', top: archTextTop, left: '0dp', right: '0dp',
+              direction: 'column', alignItems: 'center',
+              items: [
+                { type: 'Text', text: String(intakeMl || 0),
+                  color: 'white', fontSize: archBigFont, fontWeight: 'bold' },
+                { type: 'Text', text: `ml of ${limitMl}`,
+                  color: '#2a4a6a', fontSize: archSubFont },
+                { type: 'Text', text: `${pct}%`,
+                  color: inColor, fontSize: archPctFont, fontWeight: 'bold' },
               ],
             },
           ],
-          graphics: {
-            donut: { type: 'AVG', version: '1.2', width: 240, height: 122, items: archItems },
-          },
-          mainTemplate: {
-            parameters: [],
-            items: [{
-              type: 'Container', width: '100vw', height: '100vh',
-              backgroundColor: '#080f1e', direction: 'column',
-              items: [
-                headerRow,
-                divider,
-                {
-                  type: 'Container', direction: 'row', grow: 1, paddingBottom: '72dp',
-                  items: [
-                    {
-                      type: 'Container', grow: 1, direction: 'column',
-                      paddingTop: '12dp', paddingLeft: '14dp', paddingRight: '12dp',
-                      items: [
-                        {
-                          type: 'Container', width: '240dp', height: '122dp', alignSelf: 'center',
-                          items: [
-                            { type: 'VectorGraphic', source: 'donut', width: '240dp', height: '122dp',
-                              position: 'absolute', top: '0dp', left: '0dp' },
-                            {
-                              type: 'Container',
-                              position: 'absolute', top: '55dp', left: '0dp', right: '0dp',
-                              direction: 'column', alignItems: 'center',
-                              items: [
-                                { type: 'Text', text: String(intakeMl || 0),
-                                  color: 'white', fontSize: '42dp', fontWeight: 'bold' },
-                                { type: 'Text', text: `ml of ${limitMl}`,
-                                  color: '#2a4a6a', fontSize: '12dp' },
-                                { type: 'Text', text: `${pct}%`,
-                                  color: inColor, fontSize: '26dp', fontWeight: 'bold' },
-                              ],
-                            },
-                          ],
-                        },
-                        { type: 'Text', text: 'INTAKE', color: '#4a9eff',
-                          fontSize: '24dp', fontWeight: 'bold', paddingTop: '12dp' },
-                        { type: 'Container', direction: 'column', items: intakeRowsCompact },
-                        { type: 'Text', text: 'OUTPUT', color: '#f08c00',
-                          fontSize: '24dp', fontWeight: 'bold', paddingTop: '14dp' },
-                        { type: 'Container', direction: 'column', items: outputRowsCompact },
-                      ],
-                    },
-                    { type: 'Frame', width: '2dp', backgroundColor: '#0a1830' },
-                    {
-                      type: 'Container', grow: 1, direction: 'column',
-                      paddingTop: '12dp',
-                      items: [
-                        { type: 'Text', text: 'INTAKE', color: '#4a9eff',
-                          fontSize: '22dp', fontWeight: 'bold',
-                          paddingLeft: '14dp', paddingRight: '14dp' },
-                        { type: 'Frame', backgroundColor: '#0f1e35', height: '1dp',
-                          marginTop: '8dp', marginBottom: '6dp', marginLeft: '14dp', marginRight: '14dp' },
-                        {
-                          type: 'Sequence', grow: 1, scrollDirection: 'vertical',
-                          items: inputLogRows,
-                        },
-                      ],
-                    },
-                    { type: 'Frame', width: '2dp', backgroundColor: '#0a1830' },
-                    {
-                      type: 'Container', grow: 1, direction: 'column',
-                      paddingTop: '12dp',
-                      items: [
-                        { type: 'Text', text: 'OUTPUT', color: '#f08c00',
-                          fontSize: '22dp', fontWeight: 'bold',
-                          paddingLeft: '14dp', paddingRight: '14dp' },
-                        { type: 'Frame', backgroundColor: '#0f1e35', height: '1dp',
-                          marginTop: '8dp', marginBottom: '6dp', marginLeft: '14dp', marginRight: '14dp' },
-                        {
-                          type: 'Sequence', grow: 1, scrollDirection: 'vertical',
-                          items: outputLogRows,
-                        },
-                      ],
-                    },
-                  ],
-                },
-                {
-                  type: 'Container',
-                  position: 'absolute',
-                  bottom: '0dp', left: '0dp', right: '0dp',
-                  direction: 'column',
-                  items: [
-                    { type: 'Frame', backgroundColor: '#0a1830', height: '2dp' },
-                    {
-                      type: 'Container', direction: 'row',
-                      backgroundColor: '#050c18',
-                      height: '72dp',
-                      paddingLeft: '16dp', paddingRight: '16dp',
-                      alignItems: 'center',
-                      items: [
-                        {
-                          type: 'TouchWrapper', grow: 3, marginRight: '10dp',
-                          onPress: { type: 'SendEvent', arguments: ['mode', 'input'] },
-                          item: {
-                            type: 'Frame', backgroundColor: '#0d2a50', borderRadius: 10,
-                            alignSelf: 'stretch', width: '100%',
-                            paddingTop: '14dp', paddingBottom: '14dp',
-                            item: { type: 'Text', text: 'Log by Tap', color: 'white',
-                              width: '100%', fontSize: '20dp', fontWeight: 'bold',
-                              textAlign: 'center', textAlignVertical: 'center' },
-                          },
-                        },
-                        {
-                          type: 'TouchWrapper', grow: 3, marginRight: '10dp',
-                          onPress: { type: 'SendEvent', arguments: ['voice'] },
-                          item: {
-                            type: 'Frame', backgroundColor: '#0d1a40', borderRadius: 10,
-                            alignSelf: 'stretch', width: '100%',
-                            paddingTop: '14dp', paddingBottom: '14dp',
-                            item: { type: 'Text', text: 'Log by Voice', color: '#8ab4f8',
-                              width: '100%', fontSize: '20dp', fontWeight: 'bold',
-                              textAlign: 'center', textAlignVertical: 'center' },
-                          },
-                        },
-                        {
-                          type: 'TouchWrapper', grow: 1,
-                          onPress: { type: 'SendEvent', arguments: ['quit'] },
-                          item: {
-                            type: 'Frame', backgroundColor: '#1a0808', borderRadius: 10,
-                            alignSelf: 'stretch', width: '100%',
-                            paddingTop: '14dp', paddingBottom: '14dp',
-                            item: { type: 'Text', text: 'Quit', color: '#cc5555',
-                              width: '100%', fontSize: '20dp', fontWeight: 'bold',
-                              textAlign: 'center', textAlignVertical: 'center' },
-                          },
-                        },
-                      ],
-                    },
-                  ],
-                },
-              ],
-            }],
-          },
         },
+        legendSection,
+      ],
+    };
+
+    function colLabel(text, color) {
+      return {
+        type: 'Text', text,
+        color,
+        fontSize: sectionFont,
+        fontWeight: 'bold',
+        paddingLeft: '12dp',
+        paddingBottom: '4dp',
       };
     }
-
-    // AVG donut (cx=185, cy=185, r=163, sw=46)
-    const donutItems = buildAvgDonutItems(185, 185, 163, 46, ibt, limitMl);
+    const colDividerLine = { type: 'Frame', height: '1dp', backgroundColor: '#0f1e35',
+      marginLeft: '12dp', marginRight: '12dp', marginBottom: '2dp' };
 
     return {
       type: 'Alexa.Presentation.APL.RenderDocument',
@@ -729,10 +597,6 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
         settings: { idleTimeoutInMilliseconds: 2147483647 },
         onMount: [
           {
-            // screenLock keep-alive loop:
-            // Idle(29s, screenLock:true) pauses & then RESETS the interaction timer.
-            // SendEvent triggers a server refresh → new RenderDocument → onMount restarts.
-            // Net effect: timer never expires, display stays alive indefinitely.
             type: 'Sequential',
             repeatCount: -1,
             commands: [
@@ -743,7 +607,8 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
           },
         ],
         graphics: {
-          donut: { type: 'AVG', version: '1.2', width: 370, height: 370, items: donutItems },
+          donut: { type: 'AVG', version: '1.2',
+            width: archW, height: archH, items: archItems },
         },
         mainTemplate: {
           parameters: [],
@@ -753,77 +618,45 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
             items: [
               headerRow,
               divider,
-              // ── 3-column body ─────────────────────────────────────────
               {
-                type: 'Container', direction: 'row', grow: 1, paddingBottom: '74dp',
+                type: 'Container', direction: 'row', grow: 1,
+                paddingBottom: '72dp',
                 items: [
-                  // ── Left: INTAKE ───────────────────────────────────────
-                  {
-                    type: 'Container', width: '250dp', direction: 'column',
-                    paddingTop: '16dp', paddingLeft: '18dp', paddingRight: '12dp',
-                    items: [
-                      { type: 'Text', text: 'INTAKE', color: '#4a9eff',
-                        fontSize: '24dp', fontWeight: 'bold', paddingBottom: '8dp' },
-                      { type: 'Frame', backgroundColor: '#0f1e35', height: '2dp', marginBottom: '6dp' },
-                      { type: 'Container', direction: 'column', grow: 1, items: intakeRows },
-                    ],
-                  },
-                  // ── Center: Donut ──────────────────────────────────────
                   {
                     type: 'Container', grow: 1, direction: 'column',
-                    alignItems: 'center', justifyContent: 'center',
+                    paddingTop: '10dp',
                     items: [
-                      {
-                        type: 'Container', width: '370dp', height: '370dp',
-                        items: [
-                          { type: 'VectorGraphic', source: 'donut',
-                            width: '370dp', height: '370dp',
-                            position: 'absolute', top: '0dp', left: '0dp' },
-                          {
-                            type: 'Container',
-                            position: 'absolute', top: '112dp',
-                            left: '0dp', right: '0dp',
-                            direction: 'column', alignItems: 'center',
-                            items: [
-                              { type: 'Text', text: String(intakeMl||0),
-                                color: 'white', fontSize: '64dp', fontWeight: 'bold' },
-                              { type: 'Text', text: `ml of ${limitMl}`,
-                                color: '#2a4a6a', fontSize: '16dp', paddingBottom: '4dp' },
-                              { type: 'Text', text: `${pct}%`,
-                                color: inColor, fontSize: '38dp', fontWeight: 'bold' },
-                            ],
-                          },
-                          { type: 'Frame', id: 'refresh-pulse', opacity: 1,
-                            width: '1dp', height: '1dp', backgroundColor: 'transparent',
-                            position: 'absolute', top: '0dp', left: '0dp' },
-                        ],
-                      },
+                      colLabel('INTAKE', '#4a9eff'),
+                      colDividerLine,
+                      { type: 'Sequence', grow: 1, scrollDirection: 'vertical',
+                        items: inputListItems },
                     ],
                   },
-                  // ── Right: OUTPUT ──────────────────────────────────────
+                  { type: 'Frame', width: '2dp', backgroundColor: '#0a1830' },
+                  centerCol,
+                  { type: 'Frame', width: '2dp', backgroundColor: '#0a1830' },
                   {
-                    type: 'Container', width: '250dp', direction: 'column',
-                    paddingTop: '16dp', paddingLeft: '12dp', paddingRight: '18dp',
+                    type: 'Container', grow: 1, direction: 'column',
+                    paddingTop: '10dp',
                     items: [
-                      { type: 'Text', text: 'OUTPUT', color: '#f08c00',
-                        fontSize: '24dp', fontWeight: 'bold', paddingBottom: '8dp' },
-                      { type: 'Frame', backgroundColor: '#0f1e35', height: '2dp', marginBottom: '6dp' },
-                      { type: 'Container', grow: 1, direction: 'column', items: outputRows },
+                      colLabel('OUTPUT', '#f08c00'),
+                      colDividerLine,
+                      { type: 'Sequence', grow: 1, scrollDirection: 'vertical',
+                        items: outputListItems },
                     ],
                   },
                 ],
               },
-              // ── Bottom button bar — absolutely pinned to bottom of 100vh parent ──
               {
                 type: 'Container',
                 position: 'absolute',
                 bottom: '0dp', left: '0dp', right: '0dp',
                 direction: 'column',
                 items: [
-                  { type: 'Frame', backgroundColor: '#0a1830', height: '2dp' },
+                  { type: 'Frame', backgroundColor: '#a8c8e8', height: '2dp' },
                   {
                     type: 'Container', direction: 'row',
-                    backgroundColor: '#050c18',
+                    backgroundColor: '#d0e8ff',
                     height: '72dp',
                     paddingLeft: '16dp', paddingRight: '16dp',
                     alignItems: 'center',
@@ -832,7 +665,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                         type: 'TouchWrapper', grow: 3, marginRight: '10dp',
                         onPress: { type: 'SendEvent', arguments: ['mode', 'input'] },
                         item: {
-                          type: 'Frame', backgroundColor: '#0d2a50', borderRadius: 10,
+                          type: 'Frame', backgroundColor: '#0d3a7a', borderRadius: 10,
                           alignSelf: 'stretch', width: '100%',
                           paddingTop: '14dp', paddingBottom: '14dp',
                           item: { type: 'Text', text: 'Log by Tap', color: 'white',
@@ -853,25 +686,13 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                         },
                       },
                       {
-                        type: 'TouchWrapper', grow: 1, marginRight: '10dp',
-                        onPress: { type: 'SendEvent', arguments: ['mode', 'fulllog'] },
-                        item: {
-                          type: 'Frame', backgroundColor: '#0d3030', borderRadius: 10,
-                          alignSelf: 'stretch', width: '100%',
-                          paddingTop: '14dp', paddingBottom: '14dp',
-                          item: { type: 'Text', text: 'History', color: '#7ad4cc',
-                            width: '100%', fontSize: '20dp', fontWeight: 'bold',
-                            textAlign: 'center', textAlignVertical: 'center' },
-                        },
-                      },
-                      {
                         type: 'TouchWrapper', grow: 1,
                         onPress: { type: 'SendEvent', arguments: ['quit'] },
                         item: {
-                          type: 'Frame', backgroundColor: '#1a0808', borderRadius: 10,
+                          type: 'Frame', backgroundColor: '#5a0808', borderRadius: 10,
                           alignSelf: 'stretch', width: '100%',
                           paddingTop: '14dp', paddingBottom: '14dp',
-                          item: { type: 'Text', text: 'Quit', color: '#cc5555',
+                          item: { type: 'Text', text: 'Quit', color: '#ffaaaa',
                             width: '100%', fontSize: '20dp', fontWeight: 'bold',
                             textAlign: 'center', textAlignVertical: 'center' },
                         },
