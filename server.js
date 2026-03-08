@@ -446,11 +446,12 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
     const isLarge = (viewport === 'hub_large');
 
     // Full circle donut params
-    const donutR    = isLarge ? 105 : 73;
-    const donutSw   = isLarge ? 30  : 22;
-    const donutCx   = donutR + donutSw / 2;
-    const donutCy   = donutR + donutSw / 2;
-    const donutSize = Math.round((donutR + donutSw / 2) * 2);
+    const donutR      = isLarge ? 132 : 105;
+    const donutSw     = isLarge ? 36  : 30;
+    const donutCx     = donutR + donutSw / 2;
+    const donutCy     = donutR + donutSw / 2;
+    const donutSize   = Math.round((donutR + donutSw / 2) * 2);
+    const centerColW  = donutSize + 40;   // fixed center width — guarantees equal side cols
 
     // Entry row typography — 18dp minimum for medical readability at arm's length
     const entryFontSize     = '18dp';
@@ -459,11 +460,11 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
     const entryDotSize      = isLarge ? '9dp' : '8dp';
 
     // Gauge center text
-    const donutBigFont  = isLarge ? '42dp' : '30dp';
-    const donutSubFont  = isLarge ? '12dp' : '10dp';
-    const donutPctFont  = isLarge ? '24dp' : '20dp';
+    const donutBigFont  = isLarge ? '46dp' : '42dp';
+    const donutSubFont  = isLarge ? '13dp' : '12dp';
+    const donutPctFont  = isLarge ? '26dp' : '24dp';
     // Vertically center the text stack inside the circle
-    const textStackH    = isLarge ? 94 : 74;   // approx px: bigFont + sub + pct + gaps
+    const textStackH    = isLarge ? 94 : 74;   // approx: bigFont + sub + pct + gaps
     const donutTextTop  = `${Math.round(donutCy - textStackH / 2)}dp`;
 
     // Legend and labels
@@ -545,7 +546,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
 
     const centerCol = {
       type: 'Container',
-      grow: 2,
+      width: `${centerColW}dp`,
       direction: 'column',
       alignItems: 'center',
       justifyContent: 'center',
