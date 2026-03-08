@@ -408,7 +408,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
       {
         type: 'Text',
         text: patientName ? `💧 ${patientName}` : '💧 Fluid Tracker',
-        color: '#0a2040',
+        color: '#5a8abf',
         fontSize: '17dp',
       },
       {
@@ -468,8 +468,10 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
     const donutTextTop  = `${Math.round(donutCy - textStackH / 2)}dp`;
 
     // Legend and labels
-    const legendFont    = isLarge ? '13dp' : '12dp';
+    const legendFont    = isLarge ? '17dp' : '16dp';
     const sectionFont   = isLarge ? '18dp' : '16dp';
+    // Explicit equal side widths (viewport dp: Show8=961, Show5=813)
+    const sideColW      = isLarge ? 308 : 264;
 
     function entryRow(entry, fallbackColor) {
       const timeStr = new Date(entry.timestamp).toLocaleTimeString('en-US',
@@ -655,7 +657,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                 paddingBottom: '72dp',
                 items: [
                   {
-                    type: 'Container', grow: 1, direction: 'column',
+                    type: 'Container', width: `${sideColW}dp`, direction: 'column',
                     paddingTop: '10dp',
                     items: [
                       colLabel('INTAKE', '#4a9eff'),
@@ -668,7 +670,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                   centerCol,
                   { type: 'Frame', width: '2dp', backgroundColor: '#0a1830' },
                   {
-                    type: 'Container', grow: 1, direction: 'column',
+                    type: 'Container', width: `${sideColW}dp`, direction: 'column',
                     paddingTop: '10dp',
                     items: [
                       colLabel('OUTPUT', '#f08c00'),
