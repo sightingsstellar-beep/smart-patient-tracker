@@ -486,6 +486,25 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                       // Intake rows fill available space
                       { type: 'Container', direction: 'column', grow: 1,
                         items: intakeRows },
+                      // FULL LOG button — drills into chronological entry list
+                      {
+                        type: 'TouchWrapper',
+                        alignSelf: 'stretch',
+                        marginBottom: '10dp',
+                        onPress: { type: 'SendEvent', arguments: ['mode', 'fulllog'] },
+                        item: {
+                          type: 'Frame', backgroundColor: '#0d3030', borderRadius: 12,
+                          paddingTop: '18dp', paddingBottom: '18dp',
+                          item: {
+                            type: 'Container',
+                            width: '100%',
+                            direction: 'row',
+                            justifyContent: 'center',
+                            items: [{ type: 'Text', text: 'FULL LOG', color: '#7ad4cc',
+                              fontSize: '20dp', fontWeight: 'bold' }],
+                          },
+                        },
+                      },
                       // LOG ENTRY button — alignSelf:stretch fills the column width.
                       // width:'100%' on the inner Container forces it to measure against
                       // the Frame's content width so justifyContent:center has space to work.
@@ -503,25 +522,6 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                             justifyContent: 'center',
                             items: [{ type: 'Text', text: 'LOG ENTRY', color: 'white',
                               fontSize: '22dp', fontWeight: 'bold' }],
-                          },
-                        },
-                      },
-                      // FULL LOG button — drills into chronological entry list
-                      {
-                        type: 'TouchWrapper',
-                        alignSelf: 'stretch',
-                        marginTop: '10dp',
-                        onPress: { type: 'SendEvent', arguments: ['mode', 'fulllog'] },
-                        item: {
-                          type: 'Frame', backgroundColor: '#0d3030', borderRadius: 12,
-                          paddingTop: '18dp', paddingBottom: '18dp',
-                          item: {
-                            type: 'Container',
-                            width: '100%',
-                            direction: 'row',
-                            justifyContent: 'center',
-                            items: [{ type: 'Text', text: 'FULL LOG', color: '#7ad4cc',
-                              fontSize: '20dp', fontWeight: 'bold' }],
                           },
                         },
                       },
