@@ -1,7 +1,7 @@
 {
   "interactionModel": {
     "languageModel": {
-      "invocationName": "wellness tracker",
+      "invocationName": "fluid tracking",
       "intents": [
         {
           "name": "LogEntryIntent",
@@ -17,7 +17,23 @@
             "note {entry}",
             "add {entry}",
             "she {entry}",
-            "Elina {entry}"
+            "Elina {entry}",
+            "log that {entry}",
+            "mark {entry}",
+            "enter {entry}",
+            "track {entry}",
+            "she drank {entry}",
+            "she had {entry}",
+            "she took {entry}",
+            "she peed {entry}",
+            "she vomited {entry}",
+            "she threw up {entry}",
+            "she gagged {entry}",
+            "log intake {entry}",
+            "log output {entry}",
+            "log fluid {entry}",
+            "yesterday {entry}",
+            "log yesterday {entry}"
           ]
         },
         {

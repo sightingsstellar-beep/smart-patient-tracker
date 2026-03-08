@@ -309,18 +309,19 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
   // ── Shared fluid palette ──────────────────────────────────────────────────
   const FLUID_LABELS = {
     water: 'Water', pediasure: 'PediaSure', milk: 'Milk',
-    juice: 'Juice', yogurt_drink: 'Yogurt Drink',
+    juice: 'Juice', yogurt_drink: 'Yogurt Drink', vitamin_water: 'Vitamin Water',
     urine: 'Urine', poop: 'Poop', vomit: 'Vomit',
   };
   const FLUID_COLORS = {
-    water:        { dim: '#0d4a8a', bright: '#2a8aff', accent: '#2a8aff' },
-    pediasure:    { dim: '#7a4800', bright: '#f08c00', accent: '#f08c00' },
-    milk:         { dim: '#2a3a52', bright: '#6888aa', accent: '#90aec8' },
-    juice:        { dim: '#6a0808', bright: '#d93030', accent: '#e03030' },
-    yogurt_drink: { dim: '#3a1260', bright: '#8a48cc', accent: '#8a48cc' },
-    urine:        { dim: '#5a5200', bright: '#d4b800', accent: '#d4b800' },
-    poop:         { dim: '#3a1a06', bright: '#8b4513', accent: '#8b4513' },
-    vomit:        { dim: '#0a4020', bright: '#25a060', accent: '#25a060' },
+    water:         { dim: '#0d4a8a', bright: '#2a8aff', accent: '#2a8aff' },
+    pediasure:     { dim: '#7a4800', bright: '#f08c00', accent: '#f08c00' },
+    milk:          { dim: '#2a3a52', bright: '#6888aa', accent: '#90aec8' },
+    juice:         { dim: '#6a0808', bright: '#d93030', accent: '#e03030' },
+    yogurt_drink:  { dim: '#3a1260', bright: '#8a48cc', accent: '#8a48cc' },
+    vitamin_water: { dim: '#0a3a4a', bright: '#00b4c8', accent: '#00c8d8' },
+    urine:         { dim: '#5a5200', bright: '#d4b800', accent: '#d4b800' },
+    poop:          { dim: '#3a1a06', bright: '#8b4513', accent: '#8b4513' },
+    vomit:         { dim: '#0a4020', bright: '#25a060', accent: '#25a060' },
   };
 
   // ── Helper: tappable button ───────────────────────────────────────────────
@@ -734,7 +735,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
   // ═══════════════════════════════════════════════════════════════════════════
   // LOGGING MODE — fluid type picker + amount buttons
   // ═══════════════════════════════════════════════════════════════════════════
-  const inputFluids  = ['water', 'pediasure', 'milk', 'juice', 'yogurt_drink'];
+  const inputFluids  = ['water', 'pediasure', 'milk', 'juice', 'yogurt_drink', 'vitamin_water'];
   const outputFluids = ['urine', 'poop', 'vomit'];
   const fluids = mode === 'output' ? outputFluids : inputFluids;
 
@@ -952,9 +953,9 @@ app.post('/api/alexa', async (req, res) => {
       // Voice log button tapped — open the mic for a spoken log entry
       if (action === 'voice') {
         return res.json(alexaResponse(
-          'Go ahead.',
+          'Say log, then your entry. For example: log 120 pediasure, or log pee 80.',
           false,  // shouldEndSession: false — this opens the microphone
-          'What would you like to log?',
+          'Say log, then your entry.',
           []
         ));
       }
@@ -1083,8 +1084,9 @@ app.post('/api/alexa', async (req, res) => {
       }
 
       // Persist all actions
-      const now = Date.now();
-      const dayKey = db.getDayKey();
+      const dateOffset = parsed.date_offset || 0;
+      const now = Date.now() + (dateOffset * 86400000);
+      const dayKey = db.getDayKey(new Date(now));
       let weightLogged = null;
       for (const action of parsed.actions) {
         if (action.type === 'input' || action.type === 'output') {
