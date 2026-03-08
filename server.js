@@ -538,23 +538,25 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                   },
                 ],
               },
-              // ── Bottom button bar ──────────────────────────────────────
-              { type: 'Frame', backgroundColor: '#0a1830', height: '2dp' },
+              // ── Bottom button bar (fixed height so grow:1 body doesn't overflow) ──
+              { type: 'Frame', backgroundColor: '#0a1830', height: '2dp', shrink: 0 },
               {
                 type: 'Container', direction: 'row',
                 backgroundColor: '#050c18',
-                paddingTop: '12dp', paddingBottom: '12dp',
-                paddingLeft: '20dp', paddingRight: '20dp',
+                height: '72dp',
+                shrink: 0,
+                paddingLeft: '16dp', paddingRight: '16dp',
+                alignItems: 'center',
                 items: [
                   // LOG — touch-based logging UI
                   {
                     type: 'TouchWrapper', grow: 1, marginRight: '10dp',
                     onPress: { type: 'SendEvent', arguments: ['mode', 'input'] },
                     item: {
-                      type: 'Frame', backgroundColor: '#0d2a50', borderRadius: 12,
-                      paddingTop: '20dp', paddingBottom: '20dp',
+                      type: 'Frame', backgroundColor: '#0d2a50', borderRadius: 10,
+                      paddingTop: '14dp', paddingBottom: '14dp',
                       item: { type: 'Text', text: 'LOG', color: 'white',
-                        fontSize: '22dp', fontWeight: 'bold', textAlign: 'center' },
+                        fontSize: '20dp', fontWeight: 'bold', textAlign: 'center' },
                     },
                   },
                   // VOICE — opens mic for spoken log entry
@@ -562,10 +564,10 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                     type: 'TouchWrapper', grow: 1, marginRight: '10dp',
                     onPress: { type: 'SendEvent', arguments: ['voice'] },
                     item: {
-                      type: 'Frame', backgroundColor: '#0d1a40', borderRadius: 12,
-                      paddingTop: '20dp', paddingBottom: '20dp',
+                      type: 'Frame', backgroundColor: '#0d1a40', borderRadius: 10,
+                      paddingTop: '14dp', paddingBottom: '14dp',
                       item: { type: 'Text', text: '🎤  VOICE', color: '#8ab4f8',
-                        fontSize: '22dp', fontWeight: 'bold', textAlign: 'center' },
+                        fontSize: '20dp', fontWeight: 'bold', textAlign: 'center' },
                     },
                   },
                   // HISTORY — chronological full log view
@@ -573,10 +575,10 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                     type: 'TouchWrapper', grow: 1, marginRight: '10dp',
                     onPress: { type: 'SendEvent', arguments: ['mode', 'fulllog'] },
                     item: {
-                      type: 'Frame', backgroundColor: '#0d3030', borderRadius: 12,
-                      paddingTop: '20dp', paddingBottom: '20dp',
+                      type: 'Frame', backgroundColor: '#0d3030', borderRadius: 10,
+                      paddingTop: '14dp', paddingBottom: '14dp',
                       item: { type: 'Text', text: 'HISTORY', color: '#7ad4cc',
-                        fontSize: '22dp', fontWeight: 'bold', textAlign: 'center' },
+                        fontSize: '20dp', fontWeight: 'bold', textAlign: 'center' },
                     },
                   },
                   // QUIT — ends the skill session
@@ -584,10 +586,10 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                     type: 'TouchWrapper', grow: 1,
                     onPress: { type: 'SendEvent', arguments: ['quit'] },
                     item: {
-                      type: 'Frame', backgroundColor: '#1a0808', borderRadius: 12,
-                      paddingTop: '20dp', paddingBottom: '20dp',
+                      type: 'Frame', backgroundColor: '#1a0808', borderRadius: 10,
+                      paddingTop: '14dp', paddingBottom: '14dp',
                       item: { type: 'Text', text: 'QUIT', color: '#cc5555',
-                        fontSize: '22dp', fontWeight: 'bold', textAlign: 'center' },
+                        fontSize: '20dp', fontWeight: 'bold', textAlign: 'center' },
                     },
                   },
                 ],
