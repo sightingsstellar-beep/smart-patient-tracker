@@ -425,17 +425,24 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
       : [{ type: 'Text', text: 'No intake yet', color: '#243550',
            fontSize: '17dp', paddingTop: '10dp' }];
 
-    // Output rows — individual entries, most recent first
-    const sortedOutputs = Array.isArray(outputs)
-      ? [...outputs].sort((a, b) => b.timestamp - a.timestamp)
-      : [];
-    const outputRows = sortedOutputs.length > 0
-      ? sortedOutputs.map((l) => {
-          const timeStr = new Date(l.timestamp).toLocaleTimeString('en-US',
-            { hour: 'numeric', minute: '2-digit', timeZone: tz });
-          const amtStr  = l.amount_ml ? `${l.amount_ml} ml` : '—';
-          const label   = `${timeStr}  ${FLUID_LABELS[l.fluid_type]||l.fluid_type}`;
-          return panelRow(FLUID_COLORS[l.fluid_type]?.accent||'#f08c00', label, amtStr);
+    // Output rows — aggregated by type (totals), matching intake panel style
+    const outputAgg = {};
+    for (const o of (Array.isArray(outputs) ? outputs : [])) {
+      const t = o.fluid_type;
+      if (!outputAgg[t]) outputAgg[t] = { total: 0, count: 0 };
+      outputAgg[t].total += (o.amount_ml || 0);
+      outputAgg[t].count += 1;
+    }
+    const outputOrder = ['urine', 'poop', 'vomit'];
+    const outputEntries = Object.entries(outputAgg).sort((a, b) => {
+      const ai = outputOrder.indexOf(a[0]);
+      const bi = outputOrder.indexOf(b[0]);
+      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+    });
+    const outputRows = outputEntries.length > 0
+      ? outputEntries.map(([t, d]) => {
+          const amtStr = t === 'poop' ? `${d.count}×` : `${d.total} ml`;
+          return panelRow(FLUID_COLORS[t]?.accent || '#f08c00', FLUID_LABELS[t] || t, amtStr);
         })
       : [{ type: 'Text', text: 'No output yet', color: '#243550',
            fontSize: '17dp', paddingTop: '10dp' }];
@@ -559,8 +566,10 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                         item: {
                           type: 'Frame', backgroundColor: '#0d2a50', borderRadius: 10,
                           paddingTop: '14dp', paddingBottom: '14dp',
-                          item: { type: 'Text', text: 'LOG', color: 'white',
-                            fontSize: '20dp', fontWeight: 'bold', textAlign: 'center' },
+                          item: { type: 'Container', direction: 'row',
+                            alignItems: 'center', justifyContent: 'center',
+                            items: [{ type: 'Text', text: 'LOG', color: 'white',
+                              fontSize: '20dp', fontWeight: 'bold' }] },
                         },
                       },
                       {
@@ -569,8 +578,10 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                         item: {
                           type: 'Frame', backgroundColor: '#0d1a40', borderRadius: 10,
                           paddingTop: '14dp', paddingBottom: '14dp',
-                          item: { type: 'Text', text: '🎤  VOICE', color: '#8ab4f8',
-                            fontSize: '20dp', fontWeight: 'bold', textAlign: 'center' },
+                          item: { type: 'Container', direction: 'row',
+                            alignItems: 'center', justifyContent: 'center',
+                            items: [{ type: 'Text', text: '🎤  VOICE', color: '#8ab4f8',
+                              fontSize: '20dp', fontWeight: 'bold' }] },
                         },
                       },
                       {
@@ -579,8 +590,10 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                         item: {
                           type: 'Frame', backgroundColor: '#0d3030', borderRadius: 10,
                           paddingTop: '14dp', paddingBottom: '14dp',
-                          item: { type: 'Text', text: 'HISTORY', color: '#7ad4cc',
-                            fontSize: '20dp', fontWeight: 'bold', textAlign: 'center' },
+                          item: { type: 'Container', direction: 'row',
+                            alignItems: 'center', justifyContent: 'center',
+                            items: [{ type: 'Text', text: 'HISTORY', color: '#7ad4cc',
+                              fontSize: '20dp', fontWeight: 'bold' }] },
                         },
                       },
                       {
@@ -589,8 +602,10 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                         item: {
                           type: 'Frame', backgroundColor: '#1a0808', borderRadius: 10,
                           paddingTop: '14dp', paddingBottom: '14dp',
-                          item: { type: 'Text', text: 'QUIT', color: '#cc5555',
-                            fontSize: '20dp', fontWeight: 'bold', textAlign: 'center' },
+                          item: { type: 'Container', direction: 'row',
+                            alignItems: 'center', justifyContent: 'center',
+                            items: [{ type: 'Text', text: 'QUIT', color: '#cc5555',
+                              fontSize: '20dp', fontWeight: 'bold' }] },
                         },
                       },
                     ],
