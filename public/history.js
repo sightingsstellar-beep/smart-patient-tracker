@@ -247,7 +247,7 @@ function buildAddForm(dayKey) {
           ${optionHTML}
         </select>
         <div class="h-add-amount-wrap">
-          <input type="number" class="h-add-amount-input" name="amount" min="0.1" step="0.1" placeholder="Amount" />
+          <input type="number" class="h-add-amount-input" name="amount" min="0.1" step="0.1" placeholder="Amount" inputmode="decimal" />
           <span class="h-add-unit-label">ml</span>
         </div>
       </div>
