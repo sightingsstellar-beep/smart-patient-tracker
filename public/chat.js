@@ -499,29 +499,4 @@ micBtn.addEventListener('touchcancel', () => stopRecording(true));
 micBtn.addEventListener('contextmenu', (e) => e.preventDefault());
 
 // ---------------------------------------------------------------------------
-// Voice toggle button (header)
-// ---------------------------------------------------------------------------
-
-const voiceToggleBtn = document.getElementById('voice-toggle-btn');
-const voiceSection = document.getElementById('voice-section');
-let voiceEnabled = false;
-let micPreloaded = false;
-
-voiceToggleBtn.addEventListener('click', () => {
-  voiceEnabled = !voiceEnabled;
-  voiceToggleBtn.setAttribute('aria-pressed', String(voiceEnabled));
-  voiceToggleBtn.classList.toggle('active', voiceEnabled);
-
-  if (voiceEnabled) {
-    voiceSection.style.display = 'flex';
-    // Init mic on first enable so permission prompt fires from a user gesture
-    if (!micPreloaded) {
-      micPreloaded = true;
-      initMic();
-    }
-  } else {
-    voiceSection.style.display = 'none';
-    // If currently recording, abort cleanly
-    if (isRecording) stopRecording(true);
-  }
-});
+// Voice section is always visible on the chat page — no toggle needed.

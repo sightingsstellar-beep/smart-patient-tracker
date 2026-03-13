@@ -4,33 +4,6 @@
    ============================================================ */
 
 /* ============================================================
-   VOICE TOGGLE BUTTON (header)
-   ============================================================ */
-
-.voice-toggle-btn {
-  background: none;
-  border: none;
-  font-size: 1.25rem;
-  cursor: pointer;
-  padding: 4px 6px;
-  border-radius: 8px;
-  line-height: 1;
-  opacity: 0.5;
-  transition: opacity 0.2s, background 0.2s;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.voice-toggle-btn:hover {
-  opacity: 0.75;
-  background: rgba(0, 0, 0, 0.06);
-}
-
-.voice-toggle-btn.active {
-  opacity: 1;
-  background: rgba(26, 115, 232, 0.12);
-}
-
-/* ============================================================
    LAYOUT
    ============================================================ */
 
