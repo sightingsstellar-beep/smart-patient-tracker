@@ -344,7 +344,7 @@ function computeOutputByType(outputs) {
 // ── APL directive builder ─────────────────────────────────────────────────────
 // mode: 'display' = status view | 'input'/'output' = logging UI
 // intakeByType / outputByType only needed for display mode.
-function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, intakeByType, outputByType, allInputs, viewport) {
+function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, intakeByType, outputByType, allInputs, viewport, customDigits = '') {
   const pct     = Math.min(100, Math.round(((intakeMl || 0) / (limitMl || 1200)) * 100));
   const outMl   = outputMl || 0;
   const inColor = pct >= 90 ? '#e74c3c' : pct >= 75 ? '#f39c12' : '#4a9eff';
@@ -1018,14 +1018,131 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
   // Section label
   const sectionLabel = selectedFluid
     ? { type: 'Text',
-        text: `${FLUID_EMOJI[selectedFluid] || ''}  ${FLUID_LABELS[selectedFluid] || selectedFluid} — select amount:`,
+        text: `${FLUID_EMOJI[selectedFluid] || ''}  ${FLUID_LABELS[selectedFluid] || selectedFluid} — tap quick amount or enter custom below:`,
         color: FLUID_COLORS[selectedFluid]?.accent || '#4a9eff',
-        fontSize: '22dp', fontWeight: 'bold',
-        paddingLeft: '22dp', paddingBottom: '10dp', paddingTop: '4dp' }
+        fontSize: '20dp', fontWeight: 'bold',
+        paddingLeft: '22dp', paddingBottom: '8dp', paddingTop: '4dp' }
     : { type: 'Text',
         text: mode === 'output' ? 'Select output type:' : 'Select fluid type:',
         color: '#5a7aaa', fontSize: '20dp',
         paddingLeft: '22dp', paddingBottom: '10dp', paddingTop: '4dp' };
+
+  // ── Custom keypad (bottom half, shown when fluid is selected) ─────────────
+  function keypadDigitBtn(label, digit) {
+    return {
+      type: 'TouchWrapper', grow: 1, marginRight: '8dp',
+      onPress: { type: 'SendEvent', arguments: ['digit', digit, selectedFluid, mode] },
+      item: {
+        type: 'Frame', backgroundColor: '#1a2a40', borderRadius: 10,
+        alignSelf: 'stretch', width: '100%',
+        paddingTop: '12dp', paddingBottom: '12dp',
+        item: {
+          type: 'Text', text: label, color: 'white',
+          fontSize: '26dp', fontWeight: 'bold',
+          textAlign: 'center', textAlignVertical: 'center',
+          width: '100%',
+        },
+      },
+    };
+  }
+
+  const hasCustomDigits = customDigits && customDigits.length > 0;
+  const displayText  = hasCustomDigits ? `${customDigits} ml` : 'Enter custom amount';
+  const displayColor = hasCustomDigits ? 'white' : '#3a5a7a';
+
+  const keypadSection = showAmounts ? [
+    // Divider between quick-log and custom keypad
+    { type: 'Frame', backgroundColor: '#1a2a40', height: '2dp',
+      marginLeft: '20dp', marginRight: '20dp', marginTop: '6dp', marginBottom: '8dp' },
+    // Header + display row (side by side)
+    {
+      type: 'Container', direction: 'row', alignItems: 'center',
+      paddingLeft: '20dp', paddingRight: '20dp', marginBottom: '8dp',
+      items: [
+        {
+          type: 'Text', text: 'CUSTOM:', color: '#5a7aaa',
+          fontSize: '15dp', fontWeight: 'bold', marginRight: '12dp',
+        },
+        {
+          type: 'Frame', grow: 1,
+          backgroundColor: '#0a1520', borderRadius: 10,
+          borderWidth: '2dp', borderColor: hasCustomDigits ? '#2a6aaa' : '#1a2a3a',
+          paddingTop: '10dp', paddingBottom: '10dp',
+          paddingLeft: '18dp', paddingRight: '18dp',
+          item: {
+            type: 'Text', text: displayText, color: displayColor,
+            fontSize: '26dp', fontWeight: 'bold',
+          },
+        },
+      ],
+    },
+    // Keypad rows: 1-2-3 / 4-5-6 / 7-8-9 / ⌫-0-✓
+    {
+      type: 'Container', direction: 'row',
+      paddingLeft: '20dp', paddingRight: '20dp', marginBottom: '6dp',
+      items: [
+        keypadDigitBtn('1', '1'), keypadDigitBtn('2', '2'), keypadDigitBtn('3', '3'),
+        { type: 'Frame', width: '0dp', backgroundColor: 'transparent' }, // no trailing marginRight
+      ],
+    },
+    {
+      type: 'Container', direction: 'row',
+      paddingLeft: '20dp', paddingRight: '20dp', marginBottom: '6dp',
+      items: [
+        keypadDigitBtn('4', '4'), keypadDigitBtn('5', '5'), keypadDigitBtn('6', '6'),
+        { type: 'Frame', width: '0dp', backgroundColor: 'transparent' },
+      ],
+    },
+    {
+      type: 'Container', direction: 'row',
+      paddingLeft: '20dp', paddingRight: '20dp', marginBottom: '6dp',
+      items: [
+        keypadDigitBtn('7', '7'), keypadDigitBtn('8', '8'), keypadDigitBtn('9', '9'),
+        { type: 'Frame', width: '0dp', backgroundColor: 'transparent' },
+      ],
+    },
+    {
+      type: 'Container', direction: 'row',
+      paddingLeft: '20dp', paddingRight: '20dp', marginBottom: '6dp',
+      items: [
+        // Backspace
+        {
+          type: 'TouchWrapper', grow: 1, marginRight: '8dp',
+          onPress: { type: 'SendEvent', arguments: ['backspace', selectedFluid, mode] },
+          item: {
+            type: 'Frame', backgroundColor: '#2a1a10', borderRadius: 10,
+            alignSelf: 'stretch', width: '100%',
+            paddingTop: '12dp', paddingBottom: '12dp',
+            item: {
+              type: 'Text', text: '⌫', color: '#ff8866',
+              fontSize: '26dp', fontWeight: 'bold',
+              textAlign: 'center', textAlignVertical: 'center', width: '100%',
+            },
+          },
+        },
+        // 0
+        keypadDigitBtn('0', '0'),
+        // Log button
+        {
+          type: 'TouchWrapper', grow: 1, marginRight: '8dp',
+          onPress: { type: 'SendEvent', arguments: ['custom_log', selectedFluid, mode] },
+          item: {
+            type: 'Frame',
+            backgroundColor: hasCustomDigits ? '#0f5028' : '#0a1a14',
+            borderRadius: 10,
+            alignSelf: 'stretch', width: '100%',
+            paddingTop: '12dp', paddingBottom: '12dp',
+            item: {
+              type: 'Text', text: '✓ Log', color: hasCustomDigits ? '#7adaaa' : '#2a4a38',
+              fontSize: '22dp', fontWeight: 'bold',
+              textAlign: 'center', textAlignVertical: 'center', width: '100%',
+            },
+          },
+        },
+        { type: 'Frame', width: '0dp', backgroundColor: 'transparent' },
+      ],
+    },
+  ] : [];
 
   return {
     type: 'Alexa.Presentation.APL.RenderDocument',
@@ -1064,6 +1181,8 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
             ...amountGridRows,
             // ── Gag button ────────────────────────────────────────────────
             ...gagRow,
+            // ── Custom keypad (bottom half, shown when fluid selected) ────
+            ...keypadSection,
           ],
         }],
       },
@@ -1152,9 +1271,12 @@ app.post('/api/alexa', async (req, res) => {
         const summary = db.getDaySummary(db.getDayKey());
         const limit   = getDailyLimit();
         const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
-        const apl = buildAplDirective(summary.totalIntake, limit, newMode, null, outputMl);
+        // Clear customDigits on mode switch
+        const apl = buildAplDirective(summary.totalIntake, limit, newMode, null, outputMl, null, null, null, null, '');
         return res.json(alexaResponse('', null, null,
-          supportsApl(req) ? [apl] : []));
+          supportsApl(req) ? [apl] : [],
+          { customDigits: '' }
+        ));
       }
 
       if (action === 'select') {
@@ -1163,12 +1285,92 @@ app.post('/api/alexa', async (req, res) => {
         const summary  = db.getDaySummary(db.getDayKey());
         const limit    = getDailyLimit();
         const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
-        const apl = buildAplDirective(summary.totalIntake, limit, mode, fluid, outputMl);
+        // Clear customDigits on new fluid selection
+        const apl = buildAplDirective(summary.totalIntake, limit, mode, fluid, outputMl, null, null, null, null, '');
         // Mic stays closed — amount is selected via touch buttons
         return res.json(alexaResponse('', null, null,
           supportsApl(req) ? [apl] : [],
-          { pendingFluid: fluid, pendingMode: mode }
+          { pendingFluid: fluid, pendingMode: mode, customDigits: '' }
         ));
+      }
+
+      // ── Custom keypad: digit pressed ──────────────────────────────────────
+      if (action === 'digit') {
+        const digit       = String(args[1] || '');
+        const fluid       = args[2];
+        const mode        = args[3] || 'input';
+        const sessionAttrs = req.body?.session?.attributes || {};
+        const current     = sessionAttrs.customDigits || '';
+        // Max 4 digits (9999 ml is a reasonable upper bound)
+        const newDigits   = current.length < 4 ? current + digit : current;
+        const summary  = db.getDaySummary(db.getDayKey());
+        const limit    = getDailyLimit();
+        const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
+        const apl = buildAplDirective(summary.totalIntake, limit, mode, fluid, outputMl, null, null, null, null, newDigits);
+        return res.json(alexaResponse('', null, null,
+          supportsApl(req) ? [apl] : [],
+          { pendingFluid: fluid, pendingMode: mode, customDigits: newDigits }
+        ));
+      }
+
+      // ── Custom keypad: backspace ───────────────────────────────────────────
+      if (action === 'backspace') {
+        const fluid       = args[1];
+        const mode        = args[2] || 'input';
+        const sessionAttrs = req.body?.session?.attributes || {};
+        const current     = sessionAttrs.customDigits || '';
+        const newDigits   = current.slice(0, -1);
+        const summary  = db.getDaySummary(db.getDayKey());
+        const limit    = getDailyLimit();
+        const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
+        const apl = buildAplDirective(summary.totalIntake, limit, mode, fluid, outputMl, null, null, null, null, newDigits);
+        return res.json(alexaResponse('', null, null,
+          supportsApl(req) ? [apl] : [],
+          { pendingFluid: fluid, pendingMode: mode, customDigits: newDigits }
+        ));
+      }
+
+      // ── Custom keypad: log custom amount ──────────────────────────────────
+      if (action === 'custom_log') {
+        const fluid       = args[1];
+        const mode        = args[2] || 'input';
+        const sessionAttrs = req.body?.session?.attributes || {};
+        const digits      = sessionAttrs.customDigits || '';
+        const amount      = parseInt(digits, 10);
+
+        if (!fluid || fluid === 'null' || fluid === 'undefined') {
+          const summary  = db.getDaySummary(db.getDayKey());
+          const limit    = getDailyLimit();
+          const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
+          const apl = buildAplDirective(summary.totalIntake, limit, mode, null, outputMl, null, null, null, null, '');
+          return res.json(alexaResponse('Please select a fluid type first.',
+            null, null, supportsApl(req) ? [apl] : [],
+            { customDigits: '' }
+          ));
+        }
+
+        if (!amount || amount <= 0 || amount > 9999) {
+          const summary  = db.getDaySummary(db.getDayKey());
+          const limit    = getDailyLimit();
+          const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
+          const apl = buildAplDirective(summary.totalIntake, limit, mode, fluid, outputMl, null, null, null, null, digits);
+          return res.json(alexaResponse('Enter a valid amount using the keypad.',
+            null, null, supportsApl(req) ? [apl] : [],
+            { pendingFluid: fluid, pendingMode: mode, customDigits: digits }
+          ));
+        }
+
+        db.logEntry({
+          timestamp: Date.now(), day_key: db.getDayKey(),
+          entry_type: mode === 'output' ? 'output' : 'input',
+          fluid_type: fluid, amount_ml: amount, source: 'alexa',
+        });
+
+        const apl    = freshDisplayApl();
+        const s2     = db.getDaySummary(db.getDayKey());
+        const speech = buildAlexaSpeech(s2);
+        return res.json(alexaResponse(speech, null, null,
+          supportsApl(req) ? [apl] : []));
       }
 
       if (action === 'gag') {
