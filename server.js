@@ -1066,7 +1066,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
   // Buttons use alignSelf:stretch → fill row height (no fixed padding needed).
   // Total layout: (column height − 3×16dp spacing) / 4 per row, buttons fill each row.
 
-  const KP_GAP = '16dp'; // spacingXSmall from Alexa design system
+  const KP_GAP = '10dp'; // slightly tighter than spacingXSmall — still clearly distinct
 
   // Digit button — grow:1 fills row width equally. spacing on non-first buttons.
   // alignSelf:stretch fills the row height set by the parent's grow:1.
@@ -1216,8 +1216,8 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                 ...amountRows.map((row, ri) => ({
                   type: 'Container', direction: 'row',
                   paddingLeft: '20dp', paddingRight: '20dp',
-                  marginBottom: ri < amountRows.length - 1 ? '5dp' : '0dp',
-                  items: row.map((a, i) => compactAmountTile(a, selectedFluid, mode, i === row.length - 1)),
+                  ...(ri > 0 ? { spacing: '8dp' } : {}),
+                  items: row.map((a, i) => compactAmountTile(a, selectedFluid, mode, i === 0)),
                 })),
                 // ── Compact gag button (input mode only) ─────────────────
                 ...(mode === 'input' ? [{
