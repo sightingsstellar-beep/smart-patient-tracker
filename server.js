@@ -1028,17 +1028,23 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
         paddingLeft: '22dp', paddingBottom: '10dp', paddingTop: '4dp' };
 
   // ── Custom keypad (bottom half, shown when fluid is selected) ─────────────
+  // Per APL docs: Container does not scroll — content that exceeds available
+  // height is clipped. Keypad buttons use white-on-dark styling for clarity,
+  // with sufficient padding/margin to be clearly distinct and tap-friendly.
+
   function keypadDigitBtn(label, digit) {
     return {
-      type: 'TouchWrapper', grow: 1, marginRight: '8dp',
+      type: 'TouchWrapper', grow: 1, marginRight: '10dp',
       onPress: { type: 'SendEvent', arguments: ['digit', digit, selectedFluid, mode] },
       item: {
-        type: 'Frame', backgroundColor: '#1a2a40', borderRadius: 10,
+        type: 'Frame',
+        backgroundColor: 'white',
+        borderRadius: 14,
         alignSelf: 'stretch', width: '100%',
-        paddingTop: '12dp', paddingBottom: '12dp',
+        paddingTop: '14dp', paddingBottom: '14dp',
         item: {
-          type: 'Text', text: label, color: 'white',
-          fontSize: '26dp', fontWeight: 'bold',
+          type: 'Text', text: label, color: '#111111',
+          fontSize: '28dp', fontWeight: 'bold',
           textAlign: 'center', textAlignVertical: 'center',
           width: '100%',
         },
@@ -1047,99 +1053,144 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
   }
 
   const hasCustomDigits = customDigits && customDigits.length > 0;
-  const displayText  = hasCustomDigits ? `${customDigits} ml` : 'Enter custom amount';
-  const displayColor = hasCustomDigits ? 'white' : '#3a5a7a';
+  const displayText  = hasCustomDigits ? `${customDigits} ml` : 'Enter amount';
+  const displayColor = hasCustomDigits ? '#111111' : '#888888';
 
   const keypadSection = showAmounts ? [
-    // Divider between quick-log and custom keypad
-    { type: 'Frame', backgroundColor: '#1a2a40', height: '2dp',
-      marginLeft: '20dp', marginRight: '20dp', marginTop: '6dp', marginBottom: '8dp' },
-    // Header + display row (side by side)
+    // Divider between quick-log tiles and custom keypad
+    { type: 'Frame', backgroundColor: '#c0ccd8', height: '1dp',
+      marginLeft: '20dp', marginRight: '20dp', marginTop: '8dp', marginBottom: '10dp' },
+    // Display box — full width, shows accumulated digits
     {
-      type: 'Container', direction: 'row', alignItems: 'center',
+      type: 'Frame', grow: 0,
+      backgroundColor: 'white', borderRadius: 12,
+      borderWidth: '1dp', borderColor: hasCustomDigits ? '#2a7aff' : '#cccccc',
+      paddingTop: '10dp', paddingBottom: '10dp',
+      paddingLeft: '20dp', paddingRight: '20dp',
+      marginLeft: '20dp', marginRight: '20dp', marginBottom: '10dp',
+      item: {
+        type: 'Container', direction: 'row', alignItems: 'center',
+        items: [
+          {
+            type: 'Text', text: 'Custom:', color: '#888888',
+            fontSize: '15dp', fontWeight: 'bold', marginRight: '10dp',
+          },
+          {
+            type: 'Text', text: displayText, color: displayColor,
+            fontSize: '28dp', fontWeight: 'bold', grow: 1,
+          },
+        ],
+      },
+    },
+    // Row 1: 1 2 3
+    {
+      type: 'Container', direction: 'row',
       paddingLeft: '20dp', paddingRight: '20dp', marginBottom: '8dp',
       items: [
+        keypadDigitBtn('1', '1'), keypadDigitBtn('2', '2'),
+        // Last button in row — no trailing marginRight
         {
-          type: 'Text', text: 'CUSTOM:', color: '#5a7aaa',
-          fontSize: '15dp', fontWeight: 'bold', marginRight: '12dp',
-        },
-        {
-          type: 'Frame', grow: 1,
-          backgroundColor: '#0a1520', borderRadius: 10,
-          borderWidth: '2dp', borderColor: hasCustomDigits ? '#2a6aaa' : '#1a2a3a',
-          paddingTop: '10dp', paddingBottom: '10dp',
-          paddingLeft: '18dp', paddingRight: '18dp',
+          type: 'TouchWrapper', grow: 1,
+          onPress: { type: 'SendEvent', arguments: ['digit', '3', selectedFluid, mode] },
           item: {
-            type: 'Text', text: displayText, color: displayColor,
-            fontSize: '26dp', fontWeight: 'bold',
+            type: 'Frame', backgroundColor: 'white', borderRadius: 14,
+            alignSelf: 'stretch', width: '100%',
+            paddingTop: '14dp', paddingBottom: '14dp',
+            item: {
+              type: 'Text', text: '3', color: '#111111',
+              fontSize: '28dp', fontWeight: 'bold',
+              textAlign: 'center', textAlignVertical: 'center', width: '100%',
+            },
           },
         },
       ],
     },
-    // Keypad rows: 1-2-3 / 4-5-6 / 7-8-9 / ⌫-0-✓
+    // Row 2: 4 5 6
     {
       type: 'Container', direction: 'row',
-      paddingLeft: '20dp', paddingRight: '20dp', marginBottom: '6dp',
+      paddingLeft: '20dp', paddingRight: '20dp', marginBottom: '8dp',
       items: [
-        keypadDigitBtn('1', '1'), keypadDigitBtn('2', '2'), keypadDigitBtn('3', '3'),
-        { type: 'Frame', width: '0dp', backgroundColor: 'transparent' }, // no trailing marginRight
-      ],
-    },
-    {
-      type: 'Container', direction: 'row',
-      paddingLeft: '20dp', paddingRight: '20dp', marginBottom: '6dp',
-      items: [
-        keypadDigitBtn('4', '4'), keypadDigitBtn('5', '5'), keypadDigitBtn('6', '6'),
-        { type: 'Frame', width: '0dp', backgroundColor: 'transparent' },
-      ],
-    },
-    {
-      type: 'Container', direction: 'row',
-      paddingLeft: '20dp', paddingRight: '20dp', marginBottom: '6dp',
-      items: [
-        keypadDigitBtn('7', '7'), keypadDigitBtn('8', '8'), keypadDigitBtn('9', '9'),
-        { type: 'Frame', width: '0dp', backgroundColor: 'transparent' },
-      ],
-    },
-    {
-      type: 'Container', direction: 'row',
-      paddingLeft: '20dp', paddingRight: '20dp', marginBottom: '6dp',
-      items: [
-        // Backspace
+        keypadDigitBtn('4', '4'), keypadDigitBtn('5', '5'),
         {
-          type: 'TouchWrapper', grow: 1, marginRight: '8dp',
+          type: 'TouchWrapper', grow: 1,
+          onPress: { type: 'SendEvent', arguments: ['digit', '6', selectedFluid, mode] },
+          item: {
+            type: 'Frame', backgroundColor: 'white', borderRadius: 14,
+            alignSelf: 'stretch', width: '100%',
+            paddingTop: '14dp', paddingBottom: '14dp',
+            item: {
+              type: 'Text', text: '6', color: '#111111',
+              fontSize: '28dp', fontWeight: 'bold',
+              textAlign: 'center', textAlignVertical: 'center', width: '100%',
+            },
+          },
+        },
+      ],
+    },
+    // Row 3: 7 8 9
+    {
+      type: 'Container', direction: 'row',
+      paddingLeft: '20dp', paddingRight: '20dp', marginBottom: '8dp',
+      items: [
+        keypadDigitBtn('7', '7'), keypadDigitBtn('8', '8'),
+        {
+          type: 'TouchWrapper', grow: 1,
+          onPress: { type: 'SendEvent', arguments: ['digit', '9', selectedFluid, mode] },
+          item: {
+            type: 'Frame', backgroundColor: 'white', borderRadius: 14,
+            alignSelf: 'stretch', width: '100%',
+            paddingTop: '14dp', paddingBottom: '14dp',
+            item: {
+              type: 'Text', text: '9', color: '#111111',
+              fontSize: '28dp', fontWeight: 'bold',
+              textAlign: 'center', textAlignVertical: 'center', width: '100%',
+            },
+          },
+        },
+      ],
+    },
+    // Row 4: ⌫  0  ✓ Log
+    {
+      type: 'Container', direction: 'row',
+      paddingLeft: '20dp', paddingRight: '20dp', marginBottom: '10dp',
+      items: [
+        // Backspace — light warm background, red text
+        {
+          type: 'TouchWrapper', grow: 1, marginRight: '10dp',
           onPress: { type: 'SendEvent', arguments: ['backspace', selectedFluid, mode] },
           item: {
-            type: 'Frame', backgroundColor: '#2a1a10', borderRadius: 10,
+            type: 'Frame', backgroundColor: '#fff0ed', borderRadius: 14,
+            borderWidth: '1dp', borderColor: '#ffccbc',
             alignSelf: 'stretch', width: '100%',
-            paddingTop: '12dp', paddingBottom: '12dp',
+            paddingTop: '14dp', paddingBottom: '14dp',
             item: {
-              type: 'Text', text: '⌫', color: '#ff8866',
+              type: 'Text', text: '⌫', color: '#cc3300',
               fontSize: '26dp', fontWeight: 'bold',
               textAlign: 'center', textAlignVertical: 'center', width: '100%',
             },
           },
         },
-        // 0
+        // 0 — same white as digit keys
         keypadDigitBtn('0', '0'),
-        // Log button
+        // ✓ Log — green when active, greyed out when empty
         {
-          type: 'TouchWrapper', grow: 1, marginRight: '8dp',
+          type: 'TouchWrapper', grow: 1,
           onPress: { type: 'SendEvent', arguments: ['custom_log', selectedFluid, mode] },
           item: {
             type: 'Frame',
-            backgroundColor: hasCustomDigits ? '#0f5028' : '#0a1a14',
-            borderRadius: 10,
+            backgroundColor: hasCustomDigits ? '#1a7a40' : '#e8e8e8',
+            borderRadius: 14,
             alignSelf: 'stretch', width: '100%',
-            paddingTop: '12dp', paddingBottom: '12dp',
+            paddingTop: '14dp', paddingBottom: '14dp',
             item: {
-              type: 'Text', text: '✓ Log', color: hasCustomDigits ? '#7adaaa' : '#2a4a38',
+              type: 'Text',
+              text: '✓ Log',
+              color: hasCustomDigits ? 'white' : '#aaaaaa',
               fontSize: '22dp', fontWeight: 'bold',
               textAlign: 'center', textAlignVertical: 'center', width: '100%',
             },
           },
         },
-        { type: 'Frame', width: '0dp', backgroundColor: 'transparent' },
       ],
     },
   ] : [];
@@ -1173,16 +1224,27 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
               ],
             },
             { type: 'Frame', backgroundColor: '#0a1830', height: '2dp' },
-            // ── Section label ─────────────────────────────────────────────
-            sectionLabel,
-            // ── Fluid grid (hidden when amount picking) ───────────────────
-            ...( showAmounts ? [] : fluidGridRows ),
-            // ── Amount grid (shown after fluid selected) ──────────────────
-            ...amountGridRows,
-            // ── Gag button ────────────────────────────────────────────────
-            ...gagRow,
-            // ── Custom keypad (bottom half, shown when fluid selected) ────
-            ...keypadSection,
+            // ── Scrollable body — per APL docs, Container does not scroll;
+            //    ScrollView (grow:1) fills remaining height and prevents
+            //    content from being clipped on any screen size. ────────────
+            {
+              type: 'ScrollView', grow: 1,
+              item: {
+                type: 'Container', direction: 'column',
+                items: [
+                  // Section label
+                  sectionLabel,
+                  // Fluid grid (hidden when amount picking)
+                  ...( showAmounts ? [] : fluidGridRows ),
+                  // Amount grid (shown after fluid selected)
+                  ...amountGridRows,
+                  // Gag button
+                  ...gagRow,
+                  // Custom keypad (bottom half, shown when fluid selected)
+                  ...keypadSection,
+                ],
+              },
+            },
           ],
         }],
       },
