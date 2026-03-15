@@ -1112,13 +1112,15 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
     },
   };
 
-  // 4 keypad rows (no marginBottom — spacing handled by justifyContent spaceBetween)
+  // 4 keypad rows — 10dp marginBottom on rows 1-3 matches the 10dp horizontal
+  // gap between buttons, giving equal spacing in both axes. Row 4 has no
+  // bottom margin (paddingBottom on parent handles screen clearance).
   const keypadRows = [
-    { type: 'Container', direction: 'row',
+    { type: 'Container', direction: 'row', marginBottom: '10dp',
       items: [kBtn('1','1',false), kBtn('2','2',false), kBtn('3','3',true)] },
-    { type: 'Container', direction: 'row',
+    { type: 'Container', direction: 'row', marginBottom: '10dp',
       items: [kBtn('4','4',false), kBtn('5','5',false), kBtn('6','6',true)] },
-    { type: 'Container', direction: 'row',
+    { type: 'Container', direction: 'row', marginBottom: '10dp',
       items: [kBtn('7','7',false), kBtn('8','8',false), kBtn('9','9',true)] },
     { type: 'Container', direction: 'row',
       items: [
@@ -1241,12 +1243,11 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                   items: [
                     // Display box (fixed height at top of keypad section)
                     keypadDisplayBox,
-                    // 4 keypad rows: spaceBetween distributes vertical space
-                    // evenly between rows on any screen size — no marginBottom
-                    // on rows; the parent grow:1 + spaceBetween handles it.
+                    // 4 keypad rows: fixed 10dp gap between rows (matches
+                    // the 10dp horizontal gap between buttons). grow:1 means
+                    // any leftover space goes below the last row.
                     {
                       type: 'Container', grow: 1, direction: 'column',
-                      justifyContent: 'spaceBetween',
                       items: keypadRows,
                     },
                   ],
