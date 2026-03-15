@@ -1066,30 +1066,35 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
   // Buttons use alignSelf:stretch → fill row height (no fixed padding needed).
   // Total layout: (column height − 3×16dp spacing) / 4 per row, buttons fill each row.
 
-  // Separate gap values: same dp value looks proportionally larger vertically
-  // because grow:1 rows are taller (landscape screen) than grow:1 buttons are wide.
-  // Smaller vertical gap compensates so both axes look visually balanced.
-  const KP_HGAP = '10dp'; // horizontal gap between buttons in a row
-  const KP_VGAP = '6dp';  // vertical gap between rows
+  // Gap constants — same value both axes for true equal spacing.
+  // Rows are NOT grow:1 (natural height from paddingTop/Bottom on Frame),
+  // so the vertical gap is a real equal fraction of button height.
+  const KP_GAP = '10dp';
 
-  // Digit button.
-  // IMPORTANT: no width:'100%' on the Frame — percentage widths inside a
-  // grow:1 TouchWrapper resolve against the row container (grandparent), not
-  // the TouchWrapper, because the TouchWrapper has no explicit width.
-  // Removing it lets the Frame fill the TouchWrapper naturally.
-  // alignSelf:stretch fills the row height set by the parent's grow:1.
+  // Official APL button pattern (per Frame docs + community examples):
+  //   Frame docs: "Include height and width in your Frame definition."
+  //   Community pattern: Frame(width:100%, paddingTop/Bottom) →
+  //     Container(width:100%, justifyContent:center, alignItems:center) → Text
+  //
+  // paddingTop/paddingBottom define the button height explicitly.
+  // width:'100%' on Frame resolves against the TouchWrapper's width,
+  // which is well-defined from grow:1 in the row container.
+  // Inner Container centers the label in both axes.
   function kBtn(label, digit, isFirst) {
     return {
       type: 'TouchWrapper', grow: 1,
-      ...(isFirst ? {} : { spacing: KP_HGAP }),
+      ...(isFirst ? {} : { spacing: KP_GAP }),
       onPress: { type: 'SendEvent', arguments: ['digit', digit, selectedFluid, mode] },
       item: {
         type: 'Frame', backgroundColor: 'white', borderRadius: 12,
-        alignSelf: 'stretch',
+        width: '100%', paddingTop: '16dp', paddingBottom: '16dp',
         item: {
-          type: 'Text', text: label, color: '#111111',
-          fontSize: '28dp', fontWeight: 'bold',
-          textAlign: 'center', textAlignVertical: 'center',
+          type: 'Container', direction: 'column',
+          alignItems: 'center', justifyContent: 'center',
+          item: {
+            type: 'Text', text: label, color: '#111111',
+            fontSize: '28dp', fontWeight: 'bold', textAlign: 'center',
+          },
         },
       },
     };
@@ -1113,62 +1118,62 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
     },
   };
 
-  // 4 rows — each has grow:1 (rows share column height equally).
-  // Rows 2-4 use spacing:KP_VGAP (6dp vertical gap).
-  // Buttons within each row use spacing:KP_HGAP (10dp horizontal gap) on non-first.
-  // No width:'100%' on any Frame — see kBtn comment above.
+  // 4 rows — natural height from Frame paddingTop/Bottom (no grow:1 on rows).
+  // spacing:KP_GAP between rows = same as between buttons → equal gaps both axes.
+  // All Frames use width:'100%' + paddingTop/Bottom (official APL pattern).
   const keypadRows = [
     {
-      type: 'Container', direction: 'row', grow: 1,
-      items: [
-        kBtn('1', '1', true), kBtn('2', '2', false), kBtn('3', '3', false),
-      ],
+      type: 'Container', direction: 'row',
+      items: [ kBtn('1','1',true), kBtn('2','2',false), kBtn('3','3',false) ],
     },
     {
-      type: 'Container', direction: 'row', grow: 1, spacing: KP_VGAP,
-      items: [
-        kBtn('4', '4', true), kBtn('5', '5', false), kBtn('6', '6', false),
-      ],
+      type: 'Container', direction: 'row', spacing: KP_GAP,
+      items: [ kBtn('4','4',true), kBtn('5','5',false), kBtn('6','6',false) ],
     },
     {
-      type: 'Container', direction: 'row', grow: 1, spacing: KP_VGAP,
-      items: [
-        kBtn('7', '7', true), kBtn('8', '8', false), kBtn('9', '9', false),
-      ],
+      type: 'Container', direction: 'row', spacing: KP_GAP,
+      items: [ kBtn('7','7',true), kBtn('8','8',false), kBtn('9','9',false) ],
     },
     {
-      type: 'Container', direction: 'row', grow: 1, spacing: KP_VGAP,
+      type: 'Container', direction: 'row', spacing: KP_GAP,
       items: [
-        // ⌫ backspace — first in row, no spacing; no width:'100%' on Frame
+        // ⌫ backspace — first in row, no spacing
         {
           type: 'TouchWrapper', grow: 1,
           onPress: { type: 'SendEvent', arguments: ['backspace', selectedFluid, mode] },
           item: {
             type: 'Frame', backgroundColor: '#fff0ed', borderRadius: 12,
             borderWidth: '1dp', borderColor: '#ffccbc',
-            alignSelf: 'stretch',
+            width: '100%', paddingTop: '16dp', paddingBottom: '16dp',
             item: {
-              type: 'Text', text: '⌫', color: '#cc3300',
-              fontSize: '26dp', fontWeight: 'bold',
-              textAlign: 'center', textAlignVertical: 'center',
+              type: 'Container', direction: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              item: {
+                type: 'Text', text: '⌫', color: '#cc3300',
+                fontSize: '26dp', fontWeight: 'bold', textAlign: 'center',
+              },
             },
           },
         },
-        // 0 — spacing:KP_HGAP (second in row)
+        // 0 — spacing:KP_GAP
         kBtn('0', '0', false),
-        // ✓ Log — spacing:KP_HGAP (third in row); no width:'100%' on Frame
+        // ✓ Log — spacing:KP_GAP
         {
-          type: 'TouchWrapper', grow: 1, spacing: KP_HGAP,
+          type: 'TouchWrapper', grow: 1, spacing: KP_GAP,
           onPress: { type: 'SendEvent', arguments: ['custom_log', selectedFluid, mode] },
           item: {
             type: 'Frame',
             backgroundColor: hasCustomDigits ? '#1a7a40' : '#e8e8e8',
-            borderRadius: 12, alignSelf: 'stretch',
+            borderRadius: 12,
+            width: '100%', paddingTop: '16dp', paddingBottom: '16dp',
             item: {
-              type: 'Text', text: '✓ Log',
-              color: hasCustomDigits ? 'white' : '#aaaaaa',
-              fontSize: '22dp', fontWeight: 'bold',
-              textAlign: 'center', textAlignVertical: 'center',
+              type: 'Container', direction: 'column',
+              alignItems: 'center', justifyContent: 'center',
+              item: {
+                type: 'Text', text: '✓ Log',
+                color: hasCustomDigits ? 'white' : '#aaaaaa',
+                fontSize: '22dp', fontWeight: 'bold', textAlign: 'center',
+              },
             },
           },
         },
@@ -1263,10 +1268,11 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                     // grow:1 on each row → rows divide column height equally.
                     // Vertical gap (spacing on rows) = horizontal gap (spacing
                     // on buttons) = 16dp (Alexa spacingXSmall). Equal both axes.
-                    // spacing:KP_VGAP here = gap between display box and row 1.
+                    // Rows at natural height (padding defines button height).
+                    // spacing:KP_GAP = gap between display box and row 1.
                     {
-                      type: 'Container', grow: 1, direction: 'column',
-                      spacing: KP_VGAP,
+                      type: 'Container', direction: 'column',
+                      spacing: KP_GAP,
                       items: keypadRows,
                     },
                   ],
