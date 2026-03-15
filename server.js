@@ -1076,13 +1076,17 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
     };
   }
 
-  // Helper: build a keypad digit button (no trailing marginRight on last)
+  // Helper: build a keypad digit button.
+  // Rows have grow:1 → rows share parent height equally.
+  // alignSelf:stretch on Frame → fills row height minus row's paddingBottom.
+  // The paddingBottom on the row (not here) creates the inter-row gap.
+  // marginRight here creates the inter-column gap (same value as paddingBottom).
   function kBtn(label, digit, isLast) {
     return {
-      type: 'TouchWrapper', grow: 1, marginRight: isLast ? '0dp' : '10dp',
+      type: 'TouchWrapper', grow: 1, marginRight: isLast ? '0dp' : '8dp',
       onPress: { type: 'SendEvent', arguments: ['digit', digit, selectedFluid, mode] },
       item: {
-        type: 'Frame', backgroundColor: 'white', borderRadius: 14,
+        type: 'Frame', backgroundColor: 'white', borderRadius: 12,
         alignSelf: 'stretch', width: '100%',
         item: {
           type: 'Text', text: label, color: '#111111',
@@ -1112,24 +1116,25 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
     },
   };
 
-  // 4 keypad rows — 10dp marginBottom on rows 1-3 matches the 10dp horizontal
-  // gap between buttons, giving equal spacing in both axes. Row 4 has no
-  // bottom margin (paddingBottom on parent handles screen clearance).
+  // 4 keypad rows — each has grow:1 so all rows share the column height equally.
+  // paddingBottom:8dp on rows 1-3 = inter-row gap (dark background shows through
+  // the row's internal padding). marginRight:8dp between buttons = inter-column gap.
+  // Both gaps are 8dp → equal horizontal and vertical spacing on any screen size.
   const keypadRows = [
-    { type: 'Container', direction: 'row', marginBottom: '10dp',
+    { type: 'Container', direction: 'row', grow: 1, paddingBottom: '8dp',
       items: [kBtn('1','1',false), kBtn('2','2',false), kBtn('3','3',true)] },
-    { type: 'Container', direction: 'row', marginBottom: '10dp',
+    { type: 'Container', direction: 'row', grow: 1, paddingBottom: '8dp',
       items: [kBtn('4','4',false), kBtn('5','5',false), kBtn('6','6',true)] },
-    { type: 'Container', direction: 'row', marginBottom: '10dp',
+    { type: 'Container', direction: 'row', grow: 1, paddingBottom: '8dp',
       items: [kBtn('7','7',false), kBtn('8','8',false), kBtn('9','9',true)] },
-    { type: 'Container', direction: 'row',
+    { type: 'Container', direction: 'row', grow: 1,
       items: [
         // ⌫ backspace
         {
-          type: 'TouchWrapper', grow: 1, marginRight: '10dp',
+          type: 'TouchWrapper', grow: 1, marginRight: '8dp',
           onPress: { type: 'SendEvent', arguments: ['backspace', selectedFluid, mode] },
           item: {
-            type: 'Frame', backgroundColor: '#fff0ed', borderRadius: 14,
+            type: 'Frame', backgroundColor: '#fff0ed', borderRadius: 12,
             borderWidth: '1dp', borderColor: '#ffccbc',
             alignSelf: 'stretch', width: '100%',
             item: {
@@ -1148,7 +1153,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
           item: {
             type: 'Frame',
             backgroundColor: hasCustomDigits ? '#1a7a40' : '#e8e8e8',
-            borderRadius: 14,
+            borderRadius: 12,
             alignSelf: 'stretch', width: '100%',
             item: {
               type: 'Text', text: '✓ Log',
@@ -1243,9 +1248,10 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                   items: [
                     // Display box (fixed height at top of keypad section)
                     keypadDisplayBox,
-                    // 4 keypad rows: fixed 10dp gap between rows (matches
-                    // the 10dp horizontal gap between buttons). grow:1 means
-                    // any leftover space goes below the last row.
+                    // Rows container: grow:1 fills remaining space.
+                    // Each row has grow:1 → 4 rows share height equally.
+                    // paddingBottom on rows 1-3 → inter-row gap (same as
+                    // marginRight between buttons → equal spacing both axes).
                     {
                       type: 'Container', grow: 1, direction: 'column',
                       items: keypadRows,
