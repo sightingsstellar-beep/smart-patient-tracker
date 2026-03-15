@@ -1089,12 +1089,9 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
         type: 'Frame', backgroundColor: 'white', borderRadius: 12,
         width: '100%', paddingTop: '8dp', paddingBottom: '8dp',
         item: {
-          type: 'Container', direction: 'column',
-          alignItems: 'center', justifyContent: 'center',
-          item: {
-            type: 'Text', text: label, color: '#111111',
-            fontSize: '28dp', fontWeight: 'bold', textAlign: 'center',
-          },
+          type: 'Text', text: label, color: '#111111',
+          fontSize: '28dp', fontWeight: 'bold',
+          width: '100%', textAlign: 'center', textAlignVertical: 'center',
         },
       },
     };
@@ -1146,12 +1143,9 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
             borderWidth: '1dp', borderColor: '#ffccbc',
             width: '100%', paddingTop: '8dp', paddingBottom: '8dp',
             item: {
-              type: 'Container', direction: 'column',
-              alignItems: 'center', justifyContent: 'center',
-              item: {
-                type: 'Text', text: '⌫', color: '#cc3300',
-                fontSize: '26dp', fontWeight: 'bold', textAlign: 'center',
-              },
+              type: 'Text', text: '⌫', color: '#cc3300',
+              fontSize: '26dp', fontWeight: 'bold',
+              width: '100%', textAlign: 'center', textAlignVertical: 'center',
             },
           },
         },
@@ -1167,13 +1161,10 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
             borderRadius: 12,
             width: '100%', paddingTop: '8dp', paddingBottom: '8dp',
             item: {
-              type: 'Container', direction: 'column',
-              alignItems: 'center', justifyContent: 'center',
-              item: {
-                type: 'Text', text: '✓ Log',
-                color: hasCustomDigits ? 'white' : '#aaaaaa',
-                fontSize: '22dp', fontWeight: 'bold', textAlign: 'center',
-              },
+              type: 'Text', text: '✓ Log',
+              color: hasCustomDigits ? 'white' : '#aaaaaa',
+              fontSize: '22dp', fontWeight: 'bold',
+              width: '100%', textAlign: 'center', textAlignVertical: 'center',
             },
           },
         },
