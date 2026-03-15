@@ -1087,7 +1087,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
       onPress: { type: 'SendEvent', arguments: ['digit', digit, selectedFluid, mode] },
       item: {
         type: 'Frame', backgroundColor: 'white', borderRadius: 12,
-        width: '100%', paddingTop: '16dp', paddingBottom: '16dp',
+        width: '100%', paddingTop: '8dp', paddingBottom: '8dp',
         item: {
           type: 'Container', direction: 'column',
           alignItems: 'center', justifyContent: 'center',
@@ -1144,7 +1144,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
           item: {
             type: 'Frame', backgroundColor: '#fff0ed', borderRadius: 12,
             borderWidth: '1dp', borderColor: '#ffccbc',
-            width: '100%', paddingTop: '16dp', paddingBottom: '16dp',
+            width: '100%', paddingTop: '8dp', paddingBottom: '8dp',
             item: {
               type: 'Container', direction: 'column',
               alignItems: 'center', justifyContent: 'center',
@@ -1165,7 +1165,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
             type: 'Frame',
             backgroundColor: hasCustomDigits ? '#1a7a40' : '#e8e8e8',
             borderRadius: 12,
-            width: '100%', paddingTop: '16dp', paddingBottom: '16dp',
+            width: '100%', paddingTop: '8dp', paddingBottom: '8dp',
             item: {
               type: 'Container', direction: 'column',
               alignItems: 'center', justifyContent: 'center',
