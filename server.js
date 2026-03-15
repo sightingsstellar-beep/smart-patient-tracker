@@ -1027,41 +1027,17 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
         color: '#5a7aaa', fontSize: '20dp',
         paddingLeft: '22dp', paddingBottom: '10dp', paddingTop: '4dp' };
 
-  // ── Custom keypad (bottom half, shown when fluid is selected) ─────────────
-  // Per APL docs: Container does not scroll — content that exceeds available
-  // height is clipped. Keypad buttons use white-on-dark styling for clarity,
-  // with sufficient padding/margin to be clearly distinct and tap-friendly.
-
-  function keypadDigitBtn(label, digit) {
-    return {
-      type: 'TouchWrapper', grow: 1, marginRight: '10dp',
-      onPress: { type: 'SendEvent', arguments: ['digit', digit, selectedFluid, mode] },
-      item: {
-        type: 'Frame',
-        backgroundColor: 'white',
-        borderRadius: 14,
-        alignSelf: 'stretch', width: '100%',
-        paddingTop: '14dp', paddingBottom: '14dp',
-        item: {
-          type: 'Text', text: label, color: '#111111',
-          fontSize: '28dp', fontWeight: 'bold',
-          textAlign: 'center', textAlignVertical: 'center',
-          width: '100%',
-        },
-      },
-    };
-  }
-
   const hasCustomDigits = customDigits && customDigits.length > 0;
   const displayText  = hasCustomDigits ? `${customDigits} ml` : 'Enter amount';
   const displayColor = hasCustomDigits ? '#111111' : '#888888';
 
-  // ── Pre-built keypad components (assembled inline in the layout below) ──────
-
-  // Compact amount tile: single-line, less padding — shares screen with keypad
-  function compactAmountTile(a, selFluid, tileMode, isLast) {
+  // ── Compact amount tile (shares screen with keypad) ───────────────────────
+  // Uses the official APL `spacing` property for horizontal gaps between tiles.
+  // First tile in each row has no spacing (APL ignores spacing on first child).
+  function compactAmountTile(a, selFluid, tileMode, isFirst) {
     return {
-      type: 'TouchWrapper', grow: 1, marginRight: isLast ? '0dp' : '6dp',
+      type: 'TouchWrapper', grow: 1,
+      ...(isFirst ? {} : { spacing: '8dp' }),
       onPress: { type: 'SendEvent', arguments: ['log', selFluid, a, tileMode] },
       item: {
         type: 'Frame', backgroundColor: '#0f5028', borderRadius: 10,
@@ -1076,92 +1052,113 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
     };
   }
 
-  // Helper: build a keypad digit button.
-  // paddingTop/Bottom gives the button a fixed, comfortable height regardless
-  // of parent — no grow needed. marginRight is the horizontal gap between buttons.
-  // Inter-row gap is set via marginBottom on the row Container (not here).
-  function kBtn(label, digit, isLast) {
+  // ── Custom keypad ─────────────────────────────────────────────────────────
+  // Official APL spacing technique (from APL Container docs):
+  //   `spacing` on a Container child adds space between that child and the
+  //   previous sibling on the parent's main axis. First child ignores it.
+  //   This is the APL-native equivalent of CSS `gap`.
+  //
+  // Official Alexa spacing scale (alexa-styles): spacingXSmall = 16dp.
+  // We use 16dp for both horizontal (between buttons) and vertical (between rows)
+  // so all gaps are identical.
+  //
+  // Each row has grow:1 → 4 rows divide the column height equally.
+  // Buttons use alignSelf:stretch → fill row height (no fixed padding needed).
+  // Total layout: (column height − 3×16dp spacing) / 4 per row, buttons fill each row.
+
+  const KP_GAP = '16dp'; // spacingXSmall from Alexa design system
+
+  // Digit button — grow:1 fills row width equally. spacing on non-first buttons.
+  // alignSelf:stretch fills the row height set by the parent's grow:1.
+  function kBtn(label, digit, isFirst) {
     return {
-      type: 'TouchWrapper', grow: 1, marginRight: isLast ? '0dp' : '8dp',
+      type: 'TouchWrapper', grow: 1,
+      ...(isFirst ? {} : { spacing: KP_GAP }),
       onPress: { type: 'SendEvent', arguments: ['digit', digit, selectedFluid, mode] },
       item: {
         type: 'Frame', backgroundColor: 'white', borderRadius: 12,
         alignSelf: 'stretch', width: '100%',
-        paddingTop: '12dp', paddingBottom: '12dp',
         item: {
           type: 'Text', text: label, color: '#111111',
-          fontSize: '26dp', fontWeight: 'bold',
+          fontSize: '28dp', fontWeight: 'bold',
           textAlign: 'center', textAlignVertical: 'center', width: '100%',
         },
       },
     };
   }
 
-  // Display box — shows accumulated digits or placeholder
+  // Display box — fixed height, shows accumulated digits or placeholder
   const keypadDisplayBox = {
     type: 'Frame',
     backgroundColor: 'white', borderRadius: 10,
     borderWidth: '1dp', borderColor: hasCustomDigits ? '#2a7aff' : '#cccccc',
-    paddingTop: '8dp', paddingBottom: '8dp',
+    paddingTop: '10dp', paddingBottom: '10dp',
     paddingLeft: '16dp', paddingRight: '16dp',
-    marginBottom: '6dp',
     item: {
       type: 'Container', direction: 'row', alignItems: 'center',
       items: [
         { type: 'Text', text: 'Custom:', color: '#888888',
-          fontSize: '14dp', fontWeight: 'bold', marginRight: '10dp' },
+          fontSize: '14dp', fontWeight: 'bold' },
         { type: 'Text', text: displayText, color: displayColor,
-          fontSize: '26dp', fontWeight: 'bold', grow: 1 },
+          fontSize: '28dp', fontWeight: 'bold', grow: 1, spacing: '12dp' },
       ],
     },
   };
 
-  // 4 keypad rows — fixed natural height from button padding (12dp top+bottom).
-  // marginBottom:8dp on rows 1-3 = inter-row gap = same as marginRight:8dp
-  // between buttons → equal spacing in both axes.
-  // No grow on rows — buttons are their natural size, any leftover space
-  // in the keypad section sits below as dark background (intentional breathing room).
+  // 4 rows — each has grow:1 (rows share column height equally).
+  // Rows 2-4 have spacing:KP_GAP (vertical gap = same as horizontal gap between buttons).
+  // Buttons within each row use spacing:KP_GAP on non-first buttons.
   const keypadRows = [
-    { type: 'Container', direction: 'row', marginBottom: '8dp',
-      items: [kBtn('1','1',false), kBtn('2','2',false), kBtn('3','3',true)] },
-    { type: 'Container', direction: 'row', marginBottom: '8dp',
-      items: [kBtn('4','4',false), kBtn('5','5',false), kBtn('6','6',true)] },
-    { type: 'Container', direction: 'row', marginBottom: '8dp',
-      items: [kBtn('7','7',false), kBtn('8','8',false), kBtn('9','9',true)] },
-    { type: 'Container', direction: 'row',
+    {
+      type: 'Container', direction: 'row', grow: 1,
       items: [
-        // ⌫ backspace — warm tint, same padding as digit buttons
+        kBtn('1', '1', true), kBtn('2', '2', false), kBtn('3', '3', false),
+      ],
+    },
+    {
+      type: 'Container', direction: 'row', grow: 1, spacing: KP_GAP,
+      items: [
+        kBtn('4', '4', true), kBtn('5', '5', false), kBtn('6', '6', false),
+      ],
+    },
+    {
+      type: 'Container', direction: 'row', grow: 1, spacing: KP_GAP,
+      items: [
+        kBtn('7', '7', true), kBtn('8', '8', false), kBtn('9', '9', false),
+      ],
+    },
+    {
+      type: 'Container', direction: 'row', grow: 1, spacing: KP_GAP,
+      items: [
+        // ⌫ backspace — first in row, no spacing
         {
-          type: 'TouchWrapper', grow: 1, marginRight: '8dp',
+          type: 'TouchWrapper', grow: 1,
           onPress: { type: 'SendEvent', arguments: ['backspace', selectedFluid, mode] },
           item: {
             type: 'Frame', backgroundColor: '#fff0ed', borderRadius: 12,
             borderWidth: '1dp', borderColor: '#ffccbc',
             alignSelf: 'stretch', width: '100%',
-            paddingTop: '12dp', paddingBottom: '12dp',
             item: {
               type: 'Text', text: '⌫', color: '#cc3300',
-              fontSize: '24dp', fontWeight: 'bold',
+              fontSize: '26dp', fontWeight: 'bold',
               textAlign: 'center', textAlignVertical: 'center', width: '100%',
             },
           },
         },
-        // 0
+        // 0 — spacing:KP_GAP (second in row)
         kBtn('0', '0', false),
-        // ✓ Log — green when digits entered, greyed when empty
+        // ✓ Log — spacing:KP_GAP (third in row)
         {
-          type: 'TouchWrapper', grow: 1,
+          type: 'TouchWrapper', grow: 1, spacing: KP_GAP,
           onPress: { type: 'SendEvent', arguments: ['custom_log', selectedFluid, mode] },
           item: {
             type: 'Frame',
             backgroundColor: hasCustomDigits ? '#1a7a40' : '#e8e8e8',
-            borderRadius: 12,
-            alignSelf: 'stretch', width: '100%',
-            paddingTop: '12dp', paddingBottom: '12dp',
+            borderRadius: 12, alignSelf: 'stretch', width: '100%',
             item: {
               type: 'Text', text: '✓ Log',
               color: hasCustomDigits ? 'white' : '#aaaaaa',
-              fontSize: '20dp', fontWeight: 'bold',
+              fontSize: '22dp', fontWeight: 'bold',
               textAlign: 'center', textAlignVertical: 'center', width: '100%',
             },
           },
@@ -1249,14 +1246,18 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                   paddingLeft: '20dp', paddingRight: '20dp',
                   paddingTop: '6dp', paddingBottom: '8dp',
                   items: [
-                    // Display box (fixed height at top of keypad section)
+                    // Display box — fixed height; rows container below uses
+                    // spacing:KP_GAP to create gap between display and row 1.
                     keypadDisplayBox,
-                    // Rows at natural height (fixed padding in buttons).
-                    // marginBottom:8dp between rows = marginRight:8dp between
-                    // buttons → equal gaps both axes. No grow — leftover space
-                    // below is dark background, not stretched buttons.
+                    // Official APL spacing technique: `spacing` on each child
+                    // adds a gap between siblings on the parent's main axis.
+                    // grow:1 on each row → rows divide column height equally.
+                    // Vertical gap (spacing on rows) = horizontal gap (spacing
+                    // on buttons) = 16dp (Alexa spacingXSmall). Equal both axes.
+                    // spacing:KP_GAP here = gap between display box and row 1.
                     {
-                      type: 'Container', direction: 'column',
+                      type: 'Container', grow: 1, direction: 'column',
+                      spacing: KP_GAP,
                       items: keypadRows,
                     },
                   ],
