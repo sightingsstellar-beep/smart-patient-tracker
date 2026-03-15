@@ -1077,10 +1077,9 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
   }
 
   // Helper: build a keypad digit button.
-  // Rows have grow:1 → rows share parent height equally.
-  // alignSelf:stretch on Frame → fills row height minus row's paddingBottom.
-  // The paddingBottom on the row (not here) creates the inter-row gap.
-  // marginRight here creates the inter-column gap (same value as paddingBottom).
+  // paddingTop/Bottom gives the button a fixed, comfortable height regardless
+  // of parent — no grow needed. marginRight is the horizontal gap between buttons.
+  // Inter-row gap is set via marginBottom on the row Container (not here).
   function kBtn(label, digit, isLast) {
     return {
       type: 'TouchWrapper', grow: 1, marginRight: isLast ? '0dp' : '8dp',
@@ -1088,6 +1087,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
       item: {
         type: 'Frame', backgroundColor: 'white', borderRadius: 12,
         alignSelf: 'stretch', width: '100%',
+        paddingTop: '12dp', paddingBottom: '12dp',
         item: {
           type: 'Text', text: label, color: '#111111',
           fontSize: '26dp', fontWeight: 'bold',
@@ -1116,20 +1116,21 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
     },
   };
 
-  // 4 keypad rows — each has grow:1 so all rows share the column height equally.
-  // paddingBottom:8dp on rows 1-3 = inter-row gap (dark background shows through
-  // the row's internal padding). marginRight:8dp between buttons = inter-column gap.
-  // Both gaps are 8dp → equal horizontal and vertical spacing on any screen size.
+  // 4 keypad rows — fixed natural height from button padding (12dp top+bottom).
+  // marginBottom:8dp on rows 1-3 = inter-row gap = same as marginRight:8dp
+  // between buttons → equal spacing in both axes.
+  // No grow on rows — buttons are their natural size, any leftover space
+  // in the keypad section sits below as dark background (intentional breathing room).
   const keypadRows = [
-    { type: 'Container', direction: 'row', grow: 1, paddingBottom: '8dp',
+    { type: 'Container', direction: 'row', marginBottom: '8dp',
       items: [kBtn('1','1',false), kBtn('2','2',false), kBtn('3','3',true)] },
-    { type: 'Container', direction: 'row', grow: 1, paddingBottom: '8dp',
+    { type: 'Container', direction: 'row', marginBottom: '8dp',
       items: [kBtn('4','4',false), kBtn('5','5',false), kBtn('6','6',true)] },
-    { type: 'Container', direction: 'row', grow: 1, paddingBottom: '8dp',
+    { type: 'Container', direction: 'row', marginBottom: '8dp',
       items: [kBtn('7','7',false), kBtn('8','8',false), kBtn('9','9',true)] },
-    { type: 'Container', direction: 'row', grow: 1,
+    { type: 'Container', direction: 'row',
       items: [
-        // ⌫ backspace
+        // ⌫ backspace — warm tint, same padding as digit buttons
         {
           type: 'TouchWrapper', grow: 1, marginRight: '8dp',
           onPress: { type: 'SendEvent', arguments: ['backspace', selectedFluid, mode] },
@@ -1137,6 +1138,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
             type: 'Frame', backgroundColor: '#fff0ed', borderRadius: 12,
             borderWidth: '1dp', borderColor: '#ffccbc',
             alignSelf: 'stretch', width: '100%',
+            paddingTop: '12dp', paddingBottom: '12dp',
             item: {
               type: 'Text', text: '⌫', color: '#cc3300',
               fontSize: '24dp', fontWeight: 'bold',
@@ -1146,7 +1148,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
         },
         // 0
         kBtn('0', '0', false),
-        // ✓ Log
+        // ✓ Log — green when digits entered, greyed when empty
         {
           type: 'TouchWrapper', grow: 1,
           onPress: { type: 'SendEvent', arguments: ['custom_log', selectedFluid, mode] },
@@ -1155,6 +1157,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
             backgroundColor: hasCustomDigits ? '#1a7a40' : '#e8e8e8',
             borderRadius: 12,
             alignSelf: 'stretch', width: '100%',
+            paddingTop: '12dp', paddingBottom: '12dp',
             item: {
               type: 'Text', text: '✓ Log',
               color: hasCustomDigits ? 'white' : '#aaaaaa',
@@ -1248,12 +1251,12 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                   items: [
                     // Display box (fixed height at top of keypad section)
                     keypadDisplayBox,
-                    // Rows container: grow:1 fills remaining space.
-                    // Each row has grow:1 → 4 rows share height equally.
-                    // paddingBottom on rows 1-3 → inter-row gap (same as
-                    // marginRight between buttons → equal spacing both axes).
+                    // Rows at natural height (fixed padding in buttons).
+                    // marginBottom:8dp between rows = marginRight:8dp between
+                    // buttons → equal gaps both axes. No grow — leftover space
+                    // below is dark background, not stretched buttons.
                     {
-                      type: 'Container', grow: 1, direction: 'column',
+                      type: 'Container', direction: 'column',
                       items: keypadRows,
                     },
                   ],
