@@ -1066,22 +1066,30 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
   // Buttons use alignSelf:stretch → fill row height (no fixed padding needed).
   // Total layout: (column height − 3×16dp spacing) / 4 per row, buttons fill each row.
 
-  const KP_GAP = '10dp'; // slightly tighter than spacingXSmall — still clearly distinct
+  // Separate gap values: same dp value looks proportionally larger vertically
+  // because grow:1 rows are taller (landscape screen) than grow:1 buttons are wide.
+  // Smaller vertical gap compensates so both axes look visually balanced.
+  const KP_HGAP = '10dp'; // horizontal gap between buttons in a row
+  const KP_VGAP = '6dp';  // vertical gap between rows
 
-  // Digit button — grow:1 fills row width equally. spacing on non-first buttons.
+  // Digit button.
+  // IMPORTANT: no width:'100%' on the Frame — percentage widths inside a
+  // grow:1 TouchWrapper resolve against the row container (grandparent), not
+  // the TouchWrapper, because the TouchWrapper has no explicit width.
+  // Removing it lets the Frame fill the TouchWrapper naturally.
   // alignSelf:stretch fills the row height set by the parent's grow:1.
   function kBtn(label, digit, isFirst) {
     return {
       type: 'TouchWrapper', grow: 1,
-      ...(isFirst ? {} : { spacing: KP_GAP }),
+      ...(isFirst ? {} : { spacing: KP_HGAP }),
       onPress: { type: 'SendEvent', arguments: ['digit', digit, selectedFluid, mode] },
       item: {
         type: 'Frame', backgroundColor: 'white', borderRadius: 12,
-        alignSelf: 'stretch', width: '100%',
+        alignSelf: 'stretch',
         item: {
           type: 'Text', text: label, color: '#111111',
           fontSize: '28dp', fontWeight: 'bold',
-          textAlign: 'center', textAlignVertical: 'center', width: '100%',
+          textAlign: 'center', textAlignVertical: 'center',
         },
       },
     };
@@ -1106,8 +1114,9 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
   };
 
   // 4 rows — each has grow:1 (rows share column height equally).
-  // Rows 2-4 have spacing:KP_GAP (vertical gap = same as horizontal gap between buttons).
-  // Buttons within each row use spacing:KP_GAP on non-first buttons.
+  // Rows 2-4 use spacing:KP_VGAP (6dp vertical gap).
+  // Buttons within each row use spacing:KP_HGAP (10dp horizontal gap) on non-first.
+  // No width:'100%' on any Frame — see kBtn comment above.
   const keypadRows = [
     {
       type: 'Container', direction: 'row', grow: 1,
@@ -1116,50 +1125,50 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
       ],
     },
     {
-      type: 'Container', direction: 'row', grow: 1, spacing: KP_GAP,
+      type: 'Container', direction: 'row', grow: 1, spacing: KP_VGAP,
       items: [
         kBtn('4', '4', true), kBtn('5', '5', false), kBtn('6', '6', false),
       ],
     },
     {
-      type: 'Container', direction: 'row', grow: 1, spacing: KP_GAP,
+      type: 'Container', direction: 'row', grow: 1, spacing: KP_VGAP,
       items: [
         kBtn('7', '7', true), kBtn('8', '8', false), kBtn('9', '9', false),
       ],
     },
     {
-      type: 'Container', direction: 'row', grow: 1, spacing: KP_GAP,
+      type: 'Container', direction: 'row', grow: 1, spacing: KP_VGAP,
       items: [
-        // ⌫ backspace — first in row, no spacing
+        // ⌫ backspace — first in row, no spacing; no width:'100%' on Frame
         {
           type: 'TouchWrapper', grow: 1,
           onPress: { type: 'SendEvent', arguments: ['backspace', selectedFluid, mode] },
           item: {
             type: 'Frame', backgroundColor: '#fff0ed', borderRadius: 12,
             borderWidth: '1dp', borderColor: '#ffccbc',
-            alignSelf: 'stretch', width: '100%',
+            alignSelf: 'stretch',
             item: {
               type: 'Text', text: '⌫', color: '#cc3300',
               fontSize: '26dp', fontWeight: 'bold',
-              textAlign: 'center', textAlignVertical: 'center', width: '100%',
+              textAlign: 'center', textAlignVertical: 'center',
             },
           },
         },
-        // 0 — spacing:KP_GAP (second in row)
+        // 0 — spacing:KP_HGAP (second in row)
         kBtn('0', '0', false),
-        // ✓ Log — spacing:KP_GAP (third in row)
+        // ✓ Log — spacing:KP_HGAP (third in row); no width:'100%' on Frame
         {
-          type: 'TouchWrapper', grow: 1, spacing: KP_GAP,
+          type: 'TouchWrapper', grow: 1, spacing: KP_HGAP,
           onPress: { type: 'SendEvent', arguments: ['custom_log', selectedFluid, mode] },
           item: {
             type: 'Frame',
             backgroundColor: hasCustomDigits ? '#1a7a40' : '#e8e8e8',
-            borderRadius: 12, alignSelf: 'stretch', width: '100%',
+            borderRadius: 12, alignSelf: 'stretch',
             item: {
               type: 'Text', text: '✓ Log',
               color: hasCustomDigits ? 'white' : '#aaaaaa',
               fontSize: '22dp', fontWeight: 'bold',
-              textAlign: 'center', textAlignVertical: 'center', width: '100%',
+              textAlign: 'center', textAlignVertical: 'center',
             },
           },
         },
@@ -1254,10 +1263,10 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                     // grow:1 on each row → rows divide column height equally.
                     // Vertical gap (spacing on rows) = horizontal gap (spacing
                     // on buttons) = 16dp (Alexa spacingXSmall). Equal both axes.
-                    // spacing:KP_GAP here = gap between display box and row 1.
+                    // spacing:KP_VGAP here = gap between display box and row 1.
                     {
                       type: 'Container', grow: 1, direction: 'column',
-                      spacing: KP_GAP,
+                      spacing: KP_VGAP,
                       items: keypadRows,
                     },
                   ],
