@@ -1802,6 +1802,54 @@ function validateLogDate(bodyDate) {
   return { ok: true, date: bodyDate };
 }
 
+function validateLogTime(bodyTime) {
+  if (!bodyTime) return { ok: true, time: null };
+  if (!/^\d{2}:\d{2}$/.test(bodyTime)) {
+    return { ok: false, error: 'Invalid time format. Use HH:MM.' };
+  }
+  const [hour, minute] = bodyTime.split(':').map(Number);
+  if (hour < 0 || hour > 23 || minute < 0 || minute > 59) {
+    return { ok: false, error: 'Invalid time value.' };
+  }
+  return { ok: true, time: bodyTime };
+}
+
+function zonedDateTimeToTimestamp(dateKey, timeValue, tz) {
+  const [year, month, day] = dateKey.split('-').map(Number);
+  const [hour, minute] = timeValue.split(':').map(Number);
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz,
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  let guess = Date.UTC(year, month - 1, day, hour, minute, 0, 0);
+  const target = Date.UTC(year, month - 1, day, hour, minute, 0, 0);
+
+  for (let i = 0; i < 4; i += 1) {
+    const parts = formatter.formatToParts(new Date(guess));
+    const part = (type) => parts.find((p) => p.type === type)?.value;
+    const localAsUtc = Date.UTC(
+      Number(part('year')),
+      Number(part('month')) - 1,
+      Number(part('day')),
+      Number(part('hour')),
+      Number(part('minute')),
+      0,
+      0
+    );
+    const diff = target - localAsUtc;
+    guess += diff;
+    if (diff === 0) break;
+  }
+
+  return guess;
+}
+
 // ---------------------------------------------------------------------------
 // Settings helpers
 // ---------------------------------------------------------------------------
@@ -1934,12 +1982,20 @@ app.post('/api/log', (req, res) => {
       return res.status(400).json({ ok: false, error: 'Invalid request body' });
     }
 
-    // Validate optional date field
+    // Validate optional date/time fields
     const dateResult = validateLogDate(body.date);
     if (!dateResult.ok) {
       return res.status(400).json({ ok: false, error: dateResult.error });
     }
+    const timeResult = validateLogTime(body.time);
+    if (!timeResult.ok) {
+      return res.status(400).json({ ok: false, error: timeResult.error });
+    }
     const dayKey = dateResult.date;
+    const tz = getTimezone();
+    const overrideTimestamp = timeResult.time
+      ? zonedDateTimeToTimestamp(dayKey, timeResult.time, tz)
+      : null;
 
     const results = [];
 
@@ -1964,11 +2020,12 @@ app.post('/api/log', (req, res) => {
       results.push({ kind: 'wellness', data: w });
     } else if (body.type === 'gag') {
       const count = Math.max(1, parseInt(body.count, 10) || 1);
-      const gags = db.logGag(count, Date.now(), dayKey);
+      const gags = db.logGag(count, overrideTimestamp || Date.now(), dayKey);
       results.push({ kind: 'gag', count, data: gags });
     } else {
       // Fluid input or output
       const entry = db.logEntry({
+        timestamp: overrideTimestamp || Date.now(),
         day_key: dayKey,
         entry_type: body.entry_type,
         fluid_type: body.fluid_type,

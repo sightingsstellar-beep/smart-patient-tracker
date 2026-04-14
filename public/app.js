@@ -18,6 +18,13 @@ let pendingQuickLog = null; // { type, fluid_type, amount_ml }
 // Date toggle: 'today' or 'yesterday'
 let logDay = 'today';
 
+function getCurrentTimeInputValue() {
+  const now = new Date();
+  const hh = String(now.getHours()).padStart(2, '0');
+  const mm = String(now.getMinutes()).padStart(2, '0');
+  return `${hh}:${mm}`;
+}
+
 // Wellness state: stores already-logged data per period and edit mode
 let wellnessPeriod = 'afternoon'; // 'afternoon' | 'evening'
 let wellnessLogged = { afternoon: null, evening: null }; // loaded from API
@@ -774,20 +781,22 @@ function handleQuickLog(btn) {
   const amount = btn.dataset.amount ? parseFloat(btn.dataset.amount) : null;
   const count = btn.dataset.count ? parseInt(btn.dataset.count, 10) : null;
 
-  if (type === 'gag') {
-    submitQuickLog({ type: 'gag', count: count || 1 }, btn);
-    return;
-  }
-
   if (type === 'output' && fluid === 'poop' && !subtype) {
     showPoopSubtypePopup(btn);
     return;
   }
 
-  if (!amount) {
-    // Ask for amount — applies to inputs and outputs without a preset amount
-    pendingQuickLog = { type, fluid_type: fluid, subtype };
+  const requiresModal = !amount || logDay === 'yesterday';
+  if (requiresModal) {
+    pendingQuickLog = type === 'gag'
+      ? { type: 'gag', count: count || 1 }
+      : { type, fluid_type: fluid, subtype, amount_ml: amount };
     showModal();
+    return;
+  }
+
+  if (type === 'gag') {
+    submitQuickLog({ type: 'gag', count: count || 1 }, btn);
     return;
   }
 
@@ -811,6 +820,7 @@ async function submitQuickLog(payload, btn) {
   // Include date when logging for yesterday
   const dateParam = getLogDateParam();
   if (dateParam) body.date = dateParam;
+  if (payload.time) body.time = payload.time;
 
   const originalText = btn ? btn.textContent : '';
   if (btn) {
@@ -853,25 +863,51 @@ async function submitQuickLog(payload, btn) {
 
 // Amount modal
 function showModal() {
+  const isGag = pendingQuickLog && pendingQuickLog.type === 'gag';
   const isOutput = pendingQuickLog && pendingQuickLog.type === 'output';
+  const amountInput = document.getElementById('amount-input');
+  const timeWrap = document.getElementById('modal-time-wrap');
+  const timeInput = document.getElementById('modal-time-input');
   const label = document.getElementById('modal-amount-label');
-  if (label) label.textContent = isOutput ? 'Enter amount (g)' : 'Enter amount (ml)';
+
+  if (label) {
+    if (isGag) label.textContent = 'Confirm gag entry';
+    else label.textContent = isOutput ? 'Enter amount (g)' : 'Enter amount (ml)';
+  }
+
+  amountInput.style.display = isGag ? 'none' : 'block';
+  amountInput.value = !isGag && pendingQuickLog && pendingQuickLog.amount_ml ? pendingQuickLog.amount_ml : '';
+  timeWrap.style.display = logDay === 'yesterday' ? 'block' : 'none';
+  timeInput.value = getCurrentTimeInputValue();
   document.getElementById('amount-modal').style.display = 'flex';
-  setTimeout(() => document.getElementById('amount-input').focus(), 100);
+  setTimeout(() => {
+    const focusEl = !isGag ? amountInput : (logDay === 'yesterday' ? timeInput : null);
+    if (focusEl) focusEl.focus();
+  }, 100);
 }
 
 function hideModal() {
   document.getElementById('amount-modal').style.display = 'none';
   document.getElementById('amount-input').value = '';
+  document.getElementById('modal-time-input').value = '';
+  document.getElementById('amount-input').style.display = 'block';
+  document.getElementById('modal-time-wrap').style.display = 'none';
   pendingQuickLog = null;
 }
 
 document.getElementById('modal-cancel').addEventListener('click', hideModal);
 
 document.getElementById('modal-confirm').addEventListener('click', () => {
-  const val = parseFloat(document.getElementById('amount-input').value);
+  const amountEl = document.getElementById('amount-input');
+  const timeEl = document.getElementById('modal-time-input');
+  const isGag = pendingQuickLog && pendingQuickLog.type === 'gag';
+  const val = parseFloat(amountEl.value);
   if (pendingQuickLog) {
-    const payload = { ...pendingQuickLog, amount_ml: isNaN(val) ? null : val };
+    const payload = {
+      ...pendingQuickLog,
+      amount_ml: isGag ? null : (isNaN(val) ? null : val),
+      time: logDay === 'yesterday' ? (timeEl.value || getCurrentTimeInputValue()) : undefined,
+    };
     hideModal();
     submitQuickLog(payload, null);
   }

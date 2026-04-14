@@ -88,6 +88,10 @@
         <div class="amount-modal-inner">
           <h3 id="modal-amount-label">Enter amount (ml)</h3>
           <input type="number" id="amount-input" min="1" max="1000" placeholder="e.g. 85" inputmode="numeric" />
+          <div class="modal-time-wrap" id="modal-time-wrap" style="display:none;">
+            <label for="modal-time-input" class="modal-field-label">Time for this entry</label>
+            <input type="time" id="modal-time-input" />
+          </div>
           <div class="modal-buttons">
             <button class="btn-cancel" id="modal-cancel">Cancel</button>
             <button class="btn-confirm" id="modal-confirm">Log It</button>
