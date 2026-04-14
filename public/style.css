@@ -335,17 +335,8 @@ body {
   overflow: hidden;
 }
 
-.fluid-type-toggle {
-  width: 100%;
-  border: 0;
-  background: transparent;
+.fluid-type-static-header {
   padding: 10px 12px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  text-align: left;
-  cursor: pointer;
 }
 
 .fluid-type-summary {
@@ -364,17 +355,6 @@ body {
   font-size: 1.15rem;
   font-weight: 700;
   color: var(--blue);
-}
-
-.fluid-type-chevron {
-  color: var(--text-secondary);
-  font-size: 1rem;
-  transition: transform 0.18s ease;
-  flex-shrink: 0;
-}
-
-.fluid-type-card.expanded .fluid-type-chevron {
-  transform: rotate(180deg);
 }
 
 .fluid-type-details {

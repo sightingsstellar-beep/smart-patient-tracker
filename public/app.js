@@ -14,7 +14,6 @@
 
 let lastData = null;
 let pendingQuickLog = null; // { type, fluid_type, amount_ml }
-const expandedIntakeTypes = new Set();
 
 // Date toggle: 'today' or 'yesterday'
 let logDay = 'today';
@@ -205,9 +204,8 @@ function renderFluidTypes(intakeByType, inputs) {
     const items = (inputsByType[type] || []).slice().sort((a, b) => {
       return String(a.timestamp || '').localeCompare(String(b.timestamp || ''));
     });
-    const expanded = expandedIntakeTypes.has(type);
     const card = document.createElement('div');
-    card.className = `fluid-type-card ${expanded ? 'expanded' : ''}`;
+    card.className = 'fluid-type-card expanded';
 
     const detailHtml = items.length
       ? items.map((item) => `
@@ -219,27 +217,16 @@ function renderFluidTypes(intakeByType, inputs) {
       : '<div class="fluid-type-detail-empty">No individual entries found</div>';
 
     card.innerHTML = `
-      <button class="fluid-type-toggle" type="button" aria-expanded="${expanded}" data-fluid-type="${escapeHtml(type)}">
+      <div class="fluid-type-static-header">
         <div class="fluid-type-summary">
           <div class="fluid-type-name">${escapeHtml(FLUID_LABELS[type] || type)}</div>
           <div class="fluid-type-amount">${escapeHtml(ml)}ml</div>
         </div>
-        <div class="fluid-type-chevron">▾</div>
-      </button>
-      <div class="fluid-type-details" ${expanded ? '' : 'hidden'}>
+      </div>
+      <div class="fluid-type-details">
         ${detailHtml}
       </div>
     `;
-
-    const toggle = card.querySelector('.fluid-type-toggle');
-    toggle.addEventListener('click', () => {
-      if (expandedIntakeTypes.has(type)) {
-        expandedIntakeTypes.delete(type);
-      } else {
-        expandedIntakeTypes.add(type);
-      }
-      renderFluidTypes(intakeByType, inputs);
-    });
 
     container.appendChild(card);
   }
