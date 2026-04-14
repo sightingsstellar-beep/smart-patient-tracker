@@ -332,8 +332,24 @@ body {
 .fluid-type-card {
   background: var(--grey-light);
   border-radius: 10px;
+  overflow: hidden;
+}
+
+.fluid-type-toggle {
+  width: 100%;
+  border: 0;
+  background: transparent;
   padding: 10px 12px;
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  text-align: left;
+  cursor: pointer;
+}
+
+.fluid-type-summary {
+  min-width: 0;
 }
 
 .fluid-type-name {
@@ -348,6 +364,43 @@ body {
   font-size: 1.15rem;
   font-weight: 700;
   color: var(--blue);
+}
+
+.fluid-type-chevron {
+  color: var(--text-secondary);
+  font-size: 1rem;
+  transition: transform 0.18s ease;
+  flex-shrink: 0;
+}
+
+.fluid-type-card.expanded .fluid-type-chevron {
+  transform: rotate(180deg);
+}
+
+.fluid-type-details {
+  border-top: 1px solid rgba(0, 0, 0, 0.06);
+  padding: 6px 12px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.fluid-type-detail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.88rem;
+}
+
+.fluid-type-detail-time,
+.fluid-type-detail-empty {
+  color: var(--text-secondary);
+}
+
+.fluid-type-detail-amount {
+  font-weight: 600;
+  color: var(--text-primary);
 }
 
 /* ============================================================

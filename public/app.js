@@ -14,6 +14,7 @@
 
 let lastData = null;
 let pendingQuickLog = null; // { type, fluid_type, amount_ml }
+const expandedIntakeTypes = new Set();
 
 // Date toggle: 'today' or 'yesterday'
 let logDay = 'today';
@@ -161,7 +162,7 @@ function renderIntake(data) {
   }
 
   // Intake by type
-  renderFluidTypes(data.intakeByType || {});
+  renderFluidTypes(data.intakeByType || {}, data.inputs || []);
 }
 
 const FLUID_LABELS = {
@@ -173,7 +174,16 @@ const FLUID_LABELS = {
   yogurt_drink: 'Yogurt Drink',
 };
 
-function renderFluidTypes(intakeByType) {
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;');
+}
+
+function renderFluidTypes(intakeByType, inputs) {
   const container = document.getElementById('fluid-types');
   container.innerHTML = '';
 
@@ -184,13 +194,53 @@ function renderFluidTypes(intakeByType) {
     return;
   }
 
+  const inputsByType = (inputs || []).reduce((map, input) => {
+    if (!input || !input.fluid_type) return map;
+    if (!map[input.fluid_type]) map[input.fluid_type] = [];
+    map[input.fluid_type].push(input);
+    return map;
+  }, {});
+
   for (const [type, ml] of entries) {
+    const items = (inputsByType[type] || []).slice().sort((a, b) => {
+      return String(a.timestamp || '').localeCompare(String(b.timestamp || ''));
+    });
+    const expanded = expandedIntakeTypes.has(type);
     const card = document.createElement('div');
-    card.className = 'fluid-type-card';
+    card.className = `fluid-type-card ${expanded ? 'expanded' : ''}`;
+
+    const detailHtml = items.length
+      ? items.map((item) => `
+          <div class="fluid-type-detail-row">
+            <span class="fluid-type-detail-time">${escapeHtml(item.time || '--')}</span>
+            <span class="fluid-type-detail-amount">${escapeHtml(item.amount_ml || 0)} ml</span>
+          </div>
+        `).join('')
+      : '<div class="fluid-type-detail-empty">No individual entries found</div>';
+
     card.innerHTML = `
-      <div class="fluid-type-name">${FLUID_LABELS[type] || type}</div>
-      <div class="fluid-type-amount">${ml}ml</div>
+      <button class="fluid-type-toggle" type="button" aria-expanded="${expanded}" data-fluid-type="${escapeHtml(type)}">
+        <div class="fluid-type-summary">
+          <div class="fluid-type-name">${escapeHtml(FLUID_LABELS[type] || type)}</div>
+          <div class="fluid-type-amount">${escapeHtml(ml)}ml</div>
+        </div>
+        <div class="fluid-type-chevron">▾</div>
+      </button>
+      <div class="fluid-type-details" ${expanded ? '' : 'hidden'}>
+        ${detailHtml}
+      </div>
     `;
+
+    const toggle = card.querySelector('.fluid-type-toggle');
+    toggle.addEventListener('click', () => {
+      if (expandedIntakeTypes.has(type)) {
+        expandedIntakeTypes.delete(type);
+      } else {
+        expandedIntakeTypes.add(type);
+      }
+      renderFluidTypes(intakeByType, inputs);
+    });
+
     container.appendChild(card);
   }
 }
