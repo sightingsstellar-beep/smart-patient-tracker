@@ -81,10 +81,6 @@ function isTodaySelected() {
   return !!state.todayDayKey && state.selectedDayKey === state.todayDayKey;
 }
 
-function isYesterdaySelected() {
-  return !!state.todayDayKey && state.selectedDayKey === shiftDayKey(state.todayDayKey, -1);
-}
-
 function formatChipLabel(dayKey) {
   if (!dayKey) return 'Pick a day';
   if (dayKey === state.todayDayKey) return 'Today';
@@ -221,8 +217,6 @@ function renderAll() {
 }
 
 function renderDayController() {
-  document.getElementById('jump-today').classList.toggle('active', isTodaySelected());
-  document.getElementById('jump-yesterday').classList.toggle('active', isYesterdaySelected());
   document.getElementById('day-date-chip').textContent = formatChipLabel(state.selectedDayKey);
   document.getElementById('day-picker').value = state.selectedDayKey || '';
 
@@ -289,9 +283,7 @@ function renderIntake() {
         <div class="fluid-type-detail-row">
           <button class="entry-row-button" data-entry-kind="fluid" data-entry-id="${entry.id}">
             <span class="output-time">${escapeHtml(entry.time || '--')}</span>
-            <span class="entry-row-main">
-              <span class="entry-row-title">${escapeHtml(entry.fluid_type_label || FLUID_LABELS[type] || type)}</span>
-            </span>
+            <span class="entry-row-spacer"></span>
             <span class="entry-row-amount">${escapeHtml(entry.amount_ml || 0)} ml</span>
           </button>
         </div>
@@ -817,16 +809,6 @@ async function handleUndoCurrentDay() {
 }
 
 function initEventListeners() {
-  document.getElementById('jump-today').addEventListener('click', async () => {
-    state.selectedDayKey = state.todayDayKey;
-    await refreshDay();
-  });
-
-  document.getElementById('jump-yesterday').addEventListener('click', async () => {
-    state.selectedDayKey = shiftDayKey(state.todayDayKey, -1);
-    await refreshDay();
-  });
-
   document.getElementById('day-prev').addEventListener('click', async () => {
     state.selectedDayKey = shiftDayKey(state.selectedDayKey || state.todayDayKey, -1);
     await refreshDay();
