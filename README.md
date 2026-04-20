@@ -5,7 +5,7 @@ A private, open-source fluid intake/output tracking platform for critically ill 
 This tool helps caregivers and nurses accurately log and monitor:
 - **Fluid intake** (water, juice, milk, PediaSure, yogurt drink, vitamin water)
 - **Fluid outputs** (urine, poop, vomit)
-- **Daily wellness checks** (appetite, energy, mood, cyanosis — all 1–10)
+- **Daily wellness checks** (appetite, energy, mood, cyanosis - all 1-10)
 - **Gag episodes**
 - **Automated nurse handoff reports** at configurable times
 
@@ -17,14 +17,14 @@ All logging is done via **natural language** through a Telegram bot (powered by 
 
 ## Features
 
-- 📱 **Telegram bot** — log entries naturally: "120ml pediasure" or "pee 85ml"
-- 🤖 **OpenAI NLP** — understands natural language, handles batches
-- 📊 **Live dashboard** — color-coded intake bar, output log, wellness gauges
-- 🔔 **Auto-reports** — sent to Telegram at configurable times daily
-- 🗓️ **Fluid day logic** — day starts at configurable hour, resets automatically
-- ⚙️ **Settings page** — configure child name, limits, report times, thresholds, timezone
-- 🔒 **Authorization** — only approved Telegram users can log
-- 🚀 **Railway-ready** — one-click deploy with persistent storage
+- 📱 **Telegram bot** - log entries naturally: "120ml pediasure" or "pee 85ml"
+- 🤖 **OpenAI NLP** - understands natural language, handles batches
+- 📊 **Live dashboard** - color-coded intake bar, output log, wellness gauges
+- 🔔 **Auto-reports** - sent to Telegram at configurable times daily
+- 🗓️ **Fluid day logic** - day starts at configurable hour, resets automatically
+- ⚙️ **Settings page** - configure child name, limits, report times, thresholds, timezone
+- 🔒 **Authorization** - only approved Telegram users can log
+- 🚀 **Railway-ready** - one-click deploy with persistent storage
 
 ---
 
@@ -39,8 +39,8 @@ All logging is done via **natural language** through a Telegram bot (powered by 
 
 ```bash
 # 1. Clone or download the project
-git clone https://github.com/your-username/elina-tracker.git
-cd elina-tracker
+git clone https://github.com/sightingsstellar-beep/smart-patient-tracker.git
+cd smart-patient-tracker
 
 # 2. Install dependencies
 npm install
@@ -67,20 +67,32 @@ Edit `.env` with your values:
 TELEGRAM_BOT_TOKEN=your_bot_token_here
 OPENAI_API_KEY=your_openai_key_here
 AUTHORIZED_USER_IDS=8573495743
+DASHBOARD_PASSWORD=choose_a_strong_password
+SESSION_SECRET=generate_a_long_random_secret
+# Optional integrations / programmatic access
+ALEXA_SKILL_ID=
+API_KEY=
+DISPLAY_TOKEN=
 PORT=3000
 TZ=America/New_York
+# DATA_DIR=/data
 ```
 
-| Variable | Description |
-|---|---|
-| `TELEGRAM_BOT_TOKEN` | From [@BotFather](https://t.me/BotFather) — create a new bot |
-| `OPENAI_API_KEY` | From [platform.openai.com](https://platform.openai.com) |
-| `AUTHORIZED_USER_IDS` | Comma-separated Telegram user IDs |
-| `PORT` | HTTP server port (Railway sets this automatically) |
-| `TZ` | Default timezone (can also be set in Settings) |
-| `DATA_DIR` | Optional path for SQLite DB (default: `./data/`) |
+| Variable | Required | Description |
+|---|---|---|
+| `TELEGRAM_BOT_TOKEN` | Yes | From [@BotFather](https://t.me/BotFather) — the Telegram bot token |
+| `OPENAI_API_KEY` | Yes | Used for natural-language parsing and audio transcription |
+| `AUTHORIZED_USER_IDS` | Yes | Comma-separated Telegram user IDs allowed to use the bot |
+| `DASHBOARD_PASSWORD` | Yes | Password for the browser dashboard login |
+| `SESSION_SECRET` | Yes | Long random secret for signed browser sessions |
+| `ALEXA_SKILL_ID` | Optional | Restricts `/api/alexa` to your Alexa skill |
+| `API_KEY` | Optional | Programmatic access via `x-api-key`, including automated backups |
+| `DISPLAY_TOKEN` | Optional | Token for the kiosk-style `/display` and `/api/display-data` routes |
+| `PORT` | Usually no | HTTP server port (Railway sets this automatically) |
+| `TZ` | Recommended | Default timezone for fluid-day calculation and time displays |
+| `DATA_DIR` | Recommended on Railway | Directory for SQLite storage, for example `/data` with a mounted volume |
 
-> **Note:** Most configuration (child name, daily limit, report times, thresholds) is managed through the **Settings page** at `/settings` and stored in the database — no environment variable changes needed.
+> **Note:** Most day-to-day configuration, like child name, daily limit, report times, thresholds, and timezone, is managed through the **Settings page** at `/settings` and stored in the database.
 
 ---
 
@@ -153,11 +165,19 @@ Anyone not in this list will receive a polite rejection message.
 1. Push your code to a GitHub repository (make sure `.env` is in `.gitignore`)
 2. Go to [railway.app](https://railway.app) and create a new project
 3. Click **"Deploy from GitHub repo"** and select your repository
-4. Go to **Variables** tab and add all your environment variables:
+4. Go to **Variables** and add the required app secrets:
    - `TELEGRAM_BOT_TOKEN`
    - `OPENAI_API_KEY`
    - `AUTHORIZED_USER_IDS`
+   - `DASHBOARD_PASSWORD`
+   - `SESSION_SECRET`
    - `TZ`
+   - `DATA_DIR=/data` if you mounted a persistent volume
+
+   Optional, depending on your setup:
+   - `ALEXA_SKILL_ID`
+   - `API_KEY`
+   - `DISPLAY_TOKEN`
 5. Railway will build and deploy automatically
 
 ### Option 2: Railway CLI
@@ -188,13 +208,19 @@ This keeps patient data safe across deployments.
 The web dashboard is served at the root URL (`/`). It:
 
 - Auto-refreshes every 30 seconds
+- Includes a full-width **Today / Yesterday** switcher just below the main menu
+- Treats that switcher as the page context, not just a logging mode:
+  - intake totals and itemized intake cards update
+  - outputs and gag lists update
+  - daily weight updates
+  - wellness / vitals update
+- Lets caregivers backfill **yesterday** directly from the same screen, including quick logs, weight, and wellness entries
 - Shows a color-coded intake progress bar:
   - 🟢 Green: 0–70% (safe, configurable)
   - 🟡 Yellow: 70–90% (approaching limit, configurable)
   - 🔴 Red: 90–100% (near limit, configurable)
   - 🚨 Flashing: over limit
 - Displays outputs chronologically
-- Shows wellness gauges (color-coded 1–10)
 - Has quick-log buttons for common entries
 - Works great on mobile (bookmark it to your home screen!)
 
@@ -203,12 +229,14 @@ The web dashboard is served at the root URL (`/`). It:
 ## File Structure
 
 ```
-elina-tracker/
+smart-patient-tracker/
 ├── server.js          # Express app, API routes, report builder
 ├── bot.js             # Telegram bot (polling, commands, NLP dispatch)
 ├── parser.js          # OpenAI gpt-4o-mini NLP parser
 ├── db.js              # SQLite schema, queries, and settings storage
 ├── scheduler.js       # Cron jobs (auto-reports at configured times)
+├── ask-manifest.json  # Alexa skill manifest
+├── alexa/             # Alexa interaction model and skill assets
 ├── public/
 │   ├── index.html     # Mobile dashboard
 │   ├── style.css      # Mobile-first styles
@@ -221,7 +249,8 @@ elina-tracker/
 │   ├── chat.js        # Chat JavaScript
 │   ├── settings.html  # Settings page
 │   ├── settings.css   # Settings styles
-│   └── settings.js    # Settings JavaScript
+│   ├── settings.js    # Settings JavaScript
+│   └── display.html   # Token-authenticated kiosk display
 ├── .env.example       # Environment variable template
 ├── .env               # Your local credentials (not committed)
 ├── .gitignore
@@ -236,13 +265,24 @@ elina-tracker/
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/api/today` | All data for the current fluid day |
-| `GET` | `/api/report` | Formatted nurse handoff report |
-| `POST` | `/api/log` | Log a fluid entry, wellness check, or gag |
-| `GET` | `/api/history?days=7` | Logs for the last N days |
-| `DELETE` | `/api/log/:id` | Delete a specific log entry |
-| `GET` | `/api/settings` | Get all settings as flat object |
+| `GET` | `/health` | Health check |
+| `GET` | `/api/today` | Day-scoped dashboard data, supports `?relative=today|yesterday` or `?date=YYYY-MM-DD` |
+| `GET` | `/api/report` | Formatted nurse handoff report for the current fluid day |
+| `POST` | `/api/log` | Log a fluid entry, wellness check, or gag event |
+| `GET` | `/api/history?days=7` | Last N fluid-day summaries |
+| `DELETE` | `/api/log/:id` | Delete a specific fluid log entry |
+| `DELETE` | `/api/gag/:id` | Delete a specific gag event |
+| `POST` | `/api/weight` | Log or replace a daily weight entry |
+| `GET` | `/api/weight/today` | Weight for a requested day, supports `?relative=` or `?date=` |
+| `GET` | `/api/weight/history?days=7` | Recent weight history, optionally bounded with `throughDate=YYYY-MM-DD` |
+| `POST` | `/api/chat` | Parse and log natural-language text through the same NLP pipeline as Telegram |
+| `POST` | `/api/transcribe` | Transcribe uploaded audio before chat parsing |
+| `GET` | `/api/settings` | Get all settings as a flat object |
 | `POST` | `/api/settings` | Update one or more settings |
+| `POST` | `/api/alexa` | Alexa webhook endpoint |
+| `GET` | `/display` | Token-authenticated kiosk display |
+| `GET` | `/api/display-data` | JSON payload for kiosk display |
+| `GET` | `/api/backup` | Database backup download, requires `x-api-key` |
 
 ### POST /api/log examples
 
@@ -278,7 +318,7 @@ elina-tracker/
 
 This project is open source under the MIT License. If you find it helpful for another child or family, please use it, improve it, and share it.
 
-Pull requests welcome. Please be thoughtful — this is a medical tool.
+Pull requests welcome. Please be thoughtful - this is a medical tool.
 
 ---
 
