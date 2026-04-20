@@ -1927,15 +1927,24 @@ function formatTimestamp(tsMs) {
   });
 }
 
+function formatTimeInput(tsMs) {
+  return new Date(tsMs).toLocaleTimeString('en-GB', {
+    timeZone: getTimezone(),
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  });
+}
+
 // ---------------------------------------------------------------------------
 // API Routes
 // ---------------------------------------------------------------------------
 
 /**
- * GET /api/today
+ * GET /api/today and /api/day
  * Returns all data for the requested fluid day.
  */
-app.get('/api/today', (req, res) => {
+app.get(['/api/today', '/api/day'], (req, res) => {
   try {
     const dayResult = resolveRequestedDayKey({
       date: req.query.date,
@@ -1950,6 +1959,7 @@ app.get('/api/today', (req, res) => {
     res.json({
       ok: true,
       dayKey,
+      todayDayKey: db.getDayKey(),
       limit_ml: getDailyLimit(),
       totalIntake: summary.totalIntake,
       percent: Math.round((summary.totalIntake / getDailyLimit()) * 100),
@@ -1957,17 +1967,20 @@ app.get('/api/today', (req, res) => {
       inputs: summary.inputs.map((l) => ({
         ...l,
         time: formatTimestamp(l.timestamp),
+        time24: formatTimeInput(l.timestamp),
         fluid_type_label: formatFluidType(l.fluid_type),
       })),
       outputs: summary.outputs.map((l) => ({
         ...l,
         time: formatTimestamp(l.timestamp),
+        time24: formatTimeInput(l.timestamp),
         fluid_type_label: formatFluidType(l.fluid_type),
       })),
       wellness: summary.wellness,
       gags: summary.gags.map((g) => ({
         ...g,
         time: formatTimestamp(g.timestamp),
+        time24: formatTimeInput(g.timestamp),
       })),
       gagCount: summary.gagCount,
     });
@@ -2032,7 +2045,7 @@ app.post('/api/log', (req, res) => {
     }
 
     if (body.type === 'wellness') {
-      const w = db.logWellness({
+      const w = db.upsertWellness({
         day_key: dayKey,
         check_time: body.check_time || '5pm',
         appetite: body.appetite ?? null,
@@ -2070,12 +2083,113 @@ app.post('/api/log', (req, res) => {
 });
 
 /**
+ * PATCH /api/log/:id
+ * Update a specific fluid input/output entry.
+ */
+app.patch('/api/log/:id', (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!id || isNaN(id)) {
+      return res.status(400).json({ ok: false, error: 'Invalid ID' });
+    }
+
+    const existing = db.getLogById(id);
+    if (!existing) {
+      return res.status(404).json({ ok: false, error: 'Entry not found' });
+    }
+
+    const body = req.body || {};
+    const entryType = body.entry_type || existing.entry_type;
+    const fluidType = body.fluid_type || existing.fluid_type;
+    const dateResult = validateLogDate(body.date || existing.day_key);
+    if (!dateResult.ok) {
+      return res.status(400).json({ ok: false, error: dateResult.error });
+    }
+    const timeResult = validateLogTime(body.time || formatTimeInput(existing.timestamp));
+    if (!timeResult.ok) {
+      return res.status(400).json({ ok: false, error: timeResult.error });
+    }
+
+    const isPoop = fluidType === 'poop';
+    const hasAmount = Object.prototype.hasOwnProperty.call(body, 'amount_ml');
+    const amountMl = hasAmount ? body.amount_ml : existing.amount_ml;
+    if (!isPoop && (typeof amountMl !== 'number' || amountMl <= 0)) {
+      return res.status(400).json({ ok: false, error: 'amount_ml is required for input and output entries' });
+    }
+
+    const timestamp = zonedDateTimeToTimestamp(dateResult.date, timeResult.time, getTimezone());
+
+    db.updateLog({
+      id,
+      timestamp,
+      day_key: dateResult.date,
+      entry_type: entryType,
+      fluid_type: fluidType,
+      amount_ml: isPoop ? (amountMl ?? null) : amountMl,
+      subtype: body.subtype ?? existing.subtype ?? null,
+      notes: body.notes ?? existing.notes ?? null,
+    });
+
+    const updated = db.getLogById(id);
+    res.json({
+      ok: true,
+      entry: {
+        ...updated,
+        time: formatTimestamp(updated.timestamp),
+        time24: formatTimeInput(updated.timestamp),
+        fluid_type_label: formatFluidType(updated.fluid_type),
+      },
+    });
+  } catch (err) {
+    console.error('[PATCH /api/log/:id]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+/**
+ * PATCH /api/gag/:id
+ * Update a specific gag event time/day.
+ */
+app.patch('/api/gag/:id', (req, res) => {
+  try {
+    const id = parseInt(req.params.id, 10);
+    if (!id || isNaN(id)) {
+      return res.status(400).json({ ok: false, error: 'Invalid ID' });
+    }
+
+    const existing = db.getGagById(id);
+    if (!existing) {
+      return res.status(404).json({ ok: false, error: 'Gag entry not found' });
+    }
+
+    const body = req.body || {};
+    const dateResult = validateLogDate(body.date || existing.day_key);
+    if (!dateResult.ok) {
+      return res.status(400).json({ ok: false, error: dateResult.error });
+    }
+    const timeResult = validateLogTime(body.time || formatTimeInput(existing.timestamp));
+    if (!timeResult.ok) {
+      return res.status(400).json({ ok: false, error: timeResult.error });
+    }
+
+    const timestamp = zonedDateTimeToTimestamp(dateResult.date, timeResult.time, getTimezone());
+    db.updateGag({ id, timestamp, day_key: dateResult.date });
+
+    const updated = db.getGagById(id);
+    res.json({ ok: true, entry: { ...updated, time: formatTimestamp(updated.timestamp), time24: formatTimeInput(updated.timestamp) } });
+  } catch (err) {
+    console.error('[PATCH /api/gag/:id]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+/**
  * GET /api/history?days=7
  * Returns a richer per-day summary for the last N fluid days.
  */
 app.get('/api/history', (req, res) => {
   try {
-    const days = Math.min(30, Math.max(1, parseInt(req.query.days, 10) || 7));
+    const days = Math.min(90, Math.max(1, parseInt(req.query.days, 10) || 7));
     const todayKey = db.getDayKey();
     const tz = getTimezone();
 
@@ -2111,10 +2225,12 @@ app.get('/api/history', (req, res) => {
         subtype: o.subtype ?? null,
         amount_ml: o.amount_ml,
         time: formatTimestamp(o.timestamp),
+        time24: formatTimeInput(o.timestamp),
       }));
       const inputs = summary.inputs.map((l) => ({
         id: l.id,
         time: formatTimestamp(l.timestamp),
+        time24: formatTimeInput(l.timestamp),
         fluid_type: l.fluid_type,
         fluid_type_label: formatFluidType(l.fluid_type),
         amount_ml: l.amount_ml,
@@ -2122,6 +2238,7 @@ app.get('/api/history', (req, res) => {
       const gags = summary.gags.map((g) => ({
         id: g.id,
         time: formatTimestamp(g.timestamp),
+        time24: formatTimeInput(g.timestamp),
       }));
 
       // Split wellness into afternoon (5pm) and evening (10pm)
@@ -2201,6 +2318,34 @@ app.delete('/api/log/:id', (req, res) => {
   }
 });
 
+/**
+ * DELETE /api/wellness?date=YYYY-MM-DD&check_time=5pm|10pm
+ * Remove a specific wellness entry for the day/period.
+ */
+app.delete('/api/wellness', (req, res) => {
+  try {
+    const dateResult = validateLogDate(req.query.date);
+    if (!dateResult.ok) {
+      return res.status(400).json({ ok: false, error: dateResult.error });
+    }
+
+    const checkTime = req.query.check_time;
+    if (!['5pm', '10pm'].includes(checkTime)) {
+      return res.status(400).json({ ok: false, error: 'Invalid check_time. Use 5pm or 10pm.' });
+    }
+
+    const result = db.deleteWellness(dateResult.date, checkTime);
+    if (result.changes === 0) {
+      return res.status(404).json({ ok: false, error: 'Wellness entry not found' });
+    }
+
+    res.json({ ok: true, deleted: { date: dateResult.date, check_time: checkTime } });
+  } catch (err) {
+    console.error('[DELETE /api/wellness]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 // ---------------------------------------------------------------------------
 // Weight API
 // ---------------------------------------------------------------------------
@@ -2262,7 +2407,7 @@ app.get('/api/weight/today', (req, res) => {
  */
 app.get('/api/weight/history', (req, res) => {
   try {
-    const days = Math.min(30, Math.max(1, parseInt(req.query.days, 10) || 7));
+    const days = Math.min(90, Math.max(1, parseInt(req.query.days, 10) || 7));
     let entries;
 
     if (req.query.throughDate) {
@@ -2278,6 +2423,29 @@ app.get('/api/weight/history', (req, res) => {
     res.json({ ok: true, entries });
   } catch (err) {
     console.error('[GET /api/weight/history]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+/**
+ * DELETE /api/weight/:date
+ * Remove a specific day weight entry.
+ */
+app.delete('/api/weight/:date', (req, res) => {
+  try {
+    const dateResult = validateLogDate(req.params.date);
+    if (!dateResult.ok) {
+      return res.status(400).json({ ok: false, error: dateResult.error });
+    }
+
+    const result = db.deleteWeight(dateResult.date);
+    if (result.changes === 0) {
+      return res.status(404).json({ ok: false, error: 'Weight entry not found' });
+    }
+
+    res.json({ ok: true, deleted: dateResult.date });
+  } catch (err) {
+    console.error('[DELETE /api/weight/:date]', err);
     res.status(500).json({ ok: false, error: err.message });
   }
 });

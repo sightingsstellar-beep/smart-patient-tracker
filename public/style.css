@@ -1222,3 +1222,525 @@ body {
   background: var(--red-light);
   color: var(--red);
 }
+
+/* ============================================================
+   DAY VIEW UPGRADE
+   ============================================================ */
+
+.card-header--actionable {
+  align-items: center;
+}
+
+.card-action-btn {
+  border: none;
+  border-radius: 999px;
+  background: var(--blue-light);
+  color: var(--blue);
+  padding: 8px 12px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.card-action-btn:active,
+.card-action-btn:hover {
+  background: var(--blue);
+  color: white;
+}
+
+.day-controller-bar {
+  position: sticky;
+  top: 102px;
+  z-index: 90;
+  background: rgba(255, 255, 255, 0.96);
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 12px 12px;
+}
+
+.day-controller-shell {
+  max-width: 640px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.day-quick-pills {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.day-pill,
+.day-nav-btn,
+.day-date-chip,
+.back-to-today-btn {
+  border: none;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+.day-pill {
+  background: var(--grey-light);
+  color: var(--blue);
+  border-radius: 999px;
+  padding: 10px 14px;
+  font-size: 0.9rem;
+}
+
+.day-pill.active {
+  background: var(--blue);
+  color: white;
+}
+
+.day-nav-row {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) 46px 46px;
+  gap: 8px;
+  align-items: center;
+}
+
+.day-nav-btn,
+.day-date-chip {
+  min-height: 44px;
+  border-radius: 14px;
+  background: var(--grey-light);
+  color: var(--text);
+  font-size: 1rem;
+}
+
+.day-date-chip {
+  text-align: center;
+  padding: 0 14px;
+  font-size: 0.95rem;
+}
+
+.day-nav-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.day-nav-btn--calendar {
+  font-size: 1.1rem;
+}
+
+.day-picker-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.day-status-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.day-status-text {
+  font-size: 0.84rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.back-to-today-btn {
+  background: none;
+  color: var(--blue);
+  font-size: 0.84rem;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.day-context-banner {
+  background: var(--yellow-light);
+  color: #7a5c00;
+  border-bottom: 1px solid #f0d271;
+  font-size: 0.87rem;
+  font-weight: 600;
+  text-align: center;
+  padding: 8px 14px;
+}
+
+.entry-row-button {
+  width: 100%;
+  border: none;
+  background: var(--grey-light);
+  border-radius: 12px;
+  padding: 12px;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.entry-row-button:active,
+.entry-row-button:hover {
+  background: var(--blue-light);
+}
+
+.entry-row-main {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.entry-row-title {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.entry-row-subtitle {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.entry-row-amount {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--blue);
+  white-space: nowrap;
+}
+
+.fluid-type-detail-row {
+  border: none;
+  background: transparent;
+  padding: 0;
+}
+
+.fluid-type-detail-row .entry-row-button {
+  padding: 8px 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.fluid-type-detail-row .entry-row-button:hover,
+.fluid-type-detail-row .entry-row-button:active {
+  background: transparent;
+}
+
+.weight-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.weight-summary-card {
+  background: var(--grey-light);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.weight-summary-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.weight-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.weight-meta {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+
+.weight-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.inline-action-btn {
+  border: none;
+  border-radius: 999px;
+  padding: 8px 12px;
+  background: var(--blue-light);
+  color: var(--blue);
+  font-size: 0.84rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.inline-action-btn.inline-action-btn--danger {
+  background: var(--red-light);
+  color: var(--red);
+}
+
+.wellness-period-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.wellness-period-card {
+  background: var(--grey-light);
+  border: none;
+  border-radius: 12px;
+  padding: 14px;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+}
+
+.wellness-period-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.wellness-period-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.wellness-period-status {
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.wellness-period-status.logged {
+  color: var(--green);
+}
+
+.output-item,
+.gag-item {
+  background: transparent;
+  padding: 0;
+}
+
+.wellness-summary-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.wellness-summary-pill {
+  background: white;
+  border-radius: 10px;
+  padding: 8px 10px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.82rem;
+}
+
+.wellness-summary-label {
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.wellness-summary-value {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 600;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding: 12px;
+}
+
+.entry-sheet {
+  width: 100%;
+  max-width: 640px;
+  background: white;
+  border-radius: 24px 24px 0 0;
+  padding: 10px 18px 18px;
+  box-shadow: var(--shadow-hover);
+  max-height: min(82vh, 760px);
+  overflow-y: auto;
+}
+
+.sheet-handle {
+  width: 48px;
+  height: 5px;
+  border-radius: 999px;
+  background: #d2d6db;
+  margin: 4px auto 14px;
+}
+
+.sheet-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.sheet-header h3 {
+  font-size: 1.1rem;
+  margin-bottom: 4px;
+}
+
+.sheet-subtitle {
+  font-size: 0.84rem;
+  color: var(--text-secondary);
+}
+
+.sheet-close-btn {
+  border: none;
+  background: var(--grey-light);
+  color: var(--text-secondary);
+  width: 36px;
+  height: 36px;
+  border-radius: 999px;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.entry-sheet-form {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.entry-sheet-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.form-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.form-field label {
+  font-size: 0.84rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.form-field input,
+.form-field select {
+  width: 100%;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  font-size: 1rem;
+  background: white;
+}
+
+.sheet-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.sheet-primary-btn,
+.sheet-secondary-btn {
+  flex: 1;
+  border: none;
+  border-radius: 12px;
+  padding: 13px 14px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.sheet-primary-btn {
+  background: var(--blue);
+  color: white;
+}
+
+.sheet-secondary-btn {
+  background: var(--red-light);
+  color: var(--red);
+}
+
+.wellness-editor-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.wellness-radio-group {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.wellness-radio-option {
+  position: relative;
+}
+
+.wellness-radio-option input {
+  position: absolute;
+  opacity: 0;
+}
+
+.wellness-radio-option span {
+  display: block;
+  border: 1.5px solid var(--border);
+  border-radius: 12px;
+  padding: 10px 12px;
+  font-size: 0.84rem;
+  font-weight: 700;
+  text-align: center;
+  color: var(--text-secondary);
+}
+
+.wellness-radio-option input:checked + span {
+  border-color: var(--blue);
+  background: var(--blue-light);
+  color: var(--blue);
+}
+
+.range-field {
+  background: var(--grey-light);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.range-field-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.range-field-value {
+  font-weight: 700;
+  color: var(--blue);
+}
+
+.range-field input[type="range"] {
+  padding: 0;
+  border: none;
+}
+
+@media (max-width: 430px) {
+  .day-controller-bar {
+    top: 98px;
+  }
+
+  .day-status-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .wellness-summary-grid,
+  .wellness-editor-grid,
+  .wellness-radio-group {
+    grid-template-columns: 1fr;
+  }
+}

@@ -7,13 +7,12 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <link rel="manifest" href="/manifest.json" />
-  <title>The Smart Patient Wellness Tracker — History</title>
+  <title>The Smart Patient Wellness Tracker — Trends</title>
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="history.css" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 </head>
 <body>
-  <!-- ========== HEADER ========== -->
   <header class="header">
     <div class="header-top">
       <div class="header-left">
@@ -28,11 +27,11 @@
     <nav class="tab-bar">
       <a href="/" class="tab-item">
         <span class="tab-icon">📊</span>
-        <span class="tab-label">Today</span>
+        <span class="tab-label">Day</span>
       </a>
       <a href="/history" class="tab-item active">
-        <span class="tab-icon">📅</span>
-        <span class="tab-label">History</span>
+        <span class="tab-icon">📈</span>
+        <span class="tab-label">Trends</span>
       </a>
       <a href="/chat" class="tab-item">
         <span class="tab-icon">🎤</span>
@@ -46,15 +45,23 @@
   </header>
 
   <main class="main history-main">
-    <!-- Top bar with refresh -->
-    <div class="history-topbar">
-      <h2 class="history-heading">📅 Last 7 Days</h2>
-      <button class="refresh-btn" id="refresh-btn" title="Refresh">🔄 Refresh</button>
-    </div>
+    <section class="trends-toolbar card">
+      <div class="trends-toolbar-top">
+        <div>
+          <h2 class="trends-heading">📈 Trends</h2>
+          <p class="trends-subheading">Tap any bar or point to jump into that day.</p>
+        </div>
+        <button class="refresh-btn" id="refresh-btn" title="Refresh">🔄 Refresh</button>
+      </div>
+      <div class="range-pills" id="range-pills">
+        <button class="range-pill active" data-range="7">7D</button>
+        <button class="range-pill" data-range="30">30D</button>
+        <button class="range-pill" data-range="90">90D</button>
+      </div>
+    </section>
 
-    <!-- Day cards rendered here -->
-    <div id="history-container">
-      <div class="h-loading">Loading history…</div>
+    <div id="trends-container">
+      <div class="h-loading">Loading trends…</div>
     </div>
   </main>
 

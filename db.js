@@ -140,6 +140,20 @@ const insertLog = db.prepare(`
   VALUES (@timestamp, @day_key, @entry_type, @fluid_type, @amount_ml, @subtype, @notes, @source)
 `);
 
+const getLogByIdStmt = db.prepare('SELECT * FROM fluid_logs WHERE id = ?');
+
+const updateLogStmt = db.prepare(`
+  UPDATE fluid_logs
+     SET timestamp = @timestamp,
+         day_key = @day_key,
+         entry_type = @entry_type,
+         fluid_type = @fluid_type,
+         amount_ml = @amount_ml,
+         subtype = @subtype,
+         notes = @notes
+   WHERE id = @id
+`);
+
 function logEntry(entry) {
   const now = Date.now();
   const row = {
@@ -164,6 +178,24 @@ function getLogsByDay(dayKey) {
 
 function getLastLog() {
   return db.prepare('SELECT * FROM fluid_logs ORDER BY id DESC LIMIT 1').get();
+}
+
+function getLogById(id) {
+  return getLogByIdStmt.get(id) || null;
+}
+
+function updateLog(entry) {
+  const row = {
+    id: entry.id,
+    timestamp: entry.timestamp,
+    day_key: entry.day_key,
+    entry_type: entry.entry_type,
+    fluid_type: entry.fluid_type,
+    amount_ml: entry.amount_ml ?? null,
+    subtype: entry.subtype ?? null,
+    notes: entry.notes ?? null,
+  };
+  return updateLogStmt.run(row);
 }
 
 function deleteLog(id) {
@@ -211,6 +243,26 @@ const insertWellness = db.prepare(`
   VALUES (@timestamp, @day_key, @check_time, @appetite, @energy, @mood, @cyanosis)
 `);
 
+const getLatestWellnessEntryStmt = db.prepare(`
+  SELECT *
+    FROM wellness_checks
+   WHERE day_key = ? AND check_time = ?
+   ORDER BY timestamp DESC, id DESC
+   LIMIT 1
+`);
+
+const updateWellnessStmt = db.prepare(`
+  UPDATE wellness_checks
+     SET timestamp = @timestamp,
+         day_key = @day_key,
+         check_time = @check_time,
+         appetite = @appetite,
+         energy = @energy,
+         mood = @mood,
+         cyanosis = @cyanosis
+   WHERE id = @id
+`);
+
 function logWellness(entry) {
   const now = Date.now();
   const row = {
@@ -236,12 +288,61 @@ function getLastWellness() {
   return db.prepare('SELECT * FROM wellness_checks ORDER BY id DESC LIMIT 1').get();
 }
 
+function getLatestWellnessEntry(dayKey, checkTime) {
+  return getLatestWellnessEntryStmt.get(dayKey, checkTime) || null;
+}
+
+function upsertWellness(entry) {
+  const now = entry.timestamp || Date.now();
+  const dayKey = entry.day_key || getDayKey(new Date(now));
+  const checkTime = entry.check_time || '5pm';
+  const existing = getLatestWellnessEntry(dayKey, checkTime);
+
+  if (existing) {
+    const row = {
+      id: existing.id,
+      timestamp: now,
+      day_key: dayKey,
+      check_time: checkTime,
+      appetite: entry.appetite ?? null,
+      energy: entry.energy ?? null,
+      mood: entry.mood ?? null,
+      cyanosis: entry.cyanosis ?? null,
+    };
+    updateWellnessStmt.run(row);
+    return { ...existing, ...row };
+  }
+
+  return logWellness({
+    timestamp: now,
+    day_key: dayKey,
+    check_time: checkTime,
+    appetite: entry.appetite ?? null,
+    energy: entry.energy ?? null,
+    mood: entry.mood ?? null,
+    cyanosis: entry.cyanosis ?? null,
+  });
+}
+
+function deleteWellness(dayKey, checkTime) {
+  return db.prepare('DELETE FROM wellness_checks WHERE day_key = ? AND check_time = ?').run(dayKey, checkTime);
+}
+
 // ---------------------------------------------------------------------------
 // gag_events queries
 // ---------------------------------------------------------------------------
 
 const insertGag = db.prepare(`
   INSERT INTO gag_events (timestamp, day_key) VALUES (@timestamp, @day_key)
+`);
+
+const getGagByIdStmt = db.prepare('SELECT * FROM gag_events WHERE id = ?');
+
+const updateGagStmt = db.prepare(`
+  UPDATE gag_events
+     SET timestamp = @timestamp,
+         day_key = @day_key
+   WHERE id = @id
 `);
 
 function logGag(count = 1, timestamp = Date.now(), dayKeyOverride = null) {
@@ -258,6 +359,19 @@ function getGagsByDay(dayKey) {
   return db
     .prepare('SELECT * FROM gag_events WHERE day_key = ? ORDER BY timestamp ASC')
     .all(dayKey);
+}
+
+function getGagById(id) {
+  return getGagByIdStmt.get(id) || null;
+}
+
+function updateGag(entry) {
+  const row = {
+    id: entry.id,
+    timestamp: entry.timestamp,
+    day_key: entry.day_key,
+  };
+  return updateGagStmt.run(row);
 }
 
 function deleteLastGag() {
@@ -279,7 +393,7 @@ function deleteGag(id) {
  */
 function getDaySummary(dayKey) {
   const logs = getLogsByDay(dayKey);
-  const wellness = getWellnessByDay(dayKey);
+  const wellness = collapseLatestWellnessRows(getWellnessByDay(dayKey));
   const gags = getGagsByDay(dayKey);
 
   const inputs = logs.filter((l) => l.entry_type === 'input');
@@ -303,6 +417,20 @@ function getDaySummary(dayKey) {
     gags,
     gagCount: gags.length,
   };
+}
+
+function collapseLatestWellnessRows(rows) {
+  const byCheckTime = new Map();
+  for (const row of rows || []) {
+    const existing = byCheckTime.get(row.check_time);
+    if (!existing || row.timestamp > existing.timestamp || (row.timestamp === existing.timestamp && row.id > existing.id)) {
+      byCheckTime.set(row.check_time, row);
+    }
+  }
+  return [...byCheckTime.values()].sort((a, b) => {
+    if (a.timestamp !== b.timestamp) return a.timestamp - b.timestamp;
+    return a.id - b.id;
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -386,20 +514,31 @@ function getWeightHistoryUpTo(date, days) {
   ).all(date, days);
 }
 
+function deleteWeight(date) {
+  return db.prepare('DELETE FROM weight_logs WHERE date = ?').run(date);
+}
+
 module.exports = {
   db,
   getDayKey,
   logEntry,
   getLogsByDay,
   getLastLog,
+  getLogById,
+  updateLog,
   deleteLog,
   getLogsForDays,
   logWellness,
   getWellnessByDay,
   getLastWellness,
   getWellnessForDays,
+  getLatestWellnessEntry,
+  upsertWellness,
+  deleteWellness,
   logGag,
   getGagsByDay,
+  getGagById,
+  updateGag,
   deleteLastGag,
   deleteGag,
   getDaySummary,
@@ -411,4 +550,5 @@ module.exports = {
   getWeightForDate,
   getWeightHistory,
   getWeightHistoryUpTo,
+  deleteWeight,
 };

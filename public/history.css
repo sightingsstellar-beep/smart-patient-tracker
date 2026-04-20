@@ -1,46 +1,6 @@
 /* ============================================================
-   history.css — 7-day history page styles
-   Mobile-first, visually distinct day cards
+   Trends view styles
    ============================================================ */
-
-/* ---- Layout ---- */
-
-.history-main {
-  gap: 12px;
-}
-
-.history-topbar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 4px 0 2px;
-}
-
-.history-heading {
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--text);
-}
-
-.refresh-btn {
-  background: var(--blue-light);
-  color: var(--blue);
-  border: none;
-  border-radius: 20px;
-  padding: 6px 14px;
-  font-size: 0.82rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.refresh-btn:hover,
-.refresh-btn:active {
-  background: var(--blue);
-  color: white;
-}
-
-/* ---- Loading / Error states ---- */
 
 .h-loading,
 .h-error {
@@ -48,758 +8,191 @@
   color: var(--text-secondary);
   font-size: 0.95rem;
   padding: 32px 16px;
-  font-style: italic;
 }
 
 .h-error {
   color: var(--red);
-  font-style: normal;
 }
 
-/* ---- Day Card ---- */
-
-.day-card {
-  background: var(--white);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  overflow: hidden;
+.history-main {
+  gap: 14px;
 }
 
-/* Today card gets a blue left border accent */
-.day-card.is-today {
-  border-left: 4px solid var(--blue);
+.trends-toolbar {
+  padding: 18px;
 }
 
-.day-card-header {
+.trends-toolbar-top {
   display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 14px 16px 10px;
-  border-bottom: 1px solid var(--border);
-  background: var(--grey-light);
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
 }
 
-.day-label {
-  font-size: 0.98rem;
+.trends-heading {
+  font-size: 1.1rem;
   font-weight: 700;
   color: var(--text);
-  flex: 1;
+  margin-bottom: 4px;
 }
 
-.today-badge {
+.trends-subheading {
+  font-size: 0.86rem;
+  color: var(--text-secondary);
+}
+
+.range-pills {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.range-pill {
+  border: none;
+  border-radius: 999px;
+  padding: 9px 14px;
+  background: var(--grey-light);
+  color: var(--text-secondary);
+  font-size: 0.86rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.range-pill.active {
   background: var(--blue);
   color: white;
-  font-size: 0.7rem;
-  font-weight: 700;
-  border-radius: 10px;
-  padding: 2px 9px;
-  letter-spacing: 0.3px;
-  text-transform: uppercase;
 }
 
-.day-weight-badge {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--text-secondary);
-  background: var(--grey-light);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 2px 8px;
-  white-space: nowrap;
+.trend-card {
+  padding: 18px;
 }
 
-/* ---- Day Card Sections ---- */
-
-.day-section {
-  padding: 12px 16px;
-  border-bottom: 1px solid var(--border);
+.trend-card + .trend-card {
+  margin-top: 12px;
 }
 
-.day-section:last-child {
-  border-bottom: none;
+.trend-card-header {
+  margin-bottom: 14px;
 }
 
-.day-section-label {
-  font-size: 0.85rem;
+.trend-card-header h3 {
+  font-size: 1rem;
   font-weight: 700;
   color: var(--text);
-  letter-spacing: 0;
-  margin-bottom: 9px;
-  padding-left: 9px;
-  border-left: 3px solid var(--blue);
+  margin-bottom: 4px;
 }
 
-/* ---- Intake row ---- */
+.trend-card-header p {
+  font-size: 0.84rem;
+  color: var(--text-secondary);
+}
 
-.h-intake-row {
-  display: flex;
-  align-items: center;
+.trend-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
-  margin-bottom: 6px;
+  margin-bottom: 16px;
 }
 
-.h-intake-numbers {
-  white-space: nowrap;
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: var(--text);
-  min-width: 140px;
-}
-
-.h-intake-pct {
-  font-size: 0.82rem;
-  color: var(--text-secondary);
-  font-weight: 500;
-}
-
-.h-progress-wrap {
-  flex: 1;
-  height: 10px;
-  background: #e8eaed;
-  border-radius: 5px;
-  overflow: hidden;
-}
-
-.h-progress-bar {
-  height: 100%;
-  border-radius: 5px;
-  transition: width 0.5s ease;
-  background: var(--green);
-}
-
-.h-progress-bar.yellow { background: var(--yellow); }
-.h-progress-bar.red    { background: var(--red); }
-.h-progress-bar.over   { background: var(--red); }
-
-.h-intake-breakdown {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 6px;
-}
-
-.h-fluid-chip {
+.trend-stat {
   background: var(--grey-light);
-  border-radius: 8px;
-  padding: 3px 9px;
-  font-size: 0.77rem;
-  color: var(--text-secondary);
+  border-radius: 12px;
+  padding: 12px;
 }
 
-.h-fluid-chip strong {
-  color: var(--blue);
-}
-
-/* ---- Gag row ---- */
-
-.h-gag-none {
-  font-size: 0.88rem;
-  color: var(--text-secondary);
-  font-style: italic;
-}
-
-.h-gag-count {
-  font-size: 0.9rem;
-  font-weight: 700;
-  color: var(--red);
-}
-
-/* ---- Outputs row ---- */
-
-.h-output-list {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.h-output-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.85rem;
-  color: var(--text);
-}
-
-.h-output-time {
-  color: var(--text-secondary);
-  font-size: 0.78rem;
-  min-width: 60px;
-  font-variant-numeric: tabular-nums;
-}
-
-.h-output-type {
-  font-weight: 500;
-  text-transform: capitalize;
-}
-
-.h-output-amount {
-  color: var(--text-secondary);
-  font-size: 0.8rem;
-}
-
-.h-none {
-  font-size: 0.88rem;
-  color: var(--text-secondary);
-  font-style: italic;
-}
-
-/* ---- Wellness table ---- */
-
-.h-wellness-none {
-  font-size: 0.88rem;
-  color: var(--text-secondary);
-  font-style: italic;
-}
-
-/* Scrollable wrapper for the table on very narrow screens */
-.h-wellness-scroll {
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
-
-.h-wellness-table {
-  width: 100%;
-  min-width: 240px;
-  border-collapse: collapse;
-  font-size: 0.85rem;
-}
-
-.h-wellness-table th {
-  text-align: left;
-  font-size: 0.72rem;
+.trend-stat-label {
+  display: block;
+  font-size: 0.75rem;
   font-weight: 700;
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.4px;
-  padding: 4px 8px 6px 0;
-  white-space: nowrap;
-}
-
-.h-wellness-table th:first-child {
-  /* row-label column */
-  min-width: 72px;
-}
-
-.h-wellness-table th:not(:first-child) {
-  text-align: center;
-  padding: 4px 8px 6px;
-}
-
-.h-wellness-table td {
-  padding: 5px 8px 5px 0;
-  vertical-align: middle;
-}
-
-.h-wellness-table td:not(:first-child) {
-  text-align: center;
-  padding: 5px 8px;
-}
-
-.h-wellness-table tr + tr td {
-  border-top: 1px solid var(--border);
-}
-
-.h-row-label {
-  font-size: 0.82rem;
-  font-weight: 600;
-  color: var(--text);
-}
-
-.h-val {
-  font-size: 0.92rem;
-  font-weight: 700;
-  color: var(--text);
-}
-
-.h-val-dash {
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-}
-
-.h-trend {
-  display: inline-block;
-  font-size: 0.78rem;
-  font-weight: 700;
-  margin-left: 3px;
-  vertical-align: middle;
-}
-
-.h-trend-up   { color: var(--green); }
-.h-trend-down { color: var(--red); }
-.h-trend-flat { color: var(--grey); }
-
-/* ---- Empty-day card ---- */
-
-.day-card-empty .day-card-header {
-  background: #fafafa;
-}
-
-.h-empty-body {
-  padding: 14px 16px;
-  font-size: 0.88rem;
-  color: var(--text-secondary);
-  font-style: italic;
-}
-
-/* ============================================================
-   Accordion sections — expand/collapse per category
-   ============================================================ */
-
-/* Make the section header tappable */
-.accordion-section .section-header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  cursor: pointer;
-  gap: 10px;
-  -webkit-tap-highlight-color: transparent;
-  user-select: none;
-}
-
-.accordion-section .section-header:active {
-  opacity: 0.75;
-}
-
-/* Takes up the remaining width beside the chevron */
-.section-header-content {
-  flex: 1;
-  min-width: 0;
-}
-
-/* Chevron — rotates 90° when open */
-.section-chevron {
-  font-size: 0.6rem;
-  color: var(--text-secondary);
-  flex-shrink: 0;
-  margin-top: 2px;
-  line-height: 1;
-  display: inline-block;
-  transition: transform 0.25s ease;
-}
-
-.accordion-section.open .section-chevron {
-  transform: rotate(90deg);
-}
-
-/* ---- Detail panel (collapsible) ---- */
-
-.section-detail {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.3s ease;
-}
-
-.accordion-section.open .section-detail {
-  max-height: 900px; /* generous — accommodates all content */
-}
-
-.section-detail-inner {
-  border-top: 1px solid var(--border);
-  padding: 10px 0 2px;
-}
-
-/* ---- Detail list rows (shared across all sections) ---- */
-
-.h-detail-list {
-  display: flex;
-  flex-direction: column;
-  gap: 7px;
-}
-
-.h-detail-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 0.85rem;
-}
-
-.h-detail-time {
-  color: var(--text-secondary);
-  font-size: 0.78rem;
-  min-width: 68px;
-  flex-shrink: 0;
-  font-variant-numeric: tabular-nums;
-}
-
-.h-detail-icon {
-  flex-shrink: 0;
-  font-size: 1rem;
-  line-height: 1;
-}
-
-.h-detail-label {
-  color: var(--text);
-  font-weight: 500;
-  flex: 1;
-}
-
-.h-detail-value {
-  color: var(--text-secondary);
-  font-size: 0.82rem;
-  font-weight: 500;
-  flex-shrink: 0;
-}
-
-.h-detail-empty {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  font-style: italic;
-  margin: 0;
-}
-
-/* ---- Output summary (collapsed state) ---- */
-
-.h-output-summary {
-  font-size: 0.88rem;
-  color: var(--text);
-}
-
-.h-dot {
-  color: var(--text-secondary);
-  font-size: 0.8rem;
-}
-
-/* ---- Gag detail rows ---- */
-
-.h-gag-detail-row .h-detail-label {
-  font-weight: 400;
-  color: var(--text-secondary);
-}
-
-/* ---- Wellness summary states ---- */
-
-.h-wellness-ok {
-  font-size: 0.88rem;
-  color: var(--green);
-  font-weight: 600;
-}
-
-.h-wellness-partial {
-  font-size: 0.88rem;
-  color: var(--yellow);
-  font-weight: 500;
-}
-
-/* ---- Wellness detail (expanded) ---- */
-
-.h-wellness-check {
-  margin-bottom: 12px;
-}
-
-.h-wellness-check:last-child {
-  margin-bottom: 0;
-}
-
-.h-wellness-check-label {
-  font-size: 0.72rem;
-  font-weight: 700;
-  color: var(--text-secondary);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 7px;
-}
-
-.h-wellness-check-none {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  font-style: italic;
-}
-
-.h-wellness-scores {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 5px 12px;
-}
-
-.h-wellness-score {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.85rem;
-}
-
-.h-score-label {
-  color: var(--text-secondary);
-  font-size: 0.8rem;
-  flex: 1;
-}
-
-.h-score-val {
-  font-weight: 700;
-  color: var(--text);
-  font-size: 0.92rem;
-}
-
-/* ============================================================
-   + Add Entry button & inline form
-   ============================================================ */
-
-.h-add-entry-btn {
-  background: var(--blue-light);
-  color: var(--blue);
-  border: 1.5px solid var(--blue);
-  border-radius: 14px;
-  padding: 3px 10px;
-  font-size: 0.76rem;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background 0.15s, color 0.15s;
-  -webkit-tap-highlight-color: transparent;
-}
-
-.h-add-entry-btn:hover,
-.h-add-entry-btn:active {
-  background: var(--blue);
-  color: white;
-}
-
-/* Wrapper that slides in below the header */
-.h-add-form-wrapper {
-  border-bottom: 1px solid var(--border);
-  background: #f8fbff;
-  padding: 12px 16px;
-}
-
-.h-add-form {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.h-add-form-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-}
-
-.h-add-type-select {
-  flex: 1;
-  min-width: 130px;
-  padding: 8px 10px;
-  border: 1.5px solid var(--border);
-  border-radius: 8px;
-  font-size: 0.88rem;
-  color: var(--text);
-  background: white;
-  outline: none;
-  cursor: pointer;
-}
-
-.h-add-type-select:focus {
-  border-color: var(--blue);
-}
-
-.h-add-amount-wrap {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.h-add-amount-input {
-  width: 80px;
-  padding: 8px 10px;
-  border: 1.5px solid var(--border);
-  border-radius: 8px;
-  font-size: 0.88rem;
-  color: var(--text);
-  background: white;
-  outline: none;
-}
-
-.h-add-amount-input:focus {
-  border-color: var(--blue);
-}
-
-.h-add-unit-label {
-  font-size: 0.82rem;
-  color: var(--text-secondary);
-  font-weight: 500;
-  white-space: nowrap;
-}
-
-.h-add-form-actions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.h-add-log-btn {
-  padding: 9px 24px;
-  background: var(--blue);
-  color: white;
-  border: none;
-  border-radius: 8px;
-  font-size: 0.9rem;
-  font-weight: 700;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.h-add-log-btn:hover {
-  background: #1558c0;
-}
-
-.h-add-log-btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.h-add-cancel-link {
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  font-size: 0.85rem;
-  cursor: pointer;
-  text-decoration: underline;
-  padding: 0;
-}
-
-.h-add-cancel-link:hover {
-  color: var(--text);
-}
-
-.h-add-form-result {
-  font-size: 0.82rem;
-  font-weight: 600;
-  padding: 6px 10px;
-  border-radius: 6px;
-}
-
-.h-add-form-result--ok {
-  background: var(--green-light);
-  color: var(--green);
-}
-
-.h-add-form-result--err {
-  background: var(--red-light);
-  color: var(--red);
-}
-
-/* ============================================================
-   Wellness accordion editor — interactive sliders/buttons
-   ============================================================ */
-
-.h-wellness-detail-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-.h-wellness-period {
-  padding: 12px 0 8px;
-}
-
-.h-wellness-period-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 10px;
-}
-
-.h-wellness-period-label {
-  font-size: 0.82rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: var(--text-secondary);
-}
-
-.h-wellness-edit-period-btn {
-  background: var(--blue-light);
-  color: var(--blue);
-  border: none;
-  border-radius: 12px;
-  padding: 4px 12px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s;
-}
-
-.h-wellness-edit-period-btn:hover,
-.h-wellness-edit-period-btn:active {
-  background: var(--blue);
-  color: white;
-}
-
-.h-wellness-period-empty {
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  margin: 0 0 4px;
-  font-style: italic;
-}
-
-.h-wellness-period-divider {
-  height: 1px;
-  background: var(--border);
-  margin: 8px 0;
-}
-
-/* Metrics wrap — reuses style.css wellness classes; just needs spacing */
-.h-wellness-metrics-wrap {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
   margin-bottom: 4px;
 }
 
-/* Mute disabled controls visually */
-.h-wellness-metrics-wrap .wellness-choice-btn:disabled {
-  opacity: 0.75;
-  cursor: default;
+.trend-stat-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text);
 }
 
-.h-wellness-metrics-wrap .wellness-slider:disabled {
-  opacity: 0.7;
-  cursor: default;
+.trend-chart-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-bottom: 4px;
 }
 
-/* Save / Cancel row */
-.h-wellness-save-row {
+.trend-bars {
+  display: grid;
+  gap: 8px;
+  align-items: end;
+  min-height: 164px;
+}
+
+.trend-bar-btn {
+  border: none;
+  background: transparent;
+  padding: 0;
+  min-width: 28px;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
-  margin-top: 10px;
-}
-
-.h-wellness-save-btn {
-  /* inherits btn-save-wellness styles from style.css */
-  flex: 1;
-}
-
-.h-wellness-cancel-btn {
-  background: #f8f9fa;
-  color: var(--text-secondary);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 8px 16px;
-  font-size: 0.85rem;
-  font-weight: 600;
+  gap: 8px;
   cursor: pointer;
 }
 
-.h-wellness-cancel-btn:hover {
-  background: var(--border);
+.trend-bar-btn--empty {
+  opacity: 0.4;
 }
 
-/* Save result message */
-.h-wellness-save-result {
-  margin-top: 6px;
-  font-size: 0.82rem;
-  font-weight: 600;
-  padding: 6px 10px;
-  border-radius: 8px;
+.trend-bar-btn:active .trend-bar,
+.trend-bar-btn:hover .trend-bar {
+  transform: scaleY(1.03);
 }
 
-.h-wellness-result-ok {
-  background: var(--green-light);
-  color: var(--green);
+.trend-bar {
+  width: 100%;
+  min-height: 12px;
+  border-radius: 999px 999px 6px 6px;
+  transition: transform 0.15s ease;
 }
 
-.h-wellness-result-err {
-  background: var(--red-light);
-  color: var(--red);
+.trend-bar-date {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  letter-spacing: 0.1px;
+}
+
+.trend-bar--blue {
+  background: linear-gradient(180deg, #7fb4ff 0%, var(--blue) 100%);
+}
+
+.trend-bar--green {
+  background: linear-gradient(180deg, #7ddc9a 0%, var(--green) 100%);
+}
+
+.trend-bar--red {
+  background: linear-gradient(180deg, #ff9f97 0%, var(--red) 100%);
+}
+
+.trend-bar--purple {
+  background: linear-gradient(180deg, #d8a8eb 0%, var(--purple) 100%);
+}
+
+.trend-bar--orange {
+  background: linear-gradient(180deg, #ffd27e 0%, #fb8c00 100%);
+}
+
+@media (max-width: 430px) {
+  .trends-toolbar-top {
+    flex-direction: column;
+  }
+
+  .trend-stats {
+    grid-template-columns: 1fr;
+  }
 }

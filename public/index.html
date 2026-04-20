@@ -12,7 +12,6 @@
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 </head>
 <body>
-  <!-- ========== HEADER ========== -->
   <header class="header">
     <div class="header-top">
       <div class="header-left">
@@ -28,11 +27,11 @@
     <nav class="tab-bar">
       <a href="/" class="tab-item active">
         <span class="tab-icon">📊</span>
-        <span class="tab-label">Today</span>
+        <span class="tab-label">Day</span>
       </a>
       <a href="/history" class="tab-item">
-        <span class="tab-icon">📅</span>
-        <span class="tab-label">History</span>
+        <span class="tab-icon">📈</span>
+        <span class="tab-label">Trends</span>
       </a>
       <a href="/chat" class="tab-item">
         <span class="tab-icon">🎤</span>
@@ -45,36 +44,44 @@
     </nav>
   </header>
 
-  <section class="day-switcher-bar" aria-label="Dashboard day selector">
-    <div class="day-switcher" id="date-toggle">
-      <button class="day-switcher-btn active" id="toggle-today" data-day="today">Today</button>
-      <button class="day-switcher-btn" id="toggle-yesterday" data-day="yesterday">Yesterday</button>
+  <section class="day-controller-bar" aria-label="Day navigator">
+    <div class="day-controller-shell">
+      <div class="day-quick-pills">
+        <button class="day-pill" id="jump-today">Today</button>
+        <button class="day-pill" id="jump-yesterday">Yesterday</button>
+      </div>
+      <div class="day-nav-row">
+        <button class="day-nav-btn" id="day-prev" aria-label="Previous day">‹</button>
+        <button class="day-date-chip" id="day-date-chip" aria-label="Choose day">Loading…</button>
+        <button class="day-nav-btn" id="day-next" aria-label="Next day">›</button>
+        <button class="day-nav-btn day-nav-btn--calendar" id="day-calendar-btn" aria-label="Open calendar">📅</button>
+        <input type="date" id="day-picker" class="day-picker-input" />
+      </div>
+      <div class="day-status-row">
+        <span class="day-status-text" id="day-status-text">Viewing today</span>
+        <button class="back-to-today-btn" id="back-to-today" style="display:none;">Back to Today</button>
+      </div>
     </div>
   </section>
 
-  <!-- Yellow banner — shown when logging for yesterday -->
-  <div class="yesterday-banner" id="yesterday-banner" style="display:none;">
-    ⚠️ Viewing and logging yesterday
-  </div>
+  <div class="day-context-banner" id="day-context-banner" style="display:none;"></div>
 
   <main class="main">
-
-    <!-- ========== QUICK LOG ========== -->
     <section class="card quick-log-card">
       <div class="card-header">
         <span class="card-icon">⚡</span>
-        <h2>Quick Log</h2>
+        <h2>Quick Add</h2>
       </div>
-      <p class="quick-log-hint">Tap a button to log an entry:</p>
+      <p class="quick-log-hint">Tap a button to log an entry for the selected day.</p>
       <div class="quick-buttons">
-        <button class="quick-btn" data-type="input"  data-fluid="water">💧 Water</button>
-        <button class="quick-btn" data-type="input"  data-fluid="pediasure">🍼 PediaSure</button>
+        <button class="quick-btn" data-type="input" data-fluid="water">💧 Water</button>
+        <button class="quick-btn" data-type="input" data-fluid="pediasure">🍼 PediaSure</button>
         <button class="quick-btn" data-type="output" data-fluid="urine">🚽 Urine</button>
-        <button class="quick-btn" data-type="input"  data-fluid="juice">🧃 Juice</button>
-        <button class="quick-btn" data-type="input"  data-fluid="yogurt_drink">🥛 Yogurt</button>
+        <button class="quick-btn" data-type="input" data-fluid="juice">🧃 Juice</button>
+        <button class="quick-btn" data-type="input" data-fluid="yogurt_drink">🥛 Yogurt</button>
         <button class="quick-btn" data-type="output" data-fluid="poop">💩 Poop</button>
-        <button class="quick-btn" data-type="input"  data-fluid="milk">🥛 Milk</button>
-        <button class="quick-btn" data-type="gag"    data-count="1">🤢 Gag ×1</button>
+        <button class="quick-btn" data-type="input" data-fluid="milk">🥛 Milk</button>
+        <button class="quick-btn" data-type="gag" data-count="1">🤢 Gag ×1</button>
         <button class="quick-btn" data-type="output" data-fluid="vomit">🤮 Vomit</button>
       </div>
       <div class="poop-subtype-popup" id="poop-subtype-popup" style="display:none;" role="dialog" aria-label="Choose poop type">
@@ -85,173 +92,104 @@
       <div class="undo-row">
         <button class="undo-btn" id="undo-btn">↩️ Undo Last Entry</button>
       </div>
-      <!-- Amount modal (inputs + outputs) -->
       <div class="amount-modal" id="amount-modal" style="display:none;">
         <div class="amount-modal-inner">
-          <h3 id="modal-amount-label">Enter amount (ml)</h3>
-          <input type="number" id="amount-input" min="1" max="1000" placeholder="e.g. 85" inputmode="numeric" />
-          <div class="modal-time-wrap" id="modal-time-wrap" style="display:none;">
+          <h3 id="modal-amount-label">Enter amount</h3>
+          <input type="number" id="amount-input" min="0" max="1000" step="0.1" placeholder="e.g. 85" inputmode="decimal" />
+          <div class="modal-time-wrap" id="modal-time-wrap">
             <label for="modal-time-input" class="modal-field-label">Time for this entry</label>
             <input type="time" id="modal-time-input" />
           </div>
           <div class="modal-buttons">
-            <button class="btn-cancel" id="modal-cancel">Cancel</button>
-            <button class="btn-confirm" id="modal-confirm">Log It</button>
+            <button class="btn-cancel" id="modal-cancel" type="button">Cancel</button>
+            <button class="btn-confirm" id="modal-confirm" type="button">Save</button>
           </div>
         </div>
       </div>
     </section>
 
-    <!-- ========== INTAKE SECTION ========== -->
     <section class="card intake-card" id="intake-section">
-      <div class="card-header">
+      <div class="card-header card-header--actionable">
         <span class="card-icon">💧</span>
-        <h2>Fluid Intake</h2>
+        <h2>Intake</h2>
+        <button class="card-action-btn" id="add-intake-btn">+ Add</button>
       </div>
-
       <div class="intake-totals">
         <span class="intake-amount" id="intake-amount">-- ml</span>
         <span class="intake-limit" id="intake-limit">/ -- ml</span>
         <span class="intake-pct" id="intake-pct">--%</span>
       </div>
-
-      <!-- Progress bar -->
       <div class="progress-container" aria-label="Intake progress">
         <div class="progress-bar" id="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
       </div>
-      <div class="over-limit-warning" id="over-limit-warning" style="display:none;">
-        ⚠️ Daily limit exceeded!
-      </div>
-
-      <!-- Intake breakdown cards -->
-      <div class="fluid-types" id="fluid-types">
-        <!-- Populated by JS -->
-      </div>
+      <div class="over-limit-warning" id="over-limit-warning" style="display:none;">⚠️ Daily limit exceeded!</div>
+      <div class="fluid-types" id="fluid-types"></div>
     </section>
 
-    <!-- ========== OUTPUT LOG ========== -->
     <section class="card output-card">
-      <div class="card-header">
+      <div class="card-header card-header--actionable">
         <span class="card-icon">🚽</span>
         <h2>Outputs</h2>
         <span class="badge" id="output-count">0</span>
+        <button class="card-action-btn" id="add-output-btn">+ Add</button>
       </div>
       <ul class="output-list" id="output-list">
         <li class="empty-state">No outputs logged yet</li>
       </ul>
     </section>
 
-    <!-- ========== GAG COUNTER ========== -->
     <section class="card gag-card">
-      <div class="card-header">
+      <div class="card-header card-header--actionable">
         <span class="card-icon">🤢</span>
         <h2>Gag Episodes</h2>
         <span class="badge badge-warn" id="gag-count">0</span>
+        <button class="card-action-btn" id="add-gag-btn">+ Add</button>
       </div>
       <ul class="gag-list" id="gag-list">
         <li class="empty-state">No gag episodes logged yet</li>
       </ul>
     </section>
 
-    <!-- Divider between fluid tracking and daily checks -->
     <div class="section-divider"></div>
-
-    <!-- ========== DAILY CHECKS HEADER ========== -->
     <div class="daily-checks-label">Daily Checks</div>
 
-    <!-- ========== DAILY WEIGHT ========== -->
     <section class="card" id="weight-card">
-      <div class="card-header">
+      <div class="card-header card-header--actionable">
         <span class="card-icon">⚖️</span>
-        <h2>Daily Weight</h2>
+        <h2>Weight</h2>
+        <button class="card-action-btn" id="weight-action-btn">Add</button>
       </div>
-      <div class="weight-log-row">
-        <input type="number" id="weight-input" min="1" max="99" step="0.1" placeholder="e.g. 14.2" inputmode="decimal" />
-        <span class="weight-unit-label">kg</span>
-        <button class="btn-log-weight" id="weight-log-btn">Log Weight</button>
-      </div>
-      <div class="weight-status" id="weight-status" style="display:none;">
-        <span id="weight-today-label"></span>
-        <span id="weight-trend"></span>
-        <button class="weight-update-link" id="weight-update-btn">Update</button>
-      </div>
+      <div class="weight-summary" id="weight-summary"></div>
     </section>
 
-    <!-- ========== VITALS & WELLNESS ========== -->
     <section class="card wellness-card" id="wellness-card">
       <div class="card-header">
         <span class="card-icon">❤️</span>
-        <h2>Vitals &amp; Wellness</h2>
+        <h2>Wellness</h2>
       </div>
-
-      <!-- Period toggle -->
-      <div class="wellness-period-toggle">
-        <button class="period-btn active" id="period-afternoon" data-period="afternoon">Afternoon</button>
-        <button class="period-btn" id="period-evening" data-period="evening">Evening</button>
-      </div>
-
-      <!-- Logged indicator -->
-      <div class="wellness-logged-indicator" id="wellness-logged-indicator" style="display:none;">
-        ✓ Already logged for this period —
-        <button class="wellness-edit-link" id="wellness-edit-btn">Edit</button>
-      </div>
-
-      <!-- Metric button groups -->
-      <div class="wellness-metrics" id="wellness-metrics">
-
-        <div class="wellness-metric-group">
-          <div class="wellness-metric-label">Cyanosis</div>
-          <div class="wellness-btn-group" data-metric="cyanosis">
-            <button class="wellness-choice-btn" data-value="1">None</button>
-            <button class="wellness-choice-btn" data-value="3">Mild</button>
-            <button class="wellness-choice-btn" data-value="6">Moderate</button>
-            <button class="wellness-choice-btn" data-value="9">Severe</button>
-          </div>
-        </div>
-
-        <div class="wellness-metric-group">
-          <div class="wellness-slider-header">
-            <span class="wellness-metric-label">Energy</span>
-            <span class="wellness-slider-num" id="energy-value">5</span>
-          </div>
-          <div class="wellness-slider-wrap" id="energy-slider-wrap">
-            <input type="range" class="wellness-slider" id="energy-slider" data-metric="energy" min="1" max="10" step="1" value="5" />
-            <div class="wellness-slider-endlabels"><span>1</span><span>10</span></div>
-          </div>
-          <div class="wellness-slider-readonly" id="energy-readonly" style="display:none;"></div>
-        </div>
-
-        <div class="wellness-metric-group">
-          <div class="wellness-slider-header">
-            <span class="wellness-metric-label">Appetite</span>
-            <span class="wellness-slider-num" id="appetite-value">5</span>
-          </div>
-          <div class="wellness-slider-wrap" id="appetite-slider-wrap">
-            <input type="range" class="wellness-slider" id="appetite-slider" data-metric="appetite" min="1" max="10" step="1" value="5" />
-            <div class="wellness-slider-endlabels"><span>1</span><span>10</span></div>
-          </div>
-          <div class="wellness-slider-readonly" id="appetite-readonly" style="display:none;"></div>
-        </div>
-
-        <div class="wellness-metric-group">
-          <div class="wellness-slider-header">
-            <span class="wellness-metric-label">Mood</span>
-            <span class="wellness-slider-num" id="mood-value">5</span>
-          </div>
-          <div class="wellness-slider-wrap" id="mood-slider-wrap">
-            <input type="range" class="wellness-slider" id="mood-slider" data-metric="mood" min="1" max="10" step="1" value="5" />
-            <div class="wellness-slider-endlabels"><span>1</span><span>10</span></div>
-          </div>
-          <div class="wellness-slider-readonly" id="mood-readonly" style="display:none;"></div>
-        </div>
-
-      </div>
-
-      <button class="btn-save-wellness" id="save-wellness-btn">Save Wellness Check</button>
-      <div class="wellness-save-result" id="wellness-save-result" style="display:none;"></div>
+      <div class="wellness-period-list" id="wellness-period-list"></div>
     </section>
-
   </main>
+
+  <div class="sheet-backdrop" id="entry-sheet" style="display:none;">
+    <div class="entry-sheet" role="dialog" aria-modal="true" aria-labelledby="entry-sheet-title">
+      <div class="sheet-handle"></div>
+      <div class="sheet-header">
+        <div>
+          <h3 id="entry-sheet-title">Edit entry</h3>
+          <p class="sheet-subtitle" id="entry-sheet-subtitle"></p>
+        </div>
+        <button class="sheet-close-btn" id="entry-sheet-close" type="button">✕</button>
+      </div>
+      <form class="entry-sheet-form" id="entry-sheet-form">
+        <div class="entry-sheet-fields" id="entry-sheet-fields"></div>
+        <div class="sheet-actions">
+          <button class="sheet-secondary-btn" id="entry-sheet-delete" type="button" style="display:none;">Delete</button>
+          <button class="sheet-primary-btn" id="entry-sheet-save" type="submit">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
 
   <footer class="footer">
     <span>Last updated: <span id="last-updated">--</span></span>
