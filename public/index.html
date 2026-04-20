@@ -45,9 +45,16 @@
     </nav>
   </header>
 
+  <section class="day-switcher-bar" aria-label="Dashboard day selector">
+    <div class="day-switcher" id="date-toggle">
+      <button class="day-switcher-btn active" id="toggle-today" data-day="today">Today</button>
+      <button class="day-switcher-btn" id="toggle-yesterday" data-day="yesterday">Yesterday</button>
+    </div>
+  </section>
+
   <!-- Yellow banner — shown when logging for yesterday -->
   <div class="yesterday-banner" id="yesterday-banner" style="display:none;">
-    ⚠️ Logging for yesterday
+    ⚠️ Viewing and logging yesterday
   </div>
 
   <main class="main">
@@ -57,11 +64,6 @@
       <div class="card-header">
         <span class="card-icon">⚡</span>
         <h2>Quick Log</h2>
-        <!-- Date toggle -->
-        <div class="date-toggle" id="date-toggle">
-          <button class="date-toggle-btn active" id="toggle-today" data-day="today">Today</button>
-          <button class="date-toggle-btn" id="toggle-yesterday" data-day="yesterday">Yesterday</button>
-        </div>
       </div>
       <p class="quick-log-hint">Tap a button to log an entry:</p>
       <div class="quick-buttons">
@@ -135,7 +137,7 @@
         <span class="badge" id="output-count">0</span>
       </div>
       <ul class="output-list" id="output-list">
-        <li class="empty-state">No outputs logged today</li>
+        <li class="empty-state">No outputs logged yet</li>
       </ul>
     </section>
 
@@ -147,7 +149,7 @@
         <span class="badge badge-warn" id="gag-count">0</span>
       </div>
       <ul class="gag-list" id="gag-list">
-        <li class="empty-state">No gag episodes today</li>
+        <li class="empty-state">No gag episodes logged yet</li>
       </ul>
     </section>
 

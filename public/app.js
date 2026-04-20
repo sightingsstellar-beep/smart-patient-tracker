@@ -15,8 +15,9 @@
 let lastData = null;
 let pendingQuickLog = null; // { type, fluid_type, amount_ml }
 
-// Date toggle: 'today' or 'yesterday'
-let logDay = 'today';
+// Selected dashboard day: 'today' or 'yesterday'
+let selectedDay = 'today';
+let selectedDayKey = null;
 
 function getCurrentTimeInputValue() {
   const now = new Date();
@@ -34,22 +35,61 @@ let wellnessEditMode = { afternoon: false, evening: false };
 // Helpers
 // ---------------------------------------------------------------------------
 
-function getYesterdayDateStr() {
-  // Build the yesterday key client-side using the same day-boundary logic
-  // (just date math on current date — timezone offset doesn't affect YYYY-MM-DD)
-  const now = new Date();
-  const yesterday = new Date(now);
-  yesterday.setDate(yesterday.getDate() - 1);
-  return yesterday.toISOString().slice(0, 10);
+function shiftDayKey(dayKey, deltaDays) {
+  if (!dayKey) return null;
+  const [year, month, day] = dayKey.split('-').map(Number);
+  const shifted = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+  shifted.setUTCDate(shifted.getUTCDate() + deltaDays);
+  return shifted.toISOString().slice(0, 10);
+}
+
+function getSelectedDayTitle() {
+  return selectedDay === 'yesterday' ? 'Yesterday' : 'Today';
+}
+
+function getSelectedDayLabel() {
+  return selectedDay === 'yesterday' ? 'yesterday' : 'today';
+}
+
+function formatDayKeyLabel(dayKey) {
+  if (!dayKey) return '';
+  const [year, month, day] = dayKey.split('-').map(Number);
+  const date = new Date(Date.UTC(year, month - 1, day, 12, 0, 0));
+  return date.toLocaleDateString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    timeZone: 'UTC',
+  });
+}
+
+function buildRelativeUrl(path) {
+  const url = new URL(path, window.location.origin);
+  url.searchParams.set('relative', selectedDay);
+  return `${url.pathname}${url.search}`;
+}
+
+function updateSelectedDayUI() {
+  document.getElementById('toggle-today').classList.toggle('active', selectedDay === 'today');
+  document.getElementById('toggle-yesterday').classList.toggle('active', selectedDay === 'yesterday');
+
+  const banner = document.getElementById('yesterday-banner');
+  if (selectedDay === 'yesterday') {
+    const suffix = selectedDayKey ? ` (${formatDayKeyLabel(selectedDayKey)})` : '';
+    banner.textContent = `⚠️ Viewing and logging yesterday${suffix}`;
+    banner.style.display = 'block';
+  } else {
+    banner.style.display = 'none';
+  }
 }
 
 /**
- * Returns the date string to submit with the current logDay state,
+ * Returns the date string to submit with the current selectedDay state,
  * or undefined when logging for today (server defaults to today).
  */
 function getLogDateParam() {
-  if (logDay === 'yesterday') {
-    return getYesterdayDateStr();
+  if (selectedDay === 'yesterday') {
+    return selectedDayKey;
   }
   return undefined; // omit — server uses today
 }
@@ -83,13 +123,16 @@ updateClock();
 // Data fetching
 // ---------------------------------------------------------------------------
 
-async function fetchToday() {
+async function fetchSelectedDay() {
   try {
-    const res = await fetch('/api/today');
+    const res = await fetch(buildRelativeUrl('/api/today'));
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
+    selectedDayKey = data.dayKey || selectedDayKey;
+    updateSelectedDayUI();
     lastData = data;
     renderAll(data);
+    await loadSelectedDayWeight();
     document.getElementById('last-updated').textContent = new Date().toLocaleTimeString('en-US', {
       hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true,
     });
@@ -114,9 +157,9 @@ async function loadSettings() {
 }
 
 // Auto-refresh every 30 seconds
-setInterval(fetchToday, 30000);
+setInterval(fetchSelectedDay, 30000);
 loadSettings();
-fetchToday();
+fetchSelectedDay();
 
 // ---------------------------------------------------------------------------
 // Renderers
@@ -196,7 +239,7 @@ function renderFluidTypes(intakeByType, inputs) {
   const entries = Object.entries(intakeByType).filter(([, ml]) => ml > 0);
 
   if (entries.length === 0) {
-    container.innerHTML = '<div class="empty-state" style="text-align:left;font-style:normal;color:#5f6368;">No intake logged yet</div>';
+    container.innerHTML = `<div class="empty-state" style="text-align:left;font-style:normal;color:#5f6368;">No intake logged for ${getSelectedDayLabel()}</div>`;
     return;
   }
 
@@ -253,7 +296,7 @@ function renderOutputs(outputs) {
   list.innerHTML = '';
 
   if (outputs.length === 0) {
-    list.innerHTML = '<li class="empty-state">No outputs logged today</li>';
+    list.innerHTML = `<li class="empty-state">No outputs logged for ${getSelectedDayLabel()}</li>`;
     return;
   }
 
@@ -284,7 +327,7 @@ function renderGags(gags, count) {
   list.innerHTML = '';
 
   if (gags.length === 0) {
-    list.innerHTML = '<li class="empty-state">No gag episodes today</li>';
+    list.innerHTML = `<li class="empty-state">No gag episodes logged for ${getSelectedDayLabel()}</li>`;
     return;
   }
 
@@ -391,6 +434,17 @@ function initWellnessPeriod() {
 function updatePeriodToggleUI() {
   document.getElementById('period-afternoon').classList.toggle('active', wellnessPeriod === 'afternoon');
   document.getElementById('period-evening').classList.toggle('active', wellnessPeriod === 'evening');
+}
+
+function resetWellnessDraftInputs() {
+  document.querySelectorAll('.wellness-choice-btn.active').forEach((btn) => btn.classList.remove('active'));
+
+  for (const metric of ['energy', 'appetite', 'mood']) {
+    const slider = document.getElementById(`${metric}-slider`);
+    const numEl = document.getElementById(`${metric}-value`);
+    if (slider) slider.value = 5;
+    if (numEl) numEl.textContent = '5';
+  }
 }
 
 /**
@@ -534,17 +588,21 @@ document.getElementById('save-wellness-btn').addEventListener('click', async () 
   btn.disabled = true;
 
   try {
+    const body = {
+      type: 'wellness',
+      check_time: checkTime,
+      appetite: selections.appetite,
+      energy: selections.energy,
+      mood: selections.mood,
+      cyanosis: selections.cyanosis,
+    };
+    const dateParam = getLogDateParam();
+    if (dateParam) body.date = dateParam;
+
     const res = await fetch('/api/log', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        type: 'wellness',
-        check_time: checkTime,
-        appetite: selections.appetite,
-        energy: selections.energy,
-        mood: selections.mood,
-        cyanosis: selections.cyanosis,
-      }),
+      body: JSON.stringify(body),
     });
 
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -555,7 +613,7 @@ document.getElementById('save-wellness-btn').addEventListener('click', async () 
     resultEl.style.display = 'block';
 
     // Refresh data to update state
-    await fetchToday();
+    await fetchSelectedDay();
 
     setTimeout(() => {
       btn.textContent = original;
@@ -594,27 +652,31 @@ initWellnessPeriod();
 // Daily Weight section
 // ---------------------------------------------------------------------------
 
-let weightYesterdayKg = null; // cached for trend comparison
+let weightPreviousKg = null; // cached for trend comparison
 
-async function loadTodayWeight() {
+async function loadSelectedDayWeight() {
+  if (!selectedDayKey) return;
+
   try {
-    const res = await fetch('/api/weight/today');
+    const res = await fetch(`/api/weight/today?date=${encodeURIComponent(selectedDayKey)}`);
     if (!res.ok) return;
     const data = await res.json();
     renderWeightStatus(data.weight);
 
-    // Also fetch yesterday's weight for trend display
-    const histRes = await fetch('/api/weight/history?days=2');
+    // Also fetch the previous recorded weight for trend display.
+    const histRes = await fetch(`/api/weight/history?days=2&throughDate=${encodeURIComponent(selectedDayKey)}`);
     if (histRes.ok) {
       const histData = await histRes.json();
-      // entries are ordered desc by date — second entry is yesterday
-      if (histData.entries && histData.entries.length >= 2) {
-        weightYesterdayKg = histData.entries[1].weight_kg;
-      } else if (histData.entries && histData.entries.length === 1 && data.weight) {
-        // Only one entry exists (today's) — no yesterday
-        weightYesterdayKg = null;
+      weightPreviousKg = null;
+
+      if (data.weight && Array.isArray(histData.entries)) {
+        const selectedIndex = histData.entries.findIndex((entry) => entry.date === selectedDayKey);
+        if (selectedIndex !== -1 && histData.entries[selectedIndex + 1]) {
+          weightPreviousKg = histData.entries[selectedIndex + 1].weight_kg;
+        }
       }
-      // Re-render with trend now that we have yesterday
+
+      // Re-render with trend now that we have the previous value.
       renderWeightStatus(data.weight);
     }
   } catch (err) {
@@ -634,13 +696,13 @@ function renderWeightStatus(entry) {
     return;
   }
 
-  todayLabel.textContent = `Today: ${entry.weight_kg} kg`;
+  todayLabel.textContent = `${getSelectedDayTitle()}: ${entry.weight_kg} kg`;
 
-  // Trend vs yesterday
+  // Trend vs the previous recorded day
   trendEl.textContent = '';
   trendEl.className = '';
-  if (weightYesterdayKg !== null && typeof weightYesterdayKg === 'number') {
-    const diff = Math.round((entry.weight_kg - weightYesterdayKg) * 10) / 10;
+  if (weightPreviousKg !== null && typeof weightPreviousKg === 'number') {
+    const diff = Math.round((entry.weight_kg - weightPreviousKg) * 10) / 10;
     if (diff > 0.1) {
       trendEl.textContent = `↑ +${diff} kg`;
       trendEl.className = 'weight-trend-up';
@@ -684,7 +746,7 @@ document.getElementById('weight-log-btn').addEventListener('click', async () => 
 
     btn.textContent = '✅ Saved';
     inputEl.value = '';
-    await loadTodayWeight();
+    await fetchSelectedDay();
 
     setTimeout(() => {
       btn.textContent = originalText;
@@ -707,25 +769,28 @@ document.getElementById('weight-update-btn').addEventListener('click', () => {
   document.getElementById('weight-card').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 });
 
-// Load weight on startup
-loadTodayWeight();
-
 // ---------------------------------------------------------------------------
 // Date toggle (Today / Yesterday)
 // ---------------------------------------------------------------------------
 
-function setLogDay(day) {
-  logDay = day;
+async function setSelectedDay(day) {
+  if (selectedDay === day) return;
 
-  document.getElementById('toggle-today').classList.toggle('active', day === 'today');
-  document.getElementById('toggle-yesterday').classList.toggle('active', day === 'yesterday');
+  const baseDayKey = selectedDayKey || lastData?.dayKey || null;
+  selectedDay = day;
+  wellnessEditMode = { afternoon: false, evening: false };
+  resetWellnessDraftInputs();
 
-  const banner = document.getElementById('yesterday-banner');
-  banner.style.display = day === 'yesterday' ? 'block' : 'none';
+  if (day === 'yesterday' && baseDayKey) {
+    selectedDayKey = shiftDayKey(baseDayKey, -1);
+  }
+
+  updateSelectedDayUI();
+  await fetchSelectedDay();
 }
 
-document.getElementById('toggle-today').addEventListener('click', () => setLogDay('today'));
-document.getElementById('toggle-yesterday').addEventListener('click', () => setLogDay('yesterday'));
+document.getElementById('toggle-today').addEventListener('click', () => setSelectedDay('today'));
+document.getElementById('toggle-yesterday').addEventListener('click', () => setSelectedDay('yesterday'));
 
 // ---------------------------------------------------------------------------
 // Quick Log buttons
@@ -786,7 +851,7 @@ function handleQuickLog(btn) {
     return;
   }
 
-  const requiresModal = !amount || logDay === 'yesterday';
+  const requiresModal = !amount || selectedDay === 'yesterday';
   if (requiresModal) {
     pendingQuickLog = type === 'gag'
       ? { type: 'gag', count: count || 1 }
@@ -848,7 +913,7 @@ async function submitQuickLog(payload, btn) {
     }
 
     // Refresh data
-    await fetchToday();
+    await fetchSelectedDay();
   } catch (err) {
     console.error('[quick-log] Error:', err.message);
     if (btn) {
@@ -877,11 +942,11 @@ function showModal() {
 
   amountInput.style.display = isGag ? 'none' : 'block';
   amountInput.value = !isGag && pendingQuickLog && pendingQuickLog.amount_ml ? pendingQuickLog.amount_ml : '';
-  timeWrap.style.display = logDay === 'yesterday' ? 'block' : 'none';
+  timeWrap.style.display = selectedDay === 'yesterday' ? 'block' : 'none';
   timeInput.value = getCurrentTimeInputValue();
   document.getElementById('amount-modal').style.display = 'flex';
   setTimeout(() => {
-    const focusEl = !isGag ? amountInput : (logDay === 'yesterday' ? timeInput : null);
+    const focusEl = !isGag ? amountInput : (selectedDay === 'yesterday' ? timeInput : null);
     if (focusEl) focusEl.focus();
   }, 100);
 }
@@ -906,7 +971,7 @@ document.getElementById('modal-confirm').addEventListener('click', () => {
     const payload = {
       ...pendingQuickLog,
       amount_ml: isGag ? null : (isNaN(val) ? null : val),
-      time: logDay === 'yesterday' ? (timeEl.value || getCurrentTimeInputValue()) : undefined,
+      time: selectedDay === 'yesterday' ? (timeEl.value || getCurrentTimeInputValue()) : undefined,
     };
     hideModal();
     submitQuickLog(payload, null);
@@ -962,7 +1027,7 @@ document.getElementById('undo-btn').addEventListener('click', async () => {
       btn.disabled = false;
     }, 1500);
 
-    await fetchToday();
+    await fetchSelectedDay();
   } catch (err) {
     console.error('[undo] Error:', err.message);
     btn.textContent = '❌ Failed';

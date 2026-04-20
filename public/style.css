@@ -870,6 +870,51 @@ body {
 }
 
 /* ============================================================
+   DAY SWITCHER
+   ============================================================ */
+
+.day-switcher-bar {
+  background: var(--white);
+  border-bottom: 1px solid var(--border);
+  padding: 10px 12px 12px;
+}
+
+.day-switcher {
+  max-width: 640px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+  padding: 4px;
+  background: var(--grey-light);
+  border-radius: 18px;
+}
+
+.day-switcher-btn {
+  background: transparent;
+  color: var(--blue);
+  border: none;
+  border-radius: 14px;
+  padding: 10px 14px;
+  font-size: 0.92rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, box-shadow 0.15s;
+  min-width: 0;
+}
+
+.day-switcher-btn.active {
+  background: var(--blue);
+  color: white;
+  box-shadow: 0 1px 4px rgba(26, 115, 232, 0.25);
+}
+
+.day-switcher-btn:not(.active):hover,
+.day-switcher-btn:not(.active):active {
+  background: var(--blue-light);
+}
+
+/* ============================================================
    YESTERDAY BANNER
    ============================================================ */
 
@@ -884,39 +929,23 @@ body {
 }
 
 /* ============================================================
-   DATE TOGGLE (Today / Yesterday)
+   LEGACY DATE TOGGLE
    ============================================================ */
 
 .date-toggle {
-  display: flex;
-  gap: 0;
-  margin-left: auto;
-  border: 1.5px solid var(--blue);
-  border-radius: 20px;
-  overflow: hidden;
-  flex-shrink: 0;
+  display: none;
 }
 
 .date-toggle-btn {
-  background: transparent;
-  color: var(--blue);
-  border: none;
-  padding: 5px 12px;
-  font-size: 0.78rem;
-  font-weight: 600;
-  cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-  white-space: nowrap;
-  line-height: 1.4;
+  display: none;
 }
 
 .date-toggle-btn.active {
-  background: var(--blue);
-  color: white;
+  display: none;
 }
 
 .date-toggle-btn:not(.active):hover {
-  background: var(--blue-light);
+  display: none;
 }
 
 /* ============================================================

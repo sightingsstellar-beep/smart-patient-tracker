@@ -380,6 +380,12 @@ function getWeightHistory(days) {
   ).all(days);
 }
 
+function getWeightHistoryUpTo(date, days) {
+  return db.prepare(
+    'SELECT * FROM weight_logs WHERE date <= ? ORDER BY date DESC LIMIT ?'
+  ).all(date, days);
+}
+
 module.exports = {
   db,
   getDayKey,
@@ -404,4 +410,5 @@ module.exports = {
   logWeight,
   getWeightForDate,
   getWeightHistory,
+  getWeightHistoryUpTo,
 };

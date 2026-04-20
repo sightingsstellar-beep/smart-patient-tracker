@@ -1774,15 +1774,31 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ---------------------------------------------------------------------------
 
 /**
- * Returns yesterday's fluid-day key string "YYYY-MM-DD".
- * Derived from today's key so timezone logic is consistent.
+ * Shift a fluid-day key string "YYYY-MM-DD" by N calendar days.
  */
-function getYesterdayKey() {
-  const todayKey = db.getDayKey();
-  const [y, m, d] = todayKey.split('-').map(Number);
-  const yesterday = new Date(y, m - 1, d);
-  yesterday.setDate(yesterday.getDate() - 1);
-  return yesterday.toISOString().slice(0, 10);
+function shiftDayKey(dayKey, deltaDays) {
+  const [y, m, d] = dayKey.split('-').map(Number);
+  const shifted = new Date(Date.UTC(y, m - 1, d, 12, 0, 0));
+  shifted.setUTCDate(shifted.getUTCDate() + deltaDays);
+  return shifted.toISOString().slice(0, 10);
+}
+
+/**
+ * Resolve a day key from either an explicit date or a relative selector.
+ * Supports relative=today|yesterday for the dashboard day switcher.
+ */
+function resolveRequestedDayKey({ date, relative } = {}) {
+  if (relative) {
+    if (relative === 'today') {
+      return { ok: true, date: db.getDayKey() };
+    }
+    if (relative === 'yesterday') {
+      return { ok: true, date: shiftDayKey(db.getDayKey(), -1) };
+    }
+    return { ok: false, error: 'Invalid relative date. Use today or yesterday.' };
+  }
+
+  return validateLogDate(date);
 }
 
 /**
@@ -1917,11 +1933,19 @@ function formatTimestamp(tsMs) {
 
 /**
  * GET /api/today
- * Returns all data for the current fluid day.
+ * Returns all data for the requested fluid day.
  */
 app.get('/api/today', (req, res) => {
   try {
-    const dayKey = db.getDayKey();
+    const dayResult = resolveRequestedDayKey({
+      date: req.query.date,
+      relative: req.query.relative,
+    });
+    if (!dayResult.ok) {
+      return res.status(400).json({ ok: false, error: dayResult.error });
+    }
+
+    const dayKey = dayResult.date;
     const summary = db.getDaySummary(dayKey);
     res.json({
       ok: true,
@@ -2211,13 +2235,21 @@ app.post('/api/weight', (req, res) => {
 
 /**
  * GET /api/weight/today
- * Returns today's weight entry or { ok, weight: null }.
+ * Returns the requested day's weight entry or { ok, weight: null }.
  */
 app.get('/api/weight/today', (req, res) => {
   try {
-    const date = db.getDayKey();
+    const dayResult = resolveRequestedDayKey({
+      date: req.query.date,
+      relative: req.query.relative,
+    });
+    if (!dayResult.ok) {
+      return res.status(400).json({ ok: false, error: dayResult.error });
+    }
+
+    const date = dayResult.date;
     const entry = db.getWeightForDate(date);
-    res.json({ ok: true, weight: entry || null });
+    res.json({ ok: true, date, weight: entry || null });
   } catch (err) {
     console.error('[GET /api/weight/today]', err);
     res.status(500).json({ ok: false, error: err.message });
@@ -2231,7 +2263,18 @@ app.get('/api/weight/today', (req, res) => {
 app.get('/api/weight/history', (req, res) => {
   try {
     const days = Math.min(30, Math.max(1, parseInt(req.query.days, 10) || 7));
-    const entries = db.getWeightHistory(days);
+    let entries;
+
+    if (req.query.throughDate) {
+      const dateResult = validateLogDate(req.query.throughDate);
+      if (!dateResult.ok) {
+        return res.status(400).json({ ok: false, error: dateResult.error });
+      }
+      entries = db.getWeightHistoryUpTo(dateResult.date, days);
+    } else {
+      entries = db.getWeightHistory(days);
+    }
+
     res.json({ ok: true, entries });
   } catch (err) {
     console.error('[GET /api/weight/history]', err);
