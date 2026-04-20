@@ -291,7 +291,6 @@ function renderIntake() {
             <span class="output-time">${escapeHtml(entry.time || '--')}</span>
             <span class="entry-row-main">
               <span class="entry-row-title">${escapeHtml(entry.fluid_type_label || FLUID_LABELS[type] || type)}</span>
-              <span class="entry-row-subtitle">Tap to edit or delete</span>
             </span>
             <span class="entry-row-amount">${escapeHtml(entry.amount_ml || 0)} ml</span>
           </button>
@@ -328,7 +327,7 @@ function renderOutputs() {
   list.innerHTML = outputs.map((entry) => {
     const subtypeLabel = entry.fluid_type === 'poop' && entry.subtype
       ? `Subtype: ${entry.subtype}`
-      : 'Tap to edit or delete';
+      : '';
     const amount = entry.amount_ml ? `${entry.amount_ml} g` : 'No amount';
     return `
       <li class="output-item">
@@ -337,7 +336,7 @@ function renderOutputs() {
           <span class="output-type-icon">${entry.fluid_type === 'poop' ? '💩' : entry.fluid_type === 'vomit' ? '🤮' : '🚽'}</span>
           <span class="entry-row-main">
             <span class="entry-row-title">${escapeHtml(entry.fluid_type_label || FLUID_LABELS[entry.fluid_type] || entry.fluid_type)}</span>
-            <span class="entry-row-subtitle">${escapeHtml(subtypeLabel)}</span>
+            ${subtypeLabel ? `<span class="entry-row-subtitle">${escapeHtml(subtypeLabel)}</span>` : ''}
           </span>
           <span class="entry-row-amount">${escapeHtml(amount)}</span>
         </button>
@@ -362,7 +361,6 @@ function renderGags() {
         <span class="gag-time">${escapeHtml(entry.time || '--')}</span>
         <span class="entry-row-main">
           <span class="entry-row-title">Gag episode</span>
-          <span class="entry-row-subtitle">Tap to edit or delete</span>
         </span>
       </button>
     </li>
