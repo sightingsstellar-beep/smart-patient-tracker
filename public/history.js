@@ -84,7 +84,9 @@ function buildTrendCard({ icon, title, subtitle, unit, points, colorClass, lates
     const displayValue = typeof point.value === 'number' ? `${formatNumber(point.value)}${unit}` : 'No data';
     return `
       <button class="trend-bar-btn${emptyClass}" data-day-key="${point.dayKey}" title="${escapeHtml(point.label)}: ${escapeHtml(displayValue)}">
-        <span class="trend-bar ${colorClass}" style="height:${heightPct}%"></span>
+        <span class="trend-bar-shell">
+          <span class="trend-bar ${colorClass}" style="height:${heightPct}%"></span>
+        </span>
         <span class="trend-bar-date">${escapeHtml(shortDayLabel(point.dayKey))}</span>
       </button>
     `;

@@ -1289,6 +1289,10 @@ body {
   background: var(--grey-light);
   color: var(--text);
   font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  user-select: none;
 }
 
 .day-date-chip {
@@ -1308,8 +1312,11 @@ body {
 
 .day-picker-input {
   position: absolute;
+  width: 1px;
+  height: 1px;
   opacity: 0;
-  pointer-events: none;
+  left: -9999px;
+  overflow: hidden;
 }
 
 .day-status-row {

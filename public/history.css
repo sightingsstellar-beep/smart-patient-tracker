@@ -142,6 +142,13 @@
   cursor: pointer;
 }
 
+.trend-bar-shell {
+  width: 100%;
+  height: 132px;
+  display: flex;
+  align-items: flex-end;
+}
+
 .trend-bar-btn--empty {
   opacity: 0.4;
 }

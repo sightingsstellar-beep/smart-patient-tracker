@@ -820,14 +820,6 @@ function initEventListeners() {
     await refreshDay();
   });
 
-  const openDayPicker = () => {
-    const picker = document.getElementById('day-picker');
-    if (typeof picker.showPicker === 'function') picker.showPicker();
-    else picker.click();
-  };
-
-  document.getElementById('day-date-chip').addEventListener('click', openDayPicker);
-  document.getElementById('day-calendar-btn').addEventListener('click', openDayPicker);
   document.getElementById('day-picker').addEventListener('change', async (event) => {
     if (!event.target.value) return;
     state.selectedDayKey = event.target.value;
