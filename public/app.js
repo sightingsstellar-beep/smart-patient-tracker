@@ -200,7 +200,9 @@ async function refreshDay() {
       hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true,
     });
     document.getElementById('refresh-badge').style.opacity = '1';
-    document.getElementById('day-picker').max = state.todayDayKey;
+    document.querySelectorAll('.day-picker-input').forEach((input) => {
+      input.max = state.todayDayKey || '';
+    });
   } catch (err) {
     console.error('[day] Fetch error:', err.message);
     document.getElementById('refresh-badge').style.opacity = '0.35';
@@ -218,7 +220,9 @@ function renderAll() {
 
 function renderDayController() {
   document.getElementById('day-date-chip').textContent = formatChipLabel(state.selectedDayKey);
-  document.getElementById('day-picker').value = state.selectedDayKey || '';
+  document.querySelectorAll('.day-picker-input').forEach((input) => {
+    input.value = state.selectedDayKey || '';
+  });
 
   const statusText = document.getElementById('day-status-text');
   const banner = document.getElementById('day-context-banner');
@@ -820,10 +824,12 @@ function initEventListeners() {
     await refreshDay();
   });
 
-  document.getElementById('day-picker').addEventListener('change', async (event) => {
-    if (!event.target.value) return;
-    state.selectedDayKey = event.target.value;
-    await refreshDay();
+  document.querySelectorAll('.day-picker-input').forEach((input) => {
+    input.addEventListener('change', async (event) => {
+      if (!event.target.value) return;
+      state.selectedDayKey = event.target.value;
+      await refreshDay();
+    });
   });
   document.getElementById('back-to-today').addEventListener('click', async () => {
     state.selectedDayKey = state.todayDayKey;
