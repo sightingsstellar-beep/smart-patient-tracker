@@ -68,27 +68,45 @@
   <div class="day-context-banner" id="day-context-banner" style="display:none;"></div>
 
   <main class="main">
-    <section class="summary-strip" aria-label="Daily snapshot">
-      <article class="summary-tile summary-tile--blue">
-        <div class="summary-label">Intake</div>
-        <div class="summary-value" id="summary-intake-value">-- ml</div>
-        <div class="summary-meta" id="summary-intake-meta">Loading…</div>
-      </article>
-      <article class="summary-tile summary-tile--orange">
-        <div class="summary-label">Output</div>
-        <div class="summary-value" id="summary-output-value">-- g</div>
-        <div class="summary-meta" id="summary-output-meta">Loading…</div>
-      </article>
-      <article class="summary-tile summary-tile--green">
-        <div class="summary-label">Net balance</div>
-        <div class="summary-value" id="summary-balance-value">--</div>
-        <div class="summary-meta" id="summary-balance-meta">Loading…</div>
-      </article>
-      <article class="summary-tile summary-tile--purple">
-        <div class="summary-label">Weight</div>
-        <div class="summary-value" id="summary-weight-value">--</div>
-        <div class="summary-meta" id="summary-weight-meta">Loading…</div>
-      </article>
+    <section class="card quick-log-card">
+      <div class="card-header">
+        <span class="card-icon">⚡</span>
+        <h2>Quick Add</h2>
+      </div>
+      <p class="quick-log-hint">Tap a button to log an entry for the selected day.</p>
+      <div class="quick-buttons">
+        <button class="quick-btn" data-type="input" data-fluid="water">💧 Water</button>
+        <button class="quick-btn" data-type="input" data-fluid="pediasure">🍼 PediaSure</button>
+        <button class="quick-btn" data-type="output" data-fluid="urine">🚽 Urine</button>
+        <button class="quick-btn" data-type="input" data-fluid="juice">🧃 Juice</button>
+        <button class="quick-btn" data-type="input" data-fluid="yogurt_drink">🥛 Yogurt</button>
+        <button class="quick-btn" data-type="output" data-fluid="poop">💩 Poop</button>
+        <button class="quick-btn" data-type="input" data-fluid="milk">🥛 Milk</button>
+        <button class="quick-btn" data-type="gag" data-count="1">🤢 Gag ×1</button>
+        <button class="quick-btn" data-type="output" data-fluid="vomit">🤮 Vomit</button>
+      </div>
+      <div class="poop-subtype-popup" id="poop-subtype-popup" style="display:none;" role="dialog" aria-label="Choose poop type">
+        <button class="poop-subtype-btn" data-subtype="normal">💩 Normal</button>
+        <button class="poop-subtype-btn" data-subtype="diarrhea">💩 Diarrhea</button>
+        <button class="poop-subtype-btn" data-subtype="undigested">💩 Undigested</button>
+      </div>
+      <div class="undo-row">
+        <button class="undo-btn" id="undo-btn">↩️ Undo Last Entry</button>
+      </div>
+      <div class="amount-modal" id="amount-modal" style="display:none;">
+        <div class="amount-modal-inner">
+          <h3 id="modal-amount-label">Enter amount</h3>
+          <input type="number" id="amount-input" min="0" max="1000" step="0.1" placeholder="e.g. 85" inputmode="decimal" />
+          <div class="modal-time-wrap" id="modal-time-wrap">
+            <label for="modal-time-input" class="modal-field-label">Time for this entry</label>
+            <input type="time" id="modal-time-input" />
+          </div>
+          <div class="modal-buttons">
+            <button class="btn-cancel" id="modal-cancel" type="button">Cancel</button>
+            <button class="btn-confirm" id="modal-confirm" type="button">Save</button>
+          </div>
+        </div>
+      </div>
     </section>
 
     <section class="card intake-card" id="intake-section">
@@ -157,46 +175,6 @@
       <div class="wellness-period-list" id="wellness-period-list"></div>
     </section>
 
-    <section class="card quick-log-card">
-      <div class="card-header">
-        <span class="card-icon">⚡</span>
-        <h2>Quick Add</h2>
-      </div>
-      <p class="quick-log-hint">Tap a button to log an entry for the selected day.</p>
-      <div class="quick-buttons">
-        <button class="quick-btn" data-type="input" data-fluid="water">💧 Water</button>
-        <button class="quick-btn" data-type="input" data-fluid="pediasure">🍼 PediaSure</button>
-        <button class="quick-btn" data-type="output" data-fluid="urine">🚽 Urine</button>
-        <button class="quick-btn" data-type="input" data-fluid="juice">🧃 Juice</button>
-        <button class="quick-btn" data-type="input" data-fluid="yogurt_drink">🥛 Yogurt</button>
-        <button class="quick-btn" data-type="output" data-fluid="poop">💩 Poop</button>
-        <button class="quick-btn" data-type="input" data-fluid="milk">🥛 Milk</button>
-        <button class="quick-btn" data-type="gag" data-count="1">🤢 Gag ×1</button>
-        <button class="quick-btn" data-type="output" data-fluid="vomit">🤮 Vomit</button>
-      </div>
-      <div class="poop-subtype-popup" id="poop-subtype-popup" style="display:none;" role="dialog" aria-label="Choose poop type">
-        <button class="poop-subtype-btn" data-subtype="normal">💩 Normal</button>
-        <button class="poop-subtype-btn" data-subtype="diarrhea">💩 Diarrhea</button>
-        <button class="poop-subtype-btn" data-subtype="undigested">💩 Undigested</button>
-      </div>
-      <div class="undo-row">
-        <button class="undo-btn" id="undo-btn">↩️ Undo Last Entry</button>
-      </div>
-      <div class="amount-modal" id="amount-modal" style="display:none;">
-        <div class="amount-modal-inner">
-          <h3 id="modal-amount-label">Enter amount</h3>
-          <input type="number" id="amount-input" min="0" max="1000" step="0.1" placeholder="e.g. 85" inputmode="decimal" />
-          <div class="modal-time-wrap" id="modal-time-wrap">
-            <label for="modal-time-input" class="modal-field-label">Time for this entry</label>
-            <input type="time" id="modal-time-input" />
-          </div>
-          <div class="modal-buttons">
-            <button class="btn-cancel" id="modal-cancel" type="button">Cancel</button>
-            <button class="btn-confirm" id="modal-confirm" type="button">Save</button>
-          </div>
-        </div>
-      </div>
-    </section>
   </main>
 
   <div class="sheet-backdrop" id="entry-sheet" style="display:none;">
