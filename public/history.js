@@ -55,6 +55,13 @@ function formatNumber(value) {
   return Math.round(value * 10) / 10;
 }
 
+function formatSignedValue(value, unit = '') {
+  if (value === null || value === undefined || Number.isNaN(value)) return '—';
+  const formatted = formatNumber(value);
+  const sign = value > 0 ? '+' : '';
+  return `${sign}${formatted}${unit}`;
+}
+
 function mean(values) {
   const nums = values.filter((value) => typeof value === 'number' && !Number.isNaN(value));
   if (!nums.length) return null;
@@ -72,20 +79,36 @@ function computeWellnessAverage(day) {
   return mean(scores);
 }
 
-function buildTrendCard({ icon, title, subtitle, unit, points, colorClass, latestLabel, averageLabel }) {
+function buildTrendCard({ icon, title, subtitle, unit, points, colorClass, latestLabel, averageLabel, signed = false, negativeColorClass = 'trend-bar--red' }) {
   const validValues = points.map((point) => point.value).filter((value) => typeof value === 'number' && !Number.isNaN(value));
-  const maxValue = validValues.length ? Math.max(...validValues) : 1;
+  const maxValue = signed
+    ? (validValues.length ? Math.max(...validValues.map((value) => Math.abs(value))) : 1)
+    : (validValues.length ? Math.max(...validValues) : 1);
 
   const bars = points.map((point) => {
-    const heightPct = typeof point.value === 'number' && maxValue > 0
-      ? Math.max(8, Math.round((point.value / maxValue) * 100))
+    const isNumber = typeof point.value === 'number' && !Number.isNaN(point.value);
+    const magnitude = isNumber ? Math.abs(point.value) : 0;
+    const heightPct = isNumber && maxValue > 0
+      ? Math.max(8, Math.round((magnitude / maxValue) * (signed ? 50 : 100)))
       : 8;
-    const emptyClass = typeof point.value === 'number' ? '' : ' trend-bar-btn--empty';
-    const displayValue = typeof point.value === 'number' ? `${formatNumber(point.value)}${unit}` : 'No data';
+    const emptyClass = isNumber ? '' : ' trend-bar-btn--empty';
+    const displayValue = isNumber
+      ? (signed ? formatSignedValue(point.value, unit) : `${formatNumber(point.value)}${unit}`)
+      : 'No data';
+    const signedBarClass = signed
+      ? ` trend-bar--signed ${point.value < 0 ? 'trend-bar--signed-negative' : 'trend-bar--signed-positive'} ${point.value < 0 ? negativeColorClass : colorClass}`
+      : '';
+    const barShellClass = signed ? 'trend-bar-shell trend-bar-shell--signed' : 'trend-bar-shell';
+    const barHtml = signed
+      ? `
+          <span class="trend-bar-baseline"></span>
+          <span class="trend-bar${signedBarClass}" style="height:${heightPct}%"></span>
+        `
+      : `<span class="trend-bar ${colorClass}" style="height:${heightPct}%"></span>`;
     return `
       <button class="trend-bar-btn${emptyClass}" data-day-key="${point.dayKey}" title="${escapeHtml(point.label)}: ${escapeHtml(displayValue)}">
-        <span class="trend-bar-shell">
-          <span class="trend-bar ${colorClass}" style="height:${heightPct}%"></span>
+        <span class="${barShellClass}">
+          ${barHtml}
         </span>
         <span class="trend-bar-date">${escapeHtml(shortDayLabel(point.dayKey))}</span>
       </button>
@@ -140,6 +163,16 @@ function renderTrends() {
     value: day.outputs?.length || 0,
   }));
 
+  const balancePoints = orderedDays.map((day) => {
+    const intakeTotal = day.intake?.total_ml || 0;
+    const outputTotal = (day.outputs || []).reduce((sum, entry) => sum + (Number(entry.amount_ml) || 0), 0);
+    return {
+      dayKey: day.dayKey,
+      label: day.label,
+      value: intakeTotal - outputTotal,
+    };
+  });
+
   const gagPoints = orderedDays.map((day) => ({
     dayKey: day.dayKey,
     label: day.label,
@@ -168,6 +201,18 @@ function renderTrends() {
       points: intakePoints,
       latestLabel: `${formatNumber(intakePoints[intakePoints.length - 1]?.value || 0)} ml`,
       averageLabel: `${formatNumber(mean(intakePoints.map((point) => point.value)) || 0)} ml`,
+    }),
+    buildTrendCard({
+      icon: '⚖️',
+      title: 'Fluid balance',
+      subtitle: 'Daily intake minus measured output',
+      unit: ' net',
+      colorClass: 'trend-bar--green',
+      negativeColorClass: 'trend-bar--red',
+      signed: true,
+      points: balancePoints,
+      latestLabel: formatSignedValue(balancePoints[balancePoints.length - 1]?.value || 0, ' net'),
+      averageLabel: formatSignedValue(mean(balancePoints.map((point) => point.value)) || 0, ' / day'),
     }),
     buildTrendCard({
       icon: '🚽',
