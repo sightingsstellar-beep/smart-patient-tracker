@@ -123,6 +123,99 @@
   padding-bottom: 4px;
 }
 
+.trend-line-card-inner {
+  width: 100%;
+}
+
+.trend-line-shell {
+  position: relative;
+  height: 164px;
+  border-radius: 14px;
+  background: linear-gradient(180deg, #fbfcfe 0%, #f5f7fa 100%);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+
+.trend-line-plot {
+  position: absolute;
+  inset: 14px 10px 28px;
+}
+
+.trend-line-grid {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-rows: repeat(3, 1fr);
+  pointer-events: none;
+}
+
+.trend-line-grid span {
+  border-top: 1px dashed #e2e6eb;
+}
+
+.trend-line-svg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+.trend-line-path {
+  fill: none;
+  stroke-width: 2.5;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.trend-line-point-btn {
+  position: absolute;
+  width: 18px;
+  height: 18px;
+  margin-left: -9px;
+  margin-top: -9px;
+  border: none;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+}
+
+.trend-line-point {
+  display: block;
+  width: 10px;
+  height: 10px;
+  margin: 4px;
+  border-radius: 999px;
+  border: 2px solid #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.16);
+}
+
+.trend-line-labels {
+  display: grid;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.trend-line-label-btn {
+  border: none;
+  background: transparent;
+  padding: 0;
+  min-width: 44px;
+  cursor: pointer;
+}
+
+.trend-line-label-btn--empty {
+  opacity: 0.4;
+}
+
+.trend-line-label-date {
+  display: block;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
 .trend-bars {
   display: grid;
   gap: 8px;
@@ -220,6 +313,11 @@
 
 .trend-bar--purple {
   background: linear-gradient(180deg, #d8a8eb 0%, var(--purple) 100%);
+}
+
+.trend-line--purple {
+  stroke: var(--purple);
+  background: var(--purple);
 }
 
 .trend-bar--orange {

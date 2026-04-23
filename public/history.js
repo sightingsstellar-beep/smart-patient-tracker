@@ -142,6 +142,106 @@ function buildTrendCard({ icon, title, subtitle, unit, points, colorClass, lates
   `;
 }
 
+function buildLineTrendCard({ icon, title, subtitle, unit, points, colorClass, latestLabel, averageLabel }) {
+  const validPoints = points
+    .map((point, index) => ({ ...point, index }))
+    .filter((point) => typeof point.value === 'number' && !Number.isNaN(point.value));
+  const values = validPoints.map((point) => point.value);
+  const minValue = values.length ? Math.min(...values) : 0;
+  const maxValue = values.length ? Math.max(...values) : 1;
+  const range = maxValue - minValue || 1;
+  const chartWidth = Math.max(points.length * 44, 220);
+
+  const toX = (index) => (points.length <= 1 ? 50 : 4 + ((index / (points.length - 1)) * 92));
+  const toY = (value) => {
+    if (!values.length) return 50;
+    const normalized = (value - minValue) / range;
+    return 88 - (normalized * 76);
+  };
+
+  const segments = [];
+  let currentSegment = [];
+  points.forEach((point, index) => {
+    if (typeof point.value === 'number' && !Number.isNaN(point.value)) {
+      currentSegment.push(`${toX(index)},${toY(point.value)}`);
+    } else if (currentSegment.length) {
+      segments.push(currentSegment.join(' '));
+      currentSegment = [];
+    }
+  });
+  if (currentSegment.length) segments.push(currentSegment.join(' '));
+
+  const polylines = segments.map((segment) => `
+    <polyline class="trend-line-path ${colorClass}" points="${segment}" />
+  `).join('');
+
+  const pointsHtml = validPoints.map((point) => {
+    const x = toX(point.index);
+    const y = toY(point.value);
+    return `
+      <button
+        class="trend-line-point-btn"
+        data-day-key="${point.dayKey}"
+        title="${escapeHtml(point.label)}: ${escapeHtml(`${formatNumber(point.value)}${unit}`)}"
+        style="left:${x}%; top:${y}%;"
+      >
+        <span class="trend-line-point ${colorClass}"></span>
+      </button>
+    `;
+  }).join('');
+
+  const labels = points.map((point) => {
+    const isNumber = typeof point.value === 'number' && !Number.isNaN(point.value);
+    const labelValue = isNumber ? `${formatNumber(point.value)}${unit}` : 'No data';
+    return `
+      <button class="trend-line-label-btn${isNumber ? '' : ' trend-line-label-btn--empty'}" data-day-key="${point.dayKey}" title="${escapeHtml(point.label)}: ${escapeHtml(labelValue)}">
+        <span class="trend-line-label-date">${escapeHtml(shortDayLabel(point.dayKey))}</span>
+      </button>
+    `;
+  }).join('');
+
+  return `
+    <section class="trend-card card">
+      <div class="trend-card-header">
+        <div>
+          <h3>${escapeHtml(icon)} ${escapeHtml(title)}</h3>
+          <p>${escapeHtml(subtitle)}</p>
+        </div>
+      </div>
+      <div class="trend-stats">
+        <div class="trend-stat">
+          <span class="trend-stat-label">Latest</span>
+          <span class="trend-stat-value">${escapeHtml(latestLabel)}</span>
+        </div>
+        <div class="trend-stat">
+          <span class="trend-stat-label">Average</span>
+          <span class="trend-stat-value">${escapeHtml(averageLabel)}</span>
+        </div>
+      </div>
+      <div class="trend-chart-scroll">
+        <div class="trend-line-card-inner" style="min-width:${chartWidth}px;">
+          <div class="trend-line-shell">
+            <div class="trend-line-plot">
+              <div class="trend-line-grid">
+                <span></span>
+                <span></span>
+                <span></span>
+              </div>
+              <svg class="trend-line-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+                ${polylines}
+              </svg>
+              ${pointsHtml}
+            </div>
+          </div>
+          <div class="trend-line-labels" style="grid-template-columns: repeat(${points.length}, minmax(44px, 1fr));">
+            ${labels}
+          </div>
+        </div>
+      </div>
+    </section>
+  `;
+}
+
 function renderTrends() {
   const container = document.getElementById('trends-container');
   if (!state.days.length) {
@@ -193,16 +293,6 @@ function renderTrends() {
 
   const cards = [
     buildTrendCard({
-      icon: '💧',
-      title: 'Intake over time',
-      subtitle: 'Daily total intake',
-      unit: ' ml',
-      colorClass: 'trend-bar--blue',
-      points: intakePoints,
-      latestLabel: `${formatNumber(intakePoints[intakePoints.length - 1]?.value || 0)} ml`,
-      averageLabel: `${formatNumber(mean(intakePoints.map((point) => point.value)) || 0)} ml`,
-    }),
-    buildTrendCard({
       icon: '⚖️',
       title: 'Fluid balance',
       subtitle: 'Daily intake minus measured output',
@@ -213,6 +303,26 @@ function renderTrends() {
       points: balancePoints,
       latestLabel: formatSignedValue(balancePoints[balancePoints.length - 1]?.value || 0, ' net'),
       averageLabel: formatSignedValue(mean(balancePoints.map((point) => point.value)) || 0, ' / day'),
+    }),
+    buildLineTrendCard({
+      icon: '⚖️',
+      title: 'Weight trend',
+      subtitle: 'Recorded weight by day',
+      unit: ' kg',
+      colorClass: 'trend-line--purple',
+      points: weightPoints,
+      latestLabel: weightPoints[weightPoints.length - 1]?.value !== null ? `${formatNumber(weightPoints[weightPoints.length - 1].value)} kg` : 'No data',
+      averageLabel: mean(weightPoints.map((point) => point.value)) !== null ? `${formatNumber(mean(weightPoints.map((point) => point.value)))} kg` : 'No data',
+    }),
+    buildTrendCard({
+      icon: '💧',
+      title: 'Intake over time',
+      subtitle: 'Daily total intake',
+      unit: ' ml',
+      colorClass: 'trend-bar--blue',
+      points: intakePoints,
+      latestLabel: `${formatNumber(intakePoints[intakePoints.length - 1]?.value || 0)} ml`,
+      averageLabel: `${formatNumber(mean(intakePoints.map((point) => point.value)) || 0)} ml`,
     }),
     buildTrendCard({
       icon: '🚽',
@@ -233,16 +343,6 @@ function renderTrends() {
       points: gagPoints,
       latestLabel: `${formatNumber(gagPoints[gagPoints.length - 1]?.value || 0)} episodes`,
       averageLabel: `${formatNumber(mean(gagPoints.map((point) => point.value)) || 0)} / day`,
-    }),
-    buildTrendCard({
-      icon: '⚖️',
-      title: 'Weight trend',
-      subtitle: 'Recorded weight by day',
-      unit: ' kg',
-      colorClass: 'trend-bar--purple',
-      points: weightPoints,
-      latestLabel: weightPoints[weightPoints.length - 1]?.value !== null ? `${formatNumber(weightPoints[weightPoints.length - 1].value)} kg` : 'No data',
-      averageLabel: mean(weightPoints.map((point) => point.value)) !== null ? `${formatNumber(mean(weightPoints.map((point) => point.value)))} kg` : 'No data',
     }),
     buildTrendCard({
       icon: '❤️',
