@@ -313,7 +313,11 @@ function renderIntake() {
 function renderOutputs() {
   const outputs = state.data?.outputs || [];
   const list = document.getElementById('output-list');
+  const totalAmount = outputs.reduce((sum, entry) => sum + (Number(entry.amount_ml) || 0), 0);
+
   document.getElementById('output-count').textContent = outputs.length;
+  document.getElementById('output-total-amount').textContent = `${totalAmount} g`;
+  document.getElementById('output-total-events').textContent = `${outputs.length} ${outputs.length === 1 ? 'event' : 'events'}`;
 
   if (!outputs.length) {
     list.innerHTML = '<li class="empty-state">No outputs logged for this day</li>';
