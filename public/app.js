@@ -123,6 +123,33 @@ function getWellnessMap() {
   return map;
 }
 
+function formatSignedNumber(value, suffix = '') {
+  if (typeof value !== 'number' || Number.isNaN(value)) return '—';
+  const rounded = Math.round(value * 10) / 10;
+  const sign = rounded > 0 ? '+' : '';
+  return `${sign}${rounded}${suffix}`;
+}
+
+function getWeightTrendMeta() {
+  let label = 'No previous weight yet';
+  let className = 'weight-trend-flat';
+
+  if (typeof state.weightPreviousKg === 'number' && state.weight) {
+    const diff = Math.round((state.weight.weight_kg - state.weightPreviousKg) * 10) / 10;
+    if (diff > 0.1) {
+      label = `↑ +${diff} kg vs previous`;
+      className = 'weight-trend-up';
+    } else if (diff < -0.1) {
+      label = `↓ ${diff} kg vs previous`;
+      className = 'weight-trend-down';
+    } else {
+      label = '→ stable vs previous';
+    }
+  }
+
+  return { label, className };
+}
+
 function updateClock() {
   const now = new Date();
   document.getElementById('current-time').textContent = now.toLocaleTimeString('en-US', {
@@ -209,6 +236,7 @@ async function refreshDay() {
 
 function renderAll() {
   renderDayController();
+  renderSummary();
   renderIntake();
   renderOutputs();
   renderGags();
@@ -239,6 +267,45 @@ function renderDayController() {
   }
 
   nextBtn.disabled = isTodaySelected();
+}
+
+function renderSummary() {
+  const intakeTotal = state.data?.totalIntake || 0;
+  const limit = state.data?.limit_ml || 1200;
+  const intakePct = limit > 0 ? Math.round((intakeTotal / limit) * 100) : 0;
+  const outputs = state.data?.outputs || [];
+  const outputTotal = outputs.reduce((sum, entry) => sum + (Number(entry.amount_ml) || 0), 0);
+  const balance = intakeTotal - outputTotal;
+  const weightMeta = getWeightTrendMeta();
+
+  document.getElementById('summary-intake-value').textContent = `${intakeTotal} ml`;
+  document.getElementById('summary-intake-meta').textContent = limit > 0
+    ? `${intakePct}% of ${limit} ml target`
+    : 'No daily target set';
+
+  document.getElementById('summary-output-value').textContent = `${outputTotal} g`;
+  document.getElementById('summary-output-meta').textContent = `${outputs.length} ${outputs.length === 1 ? 'event' : 'events'} logged`;
+
+  const balanceValueEl = document.getElementById('summary-balance-value');
+  balanceValueEl.textContent = formatSignedNumber(balance, ' net');
+  balanceValueEl.classList.remove('summary-value--positive', 'summary-value--negative', 'summary-value--neutral');
+  balanceValueEl.classList.add(balance > 0 ? 'summary-value--positive' : balance < 0 ? 'summary-value--negative' : 'summary-value--neutral');
+  document.getElementById('summary-balance-meta').textContent = balance > 0
+    ? 'Measured intake above output'
+    : balance < 0
+      ? 'Measured output above intake'
+      : 'Even today';
+
+  const weightValueEl = document.getElementById('summary-weight-value');
+  weightValueEl.classList.remove('summary-value--muted');
+  if (state.weight) {
+    weightValueEl.textContent = `${state.weight.weight_kg} kg`;
+    document.getElementById('summary-weight-meta').textContent = weightMeta.label;
+  } else {
+    weightValueEl.textContent = 'No weight';
+    weightValueEl.classList.add('summary-value--muted');
+    document.getElementById('summary-weight-meta').textContent = 'Nothing logged for this day';
+  }
 }
 
 function renderIntake() {
@@ -377,20 +444,7 @@ function renderWeight() {
 
   actionBtn.textContent = 'Edit';
 
-  let trendLabel = 'No previous weight yet';
-  let trendClass = 'weight-trend-flat';
-  if (typeof state.weightPreviousKg === 'number') {
-    const diff = Math.round((state.weight.weight_kg - state.weightPreviousKg) * 10) / 10;
-    if (diff > 0.1) {
-      trendLabel = `↑ +${diff} kg vs previous`;
-      trendClass = 'weight-trend-up';
-    } else if (diff < -0.1) {
-      trendLabel = `↓ ${diff} kg vs previous`;
-      trendClass = 'weight-trend-down';
-    } else {
-      trendLabel = '→ stable vs previous';
-    }
-  }
+  const { label: trendLabel, className: trendClass } = getWeightTrendMeta();
 
   container.innerHTML = `
     <div class="weight-summary-card">

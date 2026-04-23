@@ -178,6 +178,58 @@ body {
 }
 
 /* ============================================================
+   DAILY SUMMARY STRIP
+   ============================================================ */
+
+.summary-strip {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.summary-tile {
+  background: var(--white);
+  border-radius: 14px;
+  box-shadow: var(--shadow);
+  padding: 14px;
+  border-top: 4px solid transparent;
+}
+
+.summary-tile--blue { border-top-color: var(--blue); }
+.summary-tile--orange { border-top-color: #fb8c00; }
+.summary-tile--green { border-top-color: var(--green); }
+.summary-tile--purple { border-top-color: var(--purple); }
+
+.summary-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  margin-bottom: 8px;
+}
+
+.summary-value {
+  font-size: 1.45rem;
+  font-weight: 800;
+  color: var(--text);
+  line-height: 1.1;
+  font-variant-numeric: tabular-nums;
+}
+
+.summary-meta {
+  margin-top: 6px;
+  font-size: 0.82rem;
+  color: var(--text-secondary);
+  line-height: 1.35;
+}
+
+.summary-value--positive { color: var(--green); }
+.summary-value--negative { color: var(--red); }
+.summary-value--neutral { color: var(--grey); }
+.summary-value--muted { color: var(--text-secondary); }
+
+/* ============================================================
    CARDS
    ============================================================ */
 
@@ -1755,6 +1807,10 @@ body {
 @media (max-width: 430px) {
   .day-controller-bar {
     top: 98px;
+  }
+
+  .summary-strip {
+    grid-template-columns: 1fr;
   }
 
   .day-status-row {
