@@ -159,21 +159,13 @@ function buildLineTrendCard({ icon, title, subtitle, unit, points, colorClass, l
     return 88 - (normalized * 76);
   };
 
-  const segments = [];
-  let currentSegment = [];
-  points.forEach((point, index) => {
-    if (typeof point.value === 'number' && !Number.isNaN(point.value)) {
-      currentSegment.push(`${toX(index)},${toY(point.value)}`);
-    } else if (currentSegment.length) {
-      segments.push(currentSegment.join(' '));
-      currentSegment = [];
-    }
-  });
-  if (currentSegment.length) segments.push(currentSegment.join(' '));
+  const polylinePoints = validPoints
+    .map((point) => `${toX(point.index)},${toY(point.value)}`)
+    .join(' ');
 
-  const polylines = segments.map((segment) => `
-    <polyline class="trend-line-path ${colorClass}" points="${segment}" />
-  `).join('');
+  const polylines = polylinePoints
+    ? `<polyline class="trend-line-path ${colorClass}" points="${polylinePoints}" />`
+    : '';
 
   const pointsHtml = validPoints.map((point) => {
     const x = toX(point.index);
