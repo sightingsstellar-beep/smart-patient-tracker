@@ -199,13 +199,11 @@ async function refreshDay() {
     document.getElementById('last-updated').textContent = new Date().toLocaleTimeString('en-US', {
       hour: 'numeric', minute: '2-digit', second: '2-digit', hour12: true,
     });
-    document.getElementById('refresh-badge').style.opacity = '1';
     document.querySelectorAll('.day-picker-input').forEach((input) => {
       input.max = state.todayDayKey || '';
     });
   } catch (err) {
     console.error('[day] Fetch error:', err.message);
-    document.getElementById('refresh-badge').style.opacity = '0.35';
   }
 }
 
