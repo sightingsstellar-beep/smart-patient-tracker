@@ -1345,21 +1345,8 @@ body {
 .day-status-row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 12px;
-}
-
-.day-status-text {
-  font-size: 0.84rem;
-  color: var(--text-secondary);
-  font-weight: 600;
-}
-
-.day-action-hint {
-  font-size: 0.76rem;
-  color: var(--text-secondary);
-  opacity: 0.8;
-  padding-left: 2px;
 }
 
 .back-to-today-btn {
@@ -1689,7 +1676,7 @@ body {
 
 .wellness-editor-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: 1fr;
   gap: 12px;
 }
 
@@ -1744,6 +1731,8 @@ body {
 }
 
 .range-field input[type="range"] {
+  display: block;
+  width: 100%;
   padding: 0;
   border: none;
 }

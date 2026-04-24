@@ -242,17 +242,14 @@ function renderDayController() {
     input.value = state.selectedDayKey || '';
   });
 
-  const statusText = document.getElementById('day-status-text');
   const banner = document.getElementById('day-context-banner');
   const backBtn = document.getElementById('back-to-today');
   const nextBtn = document.getElementById('day-next');
 
   if (isTodaySelected()) {
-    statusText.textContent = 'Viewing today';
     banner.style.display = 'none';
     backBtn.style.display = 'none';
   } else {
-    statusText.textContent = `Viewing ${formatLongDay(state.selectedDayKey)}`;
     banner.style.display = 'block';
     banner.textContent = `Editing and logging entries for ${formatLongDay(state.selectedDayKey)}`;
     backBtn.style.display = 'inline';
