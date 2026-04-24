@@ -1280,7 +1280,7 @@ body {
 
 .day-nav-row {
   display: grid;
-  grid-template-columns: 46px minmax(0, 1fr) 46px 46px;
+  grid-template-columns: 46px minmax(0, 1fr) 46px;
   gap: 8px;
   align-items: center;
 }
@@ -1318,10 +1318,6 @@ body {
 .day-nav-btn:disabled {
   opacity: 0.35;
   cursor: not-allowed;
-}
-
-.day-nav-btn--calendar {
-  font-size: 1.1rem;
 }
 
 .day-picker-input {
