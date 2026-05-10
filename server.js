@@ -344,10 +344,11 @@ function computeOutputByType(outputs) {
 // ── APL directive builder ─────────────────────────────────────────────────────
 // mode: 'display' = status view | 'input'/'output' = logging UI
 // intakeByType / outputByType only needed for display mode.
-function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, intakeByType, outputByType, allInputs, viewport, customDigits = '') {
+function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, intakeByType, outputByType, allInputs, viewport, customDigits = '', displayDayOffset = 0) {
   const pct     = Math.min(100, Math.round(((intakeMl || 0) / (limitMl || 1200)) * 100));
   const outMl   = outputMl || 0;
   const inColor = pct >= 90 ? '#e74c3c' : pct >= 75 ? '#f39c12' : '#4a9eff';
+  const displayDayLabel = displayDayOffset === -1 ? 'YESTERDAY' : 'TODAY';
 
   // ── Shared fluid palette ──────────────────────────────────────────────────
   const FLUID_LABELS = {
@@ -417,7 +418,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
           { type: 'Frame', grow: 1, height: '1dp', backgroundColor: 'transparent' },
           {
             type: 'Text',
-            text: `TOTAL IN  ${intakeMl || 0} / ${limitMl} ml  (${pct}%)`,
+            text: `${displayDayLabel} IN  ${intakeMl || 0} / ${limitMl} ml  (${pct}%)`,
             color: inColor,
             fontSize: '24dp',
             fontWeight: 'bold',
@@ -425,7 +426,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
           { type: 'Frame', width: '60dp', height: '1dp', backgroundColor: 'transparent' },
           {
             type: 'Text',
-            text: `TOTAL OUT  ${outMl} ml`,
+            text: `${displayDayLabel} OUT  ${outMl} ml`,
             color: '#b05800',
             fontSize: '24dp',
             fontWeight: 'bold',
@@ -544,6 +545,9 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
       ? { type: 'Container', direction: 'column', paddingTop: '8dp', items: legendRows }
       : { type: 'Frame', height: '1dp', backgroundColor: 'transparent' };
 
+    const toggleDayOffset = displayDayOffset === -1 ? 0 : -1;
+    const toggleDayLabel = displayDayOffset === -1 ? 'Today' : 'Yesterday';
+
     const centerCol = {
       type: 'Container',
       width: `${centerColW}dp`,
@@ -633,7 +637,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
             repeatCount: -1,
             commands: [
               { type: 'Idle', delay: 29000, screenLock: true },
-              { type: 'SendEvent', arguments: ['refresh', 'display'],
+              { type: 'SendEvent', arguments: ['refresh', 'display', String(displayDayOffset)],
                 flags: { interactionMode: 'auto' } },
             ],
           },
@@ -693,6 +697,18 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                     paddingLeft: '16dp', paddingRight: '16dp',
                     alignItems: 'center',
                     items: [
+                      {
+                        type: 'TouchWrapper', grow: 1, marginRight: '10dp',
+                        onPress: { type: 'SendEvent', arguments: ['day', String(toggleDayOffset)] },
+                        item: {
+                          type: 'Frame', backgroundColor: '#35506f', borderRadius: 10,
+                          alignSelf: 'stretch', width: '100%',
+                          paddingTop: '14dp', paddingBottom: '14dp',
+                          item: { type: 'Text', text: toggleDayLabel, color: 'white',
+                            width: '100%', fontSize: '18dp', fontWeight: 'bold',
+                            textAlign: 'center', textAlignVertical: 'center' },
+                        },
+                      },
                       {
                         type: 'TouchWrapper', grow: 3, marginRight: '10dp',
                         onPress: { type: 'SendEvent', arguments: ['mode', 'input'] },
@@ -1308,13 +1324,17 @@ app.post('/api/alexa', async (req, res) => {
     const request = req.body?.request;
     if (!request) return res.status(400).json({ error: 'Invalid Alexa request' });
 
-    // Helper: build fresh display APL with current DB state
-    function freshDisplayApl() {
-      const s   = db.getDaySummary(db.getDayKey());
+    // Helper: build fresh display APL with current DB state.
+    // displayDayOffset is intentionally limited to 0 (today) or -1 (yesterday)
+    // because the Echo Show footer is a simple today/yesterday toggle.
+    function freshDisplayApl(displayDayOffset = 0) {
+      const offset = Number(displayDayOffset) === -1 ? -1 : 0;
+      const dayKey = offset === -1 ? shiftDayKey(db.getDayKey(), -1) : db.getDayKey();
+      const s   = db.getDaySummary(dayKey);
       const lim = getDailyLimit();
       const oMl = s.outputs.reduce((acc, o) => acc + (o.amount_ml || 0), 0);
       // 7th param = raw outputs array (right panel), 8th = raw inputs array (fulllog mode)
-      return buildAplDirective(s.totalIntake, lim, 'display', null, oMl, s.intakeByType, s.outputs, s.inputs, getViewportProfile(req));
+      return buildAplDirective(s.totalIntake, lim, 'display', null, oMl, s.intakeByType, s.outputs, s.inputs, getViewportProfile(req), '', offset);
     }
 
     // Helper: build full log APL with current DB state
@@ -1331,7 +1351,7 @@ app.post('/api/alexa', async (req, res) => {
       const limit   = getDailyLimit();
       const outputMl  = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
       const dirs = supportsApl(req)
-        ? [buildAplDirective(summary.totalIntake, limit, 'display', null, outputMl, summary.intakeByType, summary.outputs, summary.inputs, getViewportProfile(req))]
+        ? [buildAplDirective(summary.totalIntake, limit, 'display', null, outputMl, summary.intakeByType, summary.outputs, summary.inputs, getViewportProfile(req), '', 0)]
         : [];
       const pn = db.getSetting('child_name');
       return res.json(alexaResponse(
@@ -1464,6 +1484,15 @@ app.post('/api/alexa', async (req, res) => {
           supportsApl(req) ? [apl] : []));
       }
 
+      if (action === 'day') {
+        const offset = Number(args[1]) === -1 ? -1 : 0;
+        const apl = freshDisplayApl(offset);
+        return res.json(alexaResponse('', null, null,
+          supportsApl(req) ? [apl] : [],
+          { displayDayOffset: offset }
+        ));
+      }
+
       if (action === 'gag') {
         db.logGag(1, Date.now());
         const apl = freshDisplayApl();
@@ -1515,10 +1544,16 @@ app.post('/api/alexa', async (req, res) => {
       }
 
       if (action === 'refresh') {
-        // Auto-refresh from onMount animation loop (or manual)
-        const apl = freshDisplayApl();
+        // Auto-refresh from onMount animation loop (or manual), preserving
+        // the current today/yesterday display selection.
+        const sessionAttrs = req.body?.session?.attributes || {};
+        const offsetArg = args.length > 2 ? args[2] : sessionAttrs.displayDayOffset;
+        const offset = Number(offsetArg) === -1 ? -1 : 0;
+        const apl = freshDisplayApl(offset);
         return res.json(alexaResponse('', null, null,
-          supportsApl(req) ? [apl] : []));
+          supportsApl(req) ? [apl] : [],
+          { ...sessionAttrs, displayDayOffset: offset }
+        ));
       }
 
       // Unknown UserEvent — refresh display
