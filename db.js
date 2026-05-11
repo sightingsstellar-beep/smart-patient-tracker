@@ -1,444 +1,21 @@
 /**
- * db.js — SQLite database schema and query helpers
+ * db.js — PostgreSQL database schema and query helpers
  *
- * Schema overview:
- *   fluid_logs  — intake and output entries
- *   wellness_checks — 5pm / 10pm daily wellness scores
- *   gag_events  — individual gag episodes
- *   settings    — key-value app configuration
+ * Multi-family foundation: all patient data is scoped to a default family and
+ * patient today. Account linking/user membership can layer onto this schema.
  */
 
 'use strict';
 
-const Database = require('better-sqlite3');
-const path = require('path');
-const fs = require('fs');
+const { Pool } = require('pg');
 
-// Store DB in /data on Railway (persistent volume) or local ./data
-const dataDir = process.env.DATA_DIR || path.join(__dirname, 'data');
-if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
-
-const dbPath = path.join(dataDir, 'elina.db');
-const db = new Database(dbPath);
-
-// Enable WAL mode for better concurrent read performance
-db.pragma('journal_mode = WAL');
-db.pragma('foreign_keys = ON');
-
-// ---------------------------------------------------------------------------
-// Schema
-// ---------------------------------------------------------------------------
-
-db.exec(`
-  CREATE TABLE IF NOT EXISTS fluid_logs (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    timestamp   INTEGER NOT NULL,          -- Unix ms (UTC)
-    day_key     TEXT NOT NULL,             -- "YYYY-MM-DD" of the fluid day (starts 7am)
-    entry_type  TEXT NOT NULL,             -- 'input' | 'output'
-    fluid_type  TEXT NOT NULL,             -- e.g. 'water', 'urine', 'poop'
-    amount_ml   REAL,                      -- nullable for outputs like poop
-    subtype     TEXT,                      -- nullable poop subtype: normal | diarrhea | undigested
-    notes       TEXT,
-    source      TEXT DEFAULT 'telegram'    -- 'telegram' | 'api'
-  );
-
-  CREATE TABLE IF NOT EXISTS wellness_checks (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    timestamp   INTEGER NOT NULL,
-    day_key     TEXT NOT NULL,
-    check_time  TEXT NOT NULL,             -- '5pm' | '10pm'
-    appetite    INTEGER,                   -- 1–10
-    energy      INTEGER,
-    mood        INTEGER,
-    cyanosis    INTEGER
-  );
-
-  CREATE TABLE IF NOT EXISTS gag_events (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    timestamp   INTEGER NOT NULL,
-    day_key     TEXT NOT NULL
-  );
-
-  CREATE TABLE IF NOT EXISTS settings (
-    key   TEXT PRIMARY KEY,
-    value TEXT NOT NULL
-  );
-`);
-
-// Backward-compatible migration for existing DBs
-try { db.prepare('ALTER TABLE fluid_logs ADD COLUMN subtype TEXT').run(); } catch (e) {}
-
-// Weight logs table — separate exec so it can be added independently
-db.exec(`
-  CREATE TABLE IF NOT EXISTS weight_logs (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    date       TEXT    NOT NULL UNIQUE,
-    weight_kg  REAL    NOT NULL,
-    logged_at  TEXT    NOT NULL,
-    notes      TEXT
-  );
-`);
-
-// ---------------------------------------------------------------------------
-// Day key helper  —  fluid day starts at 7:00 AM
-// ---------------------------------------------------------------------------
-
-/**
- * Given a Date (or now), return the "fluid day" key string "YYYY-MM-DD".
- * If the time (in the configured TZ) is before day_start_hour we belong to the
- * previous calendar day's fluid day.
- */
-function getDayKey(date = new Date()) {
-  // Determine local time in the configured timezone
-  // Use settings if available, fallback to env/default
-  let tz;
-  try {
-    tz = (typeof getSetting === 'function' ? getSetting('timezone') : null) ||
-         process.env.TZ || 'America/New_York';
-  } catch (_) {
-    tz = process.env.TZ || 'America/New_York';
-  }
-
-  const localStr = date.toLocaleString('en-CA', {
-    timeZone: tz,
-    hour12: false,
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
-  });
-  // en-CA gives "YYYY-MM-DD, HH:MM"
-  const [datePart, timePart] = localStr.split(', ');
-  const [hStr] = timePart.split(':');
-  const hour = parseInt(hStr, 10);
-
-  const [year, month, day] = datePart.split('-').map(Number);
-  const dateObj = new Date(year, month - 1, day);
-
-  // Before day_start_hour → belongs to the previous fluid day
-  let dayStartHour = 7;
-  try {
-    if (typeof getSetting === 'function') {
-      dayStartHour = parseInt(getSetting('day_start_hour'), 10) || 7;
-    }
-  } catch (_) {}
-
-  if (hour < dayStartHour) {
-    dateObj.setDate(dateObj.getDate() - 1);
-  }
-
-  return dateObj.toISOString().slice(0, 10);
-}
-
-// ---------------------------------------------------------------------------
-// fluid_logs queries
-// ---------------------------------------------------------------------------
-
-const insertLog = db.prepare(`
-  INSERT INTO fluid_logs (timestamp, day_key, entry_type, fluid_type, amount_ml, subtype, notes, source)
-  VALUES (@timestamp, @day_key, @entry_type, @fluid_type, @amount_ml, @subtype, @notes, @source)
-`);
-
-const getLogByIdStmt = db.prepare('SELECT * FROM fluid_logs WHERE id = ?');
-
-const updateLogStmt = db.prepare(`
-  UPDATE fluid_logs
-     SET timestamp = @timestamp,
-         day_key = @day_key,
-         entry_type = @entry_type,
-         fluid_type = @fluid_type,
-         amount_ml = @amount_ml,
-         subtype = @subtype,
-         notes = @notes
-   WHERE id = @id
-`);
-
-function logEntry(entry) {
-  const now = Date.now();
-  const row = {
-    timestamp: entry.timestamp || now,
-    day_key: entry.day_key || getDayKey(new Date(entry.timestamp || now)),
-    entry_type: entry.entry_type,
-    fluid_type: entry.fluid_type,
-    amount_ml: entry.amount_ml ?? null,
-    subtype: entry.subtype ?? null,
-    notes: entry.notes ?? null,
-    source: entry.source || 'telegram',
-  };
-  const result = insertLog.run(row);
-  return { id: result.lastInsertRowid, ...row };
-}
-
-function getLogsByDay(dayKey) {
-  return db
-    .prepare('SELECT * FROM fluid_logs WHERE day_key = ? ORDER BY timestamp ASC')
-    .all(dayKey);
-}
-
-function getLastLog() {
-  return db.prepare('SELECT * FROM fluid_logs ORDER BY id DESC LIMIT 1').get();
-}
-
-function getLogById(id) {
-  return getLogByIdStmt.get(id) || null;
-}
-
-function updateLog(entry) {
-  const row = {
-    id: entry.id,
-    timestamp: entry.timestamp,
-    day_key: entry.day_key,
-    entry_type: entry.entry_type,
-    fluid_type: entry.fluid_type,
-    amount_ml: entry.amount_ml ?? null,
-    subtype: entry.subtype ?? null,
-    notes: entry.notes ?? null,
-  };
-  return updateLogStmt.run(row);
-}
-
-function deleteLog(id) {
-  return db.prepare('DELETE FROM fluid_logs WHERE id = ?').run(id);
-}
-
-function getLogsForDays(days) {
-  // Collect the day keys for the last N fluid days
-  const keys = [];
-  const d = new Date();
-  for (let i = 0; i < days; i++) {
-    const shifted = new Date(d);
-    shifted.setDate(shifted.getDate() - i);
-    keys.push(getDayKey(shifted));
-  }
-  const unique = [...new Set(keys)];
-  const placeholders = unique.map(() => '?').join(',');
-  return db
-    .prepare(`SELECT * FROM fluid_logs WHERE day_key IN (${placeholders}) ORDER BY timestamp ASC`)
-    .all(...unique);
-}
-
-function getWellnessForDays(days) {
-  // Collect the day keys for the last N fluid days
-  const keys = [];
-  const d = new Date();
-  for (let i = 0; i < days; i++) {
-    const shifted = new Date(d);
-    shifted.setDate(shifted.getDate() - i);
-    keys.push(getDayKey(shifted));
-  }
-  const unique = [...new Set(keys)];
-  const placeholders = unique.map(() => '?').join(',');
-  return db
-    .prepare(`SELECT * FROM wellness_checks WHERE day_key IN (${placeholders}) ORDER BY timestamp ASC`)
-    .all(...unique);
-}
-
-// ---------------------------------------------------------------------------
-// wellness_checks queries
-// ---------------------------------------------------------------------------
-
-const insertWellness = db.prepare(`
-  INSERT INTO wellness_checks (timestamp, day_key, check_time, appetite, energy, mood, cyanosis)
-  VALUES (@timestamp, @day_key, @check_time, @appetite, @energy, @mood, @cyanosis)
-`);
-
-const getLatestWellnessEntryStmt = db.prepare(`
-  SELECT *
-    FROM wellness_checks
-   WHERE day_key = ? AND check_time = ?
-   ORDER BY timestamp DESC, id DESC
-   LIMIT 1
-`);
-
-const updateWellnessStmt = db.prepare(`
-  UPDATE wellness_checks
-     SET timestamp = @timestamp,
-         day_key = @day_key,
-         check_time = @check_time,
-         appetite = @appetite,
-         energy = @energy,
-         mood = @mood,
-         cyanosis = @cyanosis
-   WHERE id = @id
-`);
-
-function logWellness(entry) {
-  const now = Date.now();
-  const row = {
-    timestamp: entry.timestamp || now,
-    day_key: entry.day_key || getDayKey(new Date(entry.timestamp || now)),
-    check_time: entry.check_time || '5pm',
-    appetite: entry.appetite ?? null,
-    energy: entry.energy ?? null,
-    mood: entry.mood ?? null,
-    cyanosis: entry.cyanosis ?? null,
-  };
-  const result = insertWellness.run(row);
-  return { id: result.lastInsertRowid, ...row };
-}
-
-function getWellnessByDay(dayKey) {
-  return db
-    .prepare('SELECT * FROM wellness_checks WHERE day_key = ? ORDER BY timestamp ASC')
-    .all(dayKey);
-}
-
-function getLastWellness() {
-  return db.prepare('SELECT * FROM wellness_checks ORDER BY id DESC LIMIT 1').get();
-}
-
-function getLatestWellnessEntry(dayKey, checkTime) {
-  return getLatestWellnessEntryStmt.get(dayKey, checkTime) || null;
-}
-
-function upsertWellness(entry) {
-  const now = entry.timestamp || Date.now();
-  const dayKey = entry.day_key || getDayKey(new Date(now));
-  const checkTime = entry.check_time || '5pm';
-  const existing = getLatestWellnessEntry(dayKey, checkTime);
-
-  if (existing) {
-    const row = {
-      id: existing.id,
-      timestamp: now,
-      day_key: dayKey,
-      check_time: checkTime,
-      appetite: entry.appetite ?? null,
-      energy: entry.energy ?? null,
-      mood: entry.mood ?? null,
-      cyanosis: entry.cyanosis ?? null,
-    };
-    updateWellnessStmt.run(row);
-    return { ...existing, ...row };
-  }
-
-  return logWellness({
-    timestamp: now,
-    day_key: dayKey,
-    check_time: checkTime,
-    appetite: entry.appetite ?? null,
-    energy: entry.energy ?? null,
-    mood: entry.mood ?? null,
-    cyanosis: entry.cyanosis ?? null,
-  });
-}
-
-function deleteWellness(dayKey, checkTime) {
-  return db.prepare('DELETE FROM wellness_checks WHERE day_key = ? AND check_time = ?').run(dayKey, checkTime);
-}
-
-// ---------------------------------------------------------------------------
-// gag_events queries
-// ---------------------------------------------------------------------------
-
-const insertGag = db.prepare(`
-  INSERT INTO gag_events (timestamp, day_key) VALUES (@timestamp, @day_key)
-`);
-
-const getGagByIdStmt = db.prepare('SELECT * FROM gag_events WHERE id = ?');
-
-const updateGagStmt = db.prepare(`
-  UPDATE gag_events
-     SET timestamp = @timestamp,
-         day_key = @day_key
-   WHERE id = @id
-`);
-
-function logGag(count = 1, timestamp = Date.now(), dayKeyOverride = null) {
-  const dayKey = dayKeyOverride || getDayKey(new Date(timestamp));
-  const results = [];
-  for (let i = 0; i < count; i++) {
-    const result = insertGag.run({ timestamp: timestamp + i, day_key: dayKey });
-    results.push({ id: result.lastInsertRowid, timestamp: timestamp + i, day_key: dayKey });
-  }
-  return results;
-}
-
-function getGagsByDay(dayKey) {
-  return db
-    .prepare('SELECT * FROM gag_events WHERE day_key = ? ORDER BY timestamp ASC')
-    .all(dayKey);
-}
-
-function getGagById(id) {
-  return getGagByIdStmt.get(id) || null;
-}
-
-function updateGag(entry) {
-  const row = {
-    id: entry.id,
-    timestamp: entry.timestamp,
-    day_key: entry.day_key,
-  };
-  return updateGagStmt.run(row);
-}
-
-function deleteLastGag() {
-  const last = db.prepare('SELECT id FROM gag_events ORDER BY id DESC LIMIT 1').get();
-  if (last) db.prepare('DELETE FROM gag_events WHERE id = ?').run(last.id);
-  return last;
-}
-
-function deleteGag(id) {
-  return db.prepare('DELETE FROM gag_events WHERE id = ?').run(id);
-}
-
-// ---------------------------------------------------------------------------
-// Aggregation helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Returns a summary object for a given fluid day key.
- */
-function getDaySummary(dayKey) {
-  const logs = getLogsByDay(dayKey);
-  const wellness = collapseLatestWellnessRows(getWellnessByDay(dayKey));
-  const gags = getGagsByDay(dayKey);
-
-  const inputs = logs.filter((l) => l.entry_type === 'input');
-  const outputs = logs.filter((l) => l.entry_type === 'output');
-
-  const totalIntake = inputs.reduce((sum, l) => sum + (l.amount_ml || 0), 0);
-
-  // Break down by fluid type
-  const intakeByType = {};
-  for (const l of inputs) {
-    intakeByType[l.fluid_type] = (intakeByType[l.fluid_type] || 0) + (l.amount_ml || 0);
-  }
-
-  return {
-    dayKey,
-    totalIntake,
-    intakeByType,
-    inputs,
-    outputs,
-    wellness,
-    gags,
-    gagCount: gags.length,
-  };
-}
-
-function collapseLatestWellnessRows(rows) {
-  const byCheckTime = new Map();
-  for (const row of rows || []) {
-    const existing = byCheckTime.get(row.check_time);
-    if (!existing || row.timestamp > existing.timestamp || (row.timestamp === existing.timestamp && row.id > existing.id)) {
-      byCheckTime.set(row.check_time, row);
-    }
-  }
-  return [...byCheckTime.values()].sort((a, b) => {
-    if (a.timestamp !== b.timestamp) return a.timestamp - b.timestamp;
-    return a.id - b.id;
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Settings queries
-// ---------------------------------------------------------------------------
+const DEFAULT_FAMILY_ID = process.env.DEFAULT_FAMILY_ID || '00000000-0000-4000-8000-000000000001';
+const DEFAULT_PATIENT_ID = process.env.DEFAULT_PATIENT_ID || '00000000-0000-4000-8000-000000000101';
+const DEFAULT_FAMILY_NAME = process.env.DEFAULT_FAMILY_NAME || 'Touma Family';
+const DEFAULT_PATIENT_NAME = process.env.DEFAULT_PATIENT_NAME || 'Elina';
 
 const DEFAULT_SETTINGS = {
-  child_name: 'Elina',
+  child_name: DEFAULT_PATIENT_NAME,
   child_pronouns: 'she/her',
   daily_limit_ml: '1200',
   day_start_hour: '7',
@@ -452,74 +29,497 @@ const DEFAULT_SETTINGS = {
   units: 'ml',
 };
 
-const insertOrIgnoreSetting = db.prepare(
-  'INSERT OR IGNORE INTO settings (key, value) VALUES (@key, @value)'
-);
+const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
+if (!connectionString) {
+  throw new Error('DATABASE_URL or POSTGRES_URL is required for Postgres-backed Smart Patient Tracker');
+}
 
-function initDefaultSettings() {
-  for (const [key, value] of Object.entries(DEFAULT_SETTINGS)) {
-    insertOrIgnoreSetting.run({ key, value });
+const pool = new Pool({
+  connectionString,
+  ssl: process.env.PGSSLMODE === 'disable' || /localhost|127\.0\.0\.1/.test(connectionString)
+    ? false
+    : { rejectUnauthorized: false },
+});
+
+const settingsCache = new Map(Object.entries(DEFAULT_SETTINGS));
+
+function normalizeRow(row) {
+  if (!row) return row;
+  for (const key of ['id', 'timestamp', 'expires']) {
+    if (row[key] !== undefined && row[key] !== null) row[key] = Number(row[key]);
   }
+  for (const key of ['amount_ml', 'weight_kg']) {
+    if (row[key] !== undefined && row[key] !== null) row[key] = Number(row[key]);
+  }
+  return row;
+}
+
+async function query(text, params = []) {
+  await ready;
+  return pool.query(text, params);
+}
+
+async function initSchema() {
+  await pool.query(`
+    CREATE TABLE IF NOT EXISTS families (
+      id          UUID PRIMARY KEY,
+      name        TEXT NOT NULL,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS patients (
+      id          UUID PRIMARY KEY,
+      family_id   UUID NOT NULL REFERENCES families(id) ON DELETE CASCADE,
+      name        TEXT NOT NULL,
+      pronouns    TEXT,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS users (
+      id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      family_id   UUID REFERENCES families(id) ON DELETE CASCADE,
+      email       TEXT UNIQUE,
+      display_name TEXT,
+      role        TEXT NOT NULL DEFAULT 'caregiver',
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS alexa_account_links (
+      id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      family_id   UUID NOT NULL REFERENCES families(id) ON DELETE CASCADE,
+      patient_id  UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+      alexa_user_id TEXT UNIQUE,
+      auth_subject TEXT UNIQUE,
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS fluid_logs (
+      id          BIGSERIAL PRIMARY KEY,
+      family_id   UUID NOT NULL REFERENCES families(id) ON DELETE CASCADE,
+      patient_id  UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+      timestamp   BIGINT NOT NULL,
+      day_key     TEXT NOT NULL,
+      entry_type  TEXT NOT NULL,
+      fluid_type  TEXT NOT NULL,
+      amount_ml   DOUBLE PRECISION,
+      subtype     TEXT,
+      notes       TEXT,
+      source      TEXT DEFAULT 'telegram'
+    );
+
+    CREATE TABLE IF NOT EXISTS wellness_checks (
+      id          BIGSERIAL PRIMARY KEY,
+      family_id   UUID NOT NULL REFERENCES families(id) ON DELETE CASCADE,
+      patient_id  UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+      timestamp   BIGINT NOT NULL,
+      day_key     TEXT NOT NULL,
+      check_time  TEXT NOT NULL,
+      appetite    INTEGER,
+      energy      INTEGER,
+      mood        INTEGER,
+      cyanosis    INTEGER
+    );
+
+    CREATE TABLE IF NOT EXISTS gag_events (
+      id          BIGSERIAL PRIMARY KEY,
+      family_id   UUID NOT NULL REFERENCES families(id) ON DELETE CASCADE,
+      patient_id  UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+      timestamp   BIGINT NOT NULL,
+      day_key     TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS settings (
+      family_id   UUID NOT NULL REFERENCES families(id) ON DELETE CASCADE,
+      patient_id  UUID REFERENCES patients(id) ON DELETE CASCADE,
+      key         TEXT NOT NULL,
+      value       TEXT NOT NULL,
+      PRIMARY KEY (family_id, patient_id, key)
+    );
+
+    CREATE TABLE IF NOT EXISTS weight_logs (
+      id          BIGSERIAL PRIMARY KEY,
+      family_id   UUID NOT NULL REFERENCES families(id) ON DELETE CASCADE,
+      patient_id  UUID NOT NULL REFERENCES patients(id) ON DELETE CASCADE,
+      date        TEXT NOT NULL,
+      weight_kg   DOUBLE PRECISION NOT NULL,
+      logged_at   TEXT NOT NULL,
+      notes       TEXT,
+      UNIQUE (family_id, patient_id, date)
+    );
+
+    CREATE TABLE IF NOT EXISTS sessions (
+      sid     TEXT PRIMARY KEY,
+      expires BIGINT NOT NULL,
+      data    TEXT NOT NULL
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_fluid_logs_patient_day ON fluid_logs (family_id, patient_id, day_key, timestamp);
+    CREATE INDEX IF NOT EXISTS idx_wellness_patient_day ON wellness_checks (family_id, patient_id, day_key, timestamp);
+    CREATE INDEX IF NOT EXISTS idx_gag_patient_day ON gag_events (family_id, patient_id, day_key, timestamp);
+    CREATE INDEX IF NOT EXISTS idx_weight_patient_date ON weight_logs (family_id, patient_id, date DESC);
+  `);
+
+  await pool.query(
+    `INSERT INTO families (id, name) VALUES ($1, $2)
+     ON CONFLICT (id) DO UPDATE SET name = EXCLUDED.name`,
+    [DEFAULT_FAMILY_ID, DEFAULT_FAMILY_NAME]
+  );
+  await pool.query(
+    `INSERT INTO patients (id, family_id, name, pronouns) VALUES ($1, $2, $3, $4)
+     ON CONFLICT (id) DO UPDATE SET family_id = EXCLUDED.family_id, name = EXCLUDED.name, pronouns = EXCLUDED.pronouns`,
+    [DEFAULT_PATIENT_ID, DEFAULT_FAMILY_ID, DEFAULT_PATIENT_NAME, DEFAULT_SETTINGS.child_pronouns]
+  );
+
+  for (const [key, value] of Object.entries(DEFAULT_SETTINGS)) {
+    await pool.query(
+      `INSERT INTO settings (family_id, patient_id, key, value) VALUES ($1, $2, $3, $4)
+       ON CONFLICT (family_id, patient_id, key) DO NOTHING`,
+      [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, key, value]
+    );
+  }
+
+  await reloadSettings();
+}
+
+async function reloadSettings() {
+  const { rows } = await pool.query(
+    'SELECT key, value FROM settings WHERE family_id = $1 AND patient_id = $2',
+    [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID]
+  );
+  settingsCache.clear();
+  for (const [key, value] of Object.entries(DEFAULT_SETTINGS)) settingsCache.set(key, value);
+  for (const row of rows) settingsCache.set(row.key, row.value);
+}
+
+const ready = initSchema();
+
+function getDayKey(date = new Date()) {
+  const tz = getSetting('timezone') || process.env.TZ || 'America/New_York';
+  const localStr = date.toLocaleString('en-CA', {
+    timeZone: tz,
+    hour12: false,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+  const [datePart, timePart] = localStr.split(', ');
+  const [hStr] = timePart.split(':');
+  const hour = parseInt(hStr, 10);
+  const [year, month, day] = datePart.split('-').map(Number);
+  const dateObj = new Date(year, month - 1, day);
+  const dayStartHour = parseInt(getSetting('day_start_hour'), 10) || 7;
+  if (hour < dayStartHour) dateObj.setDate(dateObj.getDate() - 1);
+  return dateObj.toISOString().slice(0, 10);
+}
+
+async function logEntry(entry) {
+  const now = Date.now();
+  const row = {
+    timestamp: entry.timestamp || now,
+    day_key: entry.day_key || getDayKey(new Date(entry.timestamp || now)),
+    entry_type: entry.entry_type,
+    fluid_type: entry.fluid_type,
+    amount_ml: entry.amount_ml ?? null,
+    subtype: entry.subtype ?? null,
+    notes: entry.notes ?? null,
+    source: entry.source || 'telegram',
+  };
+  const { rows } = await query(
+    `INSERT INTO fluid_logs (family_id, patient_id, timestamp, day_key, entry_type, fluid_type, amount_ml, subtype, notes, source)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
+    [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, row.timestamp, row.day_key, row.entry_type, row.fluid_type, row.amount_ml, row.subtype, row.notes, row.source]
+  );
+  return normalizeRow(rows[0]);
+}
+
+async function getLogsByDay(dayKey) {
+  const { rows } = await query(
+    'SELECT * FROM fluid_logs WHERE family_id=$1 AND patient_id=$2 AND day_key=$3 ORDER BY timestamp ASC, id ASC',
+    [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, dayKey]
+  );
+  return rows.map(normalizeRow);
+}
+
+async function getLastLog() {
+  const { rows } = await query(
+    'SELECT * FROM fluid_logs WHERE family_id=$1 AND patient_id=$2 ORDER BY id DESC LIMIT 1',
+    [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID]
+  );
+  return normalizeRow(rows[0]) || null;
+}
+
+async function getLogById(id) {
+  const { rows } = await query(
+    'SELECT * FROM fluid_logs WHERE family_id=$1 AND patient_id=$2 AND id=$3',
+    [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, id]
+  );
+  return normalizeRow(rows[0]) || null;
+}
+
+async function updateLog(entry) {
+  const result = await query(
+    `UPDATE fluid_logs SET timestamp=$4, day_key=$5, entry_type=$6, fluid_type=$7, amount_ml=$8, subtype=$9, notes=$10
+     WHERE family_id=$1 AND patient_id=$2 AND id=$3`,
+    [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, entry.id, entry.timestamp, entry.day_key, entry.entry_type, entry.fluid_type, entry.amount_ml ?? null, entry.subtype ?? null, entry.notes ?? null]
+  );
+  return { changes: result.rowCount };
+}
+
+async function deleteLog(id) {
+  const result = await query('DELETE FROM fluid_logs WHERE family_id=$1 AND patient_id=$2 AND id=$3', [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, id]);
+  return { changes: result.rowCount };
+}
+
+async function getLogsForDays(days) {
+  const keys = [];
+  const d = new Date();
+  for (let i = 0; i < days; i++) {
+    const shifted = new Date(d);
+    shifted.setDate(shifted.getDate() - i);
+    keys.push(getDayKey(shifted));
+  }
+  const unique = [...new Set(keys)];
+  const { rows } = await query(
+    'SELECT * FROM fluid_logs WHERE family_id=$1 AND patient_id=$2 AND day_key = ANY($3) ORDER BY timestamp ASC, id ASC',
+    [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, unique]
+  );
+  return rows.map(normalizeRow);
+}
+
+async function logWellness(entry) {
+  const now = Date.now();
+  const row = {
+    timestamp: entry.timestamp || now,
+    day_key: entry.day_key || getDayKey(new Date(entry.timestamp || now)),
+    check_time: entry.check_time || '5pm',
+    appetite: entry.appetite ?? null,
+    energy: entry.energy ?? null,
+    mood: entry.mood ?? null,
+    cyanosis: entry.cyanosis ?? null,
+  };
+  const { rows } = await query(
+    `INSERT INTO wellness_checks (family_id, patient_id, timestamp, day_key, check_time, appetite, energy, mood, cyanosis)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
+    [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, row.timestamp, row.day_key, row.check_time, row.appetite, row.energy, row.mood, row.cyanosis]
+  );
+  return normalizeRow(rows[0]);
+}
+
+async function getWellnessByDay(dayKey) {
+  const { rows } = await query(
+    'SELECT * FROM wellness_checks WHERE family_id=$1 AND patient_id=$2 AND day_key=$3 ORDER BY timestamp ASC, id ASC',
+    [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, dayKey]
+  );
+  return rows.map(normalizeRow);
+}
+
+async function getLastWellness() {
+  const { rows } = await query(
+    'SELECT * FROM wellness_checks WHERE family_id=$1 AND patient_id=$2 ORDER BY id DESC LIMIT 1',
+    [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID]
+  );
+  return normalizeRow(rows[0]) || null;
+}
+
+async function getWellnessForDays(days) {
+  const keys = [];
+  const d = new Date();
+  for (let i = 0; i < days; i++) {
+    const shifted = new Date(d);
+    shifted.setDate(shifted.getDate() - i);
+    keys.push(getDayKey(shifted));
+  }
+  const unique = [...new Set(keys)];
+  const { rows } = await query(
+    'SELECT * FROM wellness_checks WHERE family_id=$1 AND patient_id=$2 AND day_key = ANY($3) ORDER BY timestamp ASC, id ASC',
+    [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, unique]
+  );
+  return rows.map(normalizeRow);
+}
+
+async function getLatestWellnessEntry(dayKey, checkTime) {
+  const { rows } = await query(
+    `SELECT * FROM wellness_checks WHERE family_id=$1 AND patient_id=$2 AND day_key=$3 AND check_time=$4
+     ORDER BY timestamp DESC, id DESC LIMIT 1`,
+    [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, dayKey, checkTime]
+  );
+  return normalizeRow(rows[0]) || null;
+}
+
+async function upsertWellness(entry) {
+  const now = entry.timestamp || Date.now();
+  const dayKey = entry.day_key || getDayKey(new Date(now));
+  const checkTime = entry.check_time || '5pm';
+  const existing = await getLatestWellnessEntry(dayKey, checkTime);
+  if (existing) {
+    const result = await query(
+      `UPDATE wellness_checks SET timestamp=$4, day_key=$5, check_time=$6, appetite=$7, energy=$8, mood=$9, cyanosis=$10
+       WHERE family_id=$1 AND patient_id=$2 AND id=$3 RETURNING *`,
+      [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, existing.id, now, dayKey, checkTime, entry.appetite ?? null, entry.energy ?? null, entry.mood ?? null, entry.cyanosis ?? null]
+    );
+    return normalizeRow(result.rows[0]);
+  }
+  return logWellness({ timestamp: now, day_key: dayKey, check_time: checkTime, appetite: entry.appetite ?? null, energy: entry.energy ?? null, mood: entry.mood ?? null, cyanosis: entry.cyanosis ?? null });
+}
+
+async function deleteWellness(dayKey, checkTime) {
+  const result = await query('DELETE FROM wellness_checks WHERE family_id=$1 AND patient_id=$2 AND day_key=$3 AND check_time=$4', [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, dayKey, checkTime]);
+  return { changes: result.rowCount };
+}
+
+async function logGag(count = 1, timestamp = Date.now(), dayKeyOverride = null) {
+  const dayKey = dayKeyOverride || getDayKey(new Date(timestamp));
+  const results = [];
+  for (let i = 0; i < count; i++) {
+    const { rows } = await query(
+      'INSERT INTO gag_events (family_id, patient_id, timestamp, day_key) VALUES ($1,$2,$3,$4) RETURNING *',
+      [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, timestamp + i, dayKey]
+    );
+    results.push(normalizeRow(rows[0]));
+  }
+  return results;
+}
+
+async function getGagsByDay(dayKey) {
+  const { rows } = await query(
+    'SELECT * FROM gag_events WHERE family_id=$1 AND patient_id=$2 AND day_key=$3 ORDER BY timestamp ASC, id ASC',
+    [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, dayKey]
+  );
+  return rows.map(normalizeRow);
+}
+
+async function getGagById(id) {
+  const { rows } = await query('SELECT * FROM gag_events WHERE family_id=$1 AND patient_id=$2 AND id=$3', [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, id]);
+  return normalizeRow(rows[0]) || null;
+}
+
+async function updateGag(entry) {
+  const result = await query('UPDATE gag_events SET timestamp=$4, day_key=$5 WHERE family_id=$1 AND patient_id=$2 AND id=$3', [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, entry.id, entry.timestamp, entry.day_key]);
+  return { changes: result.rowCount };
+}
+
+async function deleteLastGag() {
+  const last = await query('SELECT id FROM gag_events WHERE family_id=$1 AND patient_id=$2 ORDER BY id DESC LIMIT 1', [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID]);
+  if (last.rows[0]) await deleteGag(last.rows[0].id);
+  return last.rows[0] || null;
+}
+
+async function deleteGag(id) {
+  const result = await query('DELETE FROM gag_events WHERE family_id=$1 AND patient_id=$2 AND id=$3', [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, id]);
+  return { changes: result.rowCount };
+}
+
+async function getDaySummary(dayKey) {
+  const logs = await getLogsByDay(dayKey);
+  const wellness = collapseLatestWellnessRows(await getWellnessByDay(dayKey));
+  const gags = await getGagsByDay(dayKey);
+  const inputs = logs.filter((l) => l.entry_type === 'input');
+  const outputs = logs.filter((l) => l.entry_type === 'output');
+  const totalIntake = inputs.reduce((sum, l) => sum + (l.amount_ml || 0), 0);
+  const intakeByType = {};
+  for (const l of inputs) intakeByType[l.fluid_type] = (intakeByType[l.fluid_type] || 0) + (l.amount_ml || 0);
+  return { dayKey, totalIntake, intakeByType, inputs, outputs, wellness, gags, gagCount: gags.length };
+}
+
+function collapseLatestWellnessRows(rows) {
+  const byCheckTime = new Map();
+  for (const row of rows || []) {
+    const existing = byCheckTime.get(row.check_time);
+    if (!existing || row.timestamp > existing.timestamp || (row.timestamp === existing.timestamp && row.id > existing.id)) byCheckTime.set(row.check_time, row);
+  }
+  return [...byCheckTime.values()].sort((a, b) => (a.timestamp !== b.timestamp ? a.timestamp - b.timestamp : a.id - b.id));
 }
 
 function getSetting(key) {
-  const row = db.prepare('SELECT value FROM settings WHERE key = ?').get(key);
-  if (row) return row.value;
-  return DEFAULT_SETTINGS[key] ?? null;
+  return settingsCache.get(key) ?? DEFAULT_SETTINGS[key] ?? null;
 }
 
 function getAllSettings() {
-  const rows = db.prepare('SELECT key, value FROM settings').all();
-  const result = { ...DEFAULT_SETTINGS };
-  for (const row of rows) {
-    result[row.key] = row.value;
-  }
-  return result;
+  return Object.fromEntries(settingsCache.entries());
 }
 
-function setSetting(key, value) {
-  db.prepare('INSERT OR REPLACE INTO settings (key, value) VALUES (@key, @value)').run({
-    key,
-    value: String(value),
-  });
+async function setSetting(key, value) {
+  await query(
+    `INSERT INTO settings (family_id, patient_id, key, value) VALUES ($1,$2,$3,$4)
+     ON CONFLICT (family_id, patient_id, key) DO UPDATE SET value=EXCLUDED.value`,
+    [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, key, String(value)]
+  );
+  settingsCache.set(key, String(value));
 }
 
-// Initialize default settings on startup
-initDefaultSettings();
+async function initDefaultSettings() {
+  await ready;
+  return reloadSettings();
+}
 
-// ---------------------------------------------------------------------------
-// weight_logs queries
-// ---------------------------------------------------------------------------
-
-function logWeight(date, weight_kg, notes) {
+async function logWeight(date, weight_kg, notes) {
   const logged_at = new Date().toISOString();
-  return db.prepare(
-    'INSERT OR REPLACE INTO weight_logs (date, weight_kg, logged_at, notes) VALUES (?, ?, ?, ?)'
-  ).run(date, weight_kg, logged_at, notes ?? null);
+  const { rows } = await query(
+    `INSERT INTO weight_logs (family_id, patient_id, date, weight_kg, logged_at, notes)
+     VALUES ($1,$2,$3,$4,$5,$6)
+     ON CONFLICT (family_id, patient_id, date) DO UPDATE SET weight_kg=EXCLUDED.weight_kg, logged_at=EXCLUDED.logged_at, notes=EXCLUDED.notes
+     RETURNING *`,
+    [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, date, weight_kg, logged_at, notes ?? null]
+  );
+  return normalizeRow(rows[0]);
 }
 
-function getWeightForDate(date) {
-  return db.prepare('SELECT * FROM weight_logs WHERE date = ?').get(date) || null;
+async function getWeightForDate(date) {
+  const { rows } = await query('SELECT * FROM weight_logs WHERE family_id=$1 AND patient_id=$2 AND date=$3', [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, date]);
+  return normalizeRow(rows[0]) || null;
 }
 
-function getWeightHistory(days) {
-  return db.prepare(
-    'SELECT * FROM weight_logs ORDER BY date DESC LIMIT ?'
-  ).all(days);
+async function getWeightHistory(days) {
+  const { rows } = await query('SELECT * FROM weight_logs WHERE family_id=$1 AND patient_id=$2 ORDER BY date DESC LIMIT $3', [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, days]);
+  return rows.map(normalizeRow);
 }
 
-function getWeightHistoryUpTo(date, days) {
-  return db.prepare(
-    'SELECT * FROM weight_logs WHERE date <= ? ORDER BY date DESC LIMIT ?'
-  ).all(date, days);
+async function getWeightHistoryUpTo(date, days) {
+  const { rows } = await query('SELECT * FROM weight_logs WHERE family_id=$1 AND patient_id=$2 AND date <= $3 ORDER BY date DESC LIMIT $4', [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, date, days]);
+  return rows.map(normalizeRow);
 }
 
-function deleteWeight(date) {
-  return db.prepare('DELETE FROM weight_logs WHERE date = ?').run(date);
+async function deleteWeight(date) {
+  const result = await query('DELETE FROM weight_logs WHERE family_id=$1 AND patient_id=$2 AND date=$3', [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, date]);
+  return { changes: result.rowCount };
+}
+
+async function exportAllData() {
+  const tables = ['families', 'patients', 'users', 'alexa_account_links', 'settings', 'fluid_logs', 'wellness_checks', 'gag_events', 'weight_logs', 'sessions'];
+  const data = {};
+  for (const table of tables) {
+    const { rows } = await query(`SELECT * FROM ${table}`);
+    data[table] = rows.map(normalizeRow);
+  }
+  return { exportedAt: new Date().toISOString(), defaultFamilyId: DEFAULT_FAMILY_ID, defaultPatientId: DEFAULT_PATIENT_ID, tables: data };
+}
+
+async function sessionGet(sid) {
+  const { rows } = await query('SELECT data, expires FROM sessions WHERE sid=$1', [sid]);
+  return normalizeRow(rows[0]) || null;
+}
+async function sessionSet(sid, expires, data) {
+  await query('INSERT INTO sessions (sid, expires, data) VALUES ($1,$2,$3) ON CONFLICT (sid) DO UPDATE SET expires=EXCLUDED.expires, data=EXCLUDED.data', [sid, expires, data]);
+}
+async function sessionDestroy(sid) {
+  await query('DELETE FROM sessions WHERE sid=$1', [sid]);
+}
+async function sessionTouch(sid, expires) {
+  await query('UPDATE sessions SET expires=$2 WHERE sid=$1', [sid, expires]);
+}
+async function sessionPrune(nowSeconds) {
+  await query('DELETE FROM sessions WHERE expires < $1', [nowSeconds]);
 }
 
 module.exports = {
-  db,
+  pool,
+  ready,
+  db: { query: (text, params) => query(text, params) },
+  DEFAULT_FAMILY_ID,
+  DEFAULT_PATIENT_ID,
   getDayKey,
   logEntry,
   getLogsByDay,
@@ -551,4 +551,10 @@ module.exports = {
   getWeightHistory,
   getWeightHistoryUpTo,
   deleteWeight,
+  exportAllData,
+  sessionGet,
+  sessionSet,
+  sessionDestroy,
+  sessionTouch,
+  sessionPrune,
 };

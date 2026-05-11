@@ -133,11 +133,11 @@ bot.onText(/^\/start$/, (msg) => {
 });
 
 // /today — summary of current day
-bot.onText(/^\/today$/, (msg) => {
+bot.onText(/^\/today$/, async (msg) => {
   if (!isAuthorized(msg.from.id)) return rejectUnauthorized(msg.chat.id);
   try {
     const dayKey = db.getDayKey();
-    const summary = db.getDaySummary(dayKey);
+    const summary = await db.getDaySummary(dayKey);
     const limit = getDailyLimit();
     const pct = Math.round((summary.totalIntake / limit) * 100);
 
@@ -182,11 +182,11 @@ bot.onText(/^\/today$/, (msg) => {
 });
 
 // /status — quick intake status
-bot.onText(/^\/status$/, (msg) => {
+bot.onText(/^\/status$/, async (msg) => {
   if (!isAuthorized(msg.from.id)) return rejectUnauthorized(msg.chat.id);
   try {
     const dayKey = db.getDayKey();
-    const summary = db.getDaySummary(dayKey);
+    const summary = await db.getDaySummary(dayKey);
     const text = `💧 *Current intake:* ${formatIntakeSummary(summary.totalIntake)}`;
     bot.sendMessage(msg.chat.id, text, { parse_mode: 'Markdown' });
   } catch (err) {
@@ -195,11 +195,11 @@ bot.onText(/^\/status$/, (msg) => {
 });
 
 // /report — full nurse handoff report
-bot.onText(/^\/report$/, (msg) => {
+bot.onText(/^\/report$/, async (msg) => {
   if (!isAuthorized(msg.from.id)) return rejectUnauthorized(msg.chat.id);
   try {
     const dayKey = db.getDayKey();
-    const report = buildReport(dayKey);
+    const report = await buildReport(dayKey);
     bot.sendMessage(msg.chat.id, report);
   } catch (err) {
     console.error('[bot /report]', err);
@@ -208,16 +208,16 @@ bot.onText(/^\/report$/, (msg) => {
 });
 
 // /undo — remove last log entry
-bot.onText(/^\/undo$/, (msg) => {
+bot.onText(/^\/undo$/, async (msg) => {
   if (!isAuthorized(msg.from.id)) return rejectUnauthorized(msg.chat.id);
   try {
-    const last = db.getLastLog();
+    const last = await db.getLastLog();
     if (!last) {
       return bot.sendMessage(msg.chat.id, '⚠️ Nothing to undo — no entries logged today.');
     }
-    db.deleteLog(last.id);
+    await db.deleteLog(last.id);
     const dayKey = db.getDayKey();
-    const summary = db.getDaySummary(dayKey);
+    const summary = await db.getDaySummary(dayKey);
     const label = formatFluidType(last.fluid_type);
     const amount = last.amount_ml ? ` ${last.amount_ml}ml` : '';
     bot.sendMessage(
@@ -329,7 +329,7 @@ bot.on('message', async (msg) => {
   for (const action of parsed.actions) {
     try {
       if (action.type === 'input' || action.type === 'output') {
-        db.logEntry({
+        await db.logEntry({
           timestamp: now,
           day_key: dayKey,
           entry_type: action.type,
@@ -339,7 +339,7 @@ bot.on('message', async (msg) => {
           source: 'telegram',
         });
       } else if (action.type === 'wellness') {
-        db.logWellness({
+        await db.logWellness({
           timestamp: now,
           day_key: dayKey,
           check_time: action.check_time,
@@ -349,9 +349,9 @@ bot.on('message', async (msg) => {
           cyanosis: action.cyanosis,
         });
       } else if (action.type === 'gag') {
-        db.logGag(action.count, now, dayKey);
+        await db.logGag(action.count, now, dayKey);
       } else if (action.type === 'weight') {
-        db.logWeight(dayKey, action.weight_kg, null);
+        await db.logWeight(dayKey, action.weight_kg, null);
         weightAction = action;
       }
     } catch (dbErr) {
@@ -366,7 +366,7 @@ bot.on('message', async (msg) => {
       const yesterday = new Date();
       yesterday.setDate(yesterday.getDate() - 1);
       const yesterdayKey = db.getDayKey(yesterday);
-      const prevEntry = db.getWeightForDate(yesterdayKey);
+      const prevEntry = await db.getWeightForDate(yesterdayKey);
 
       let trendStr = '';
       if (prevEntry && typeof prevEntry.weight_kg === 'number') {
@@ -391,7 +391,7 @@ bot.on('message', async (msg) => {
   }
 
   // Build and send confirmation
-  const summary = db.getDaySummary(dayKey);
+  const summary = await db.getDaySummary(dayKey);
   const confirmation = buildConfirmation(parsed.actions, summary) +
     (parsed.date_offset === -1 ? '\n📅 _Logged for yesterday_' : '');
   bot.sendMessage(chatId, confirmation, { parse_mode: 'Markdown' });

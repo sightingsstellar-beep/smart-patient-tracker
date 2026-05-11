@@ -35,72 +35,54 @@ app.use(express.urlencoded({ extended: false }));
 const session = require('express-session');
 
 // ---------------------------------------------------------------------------
-// SQLiteSessionStore — persists sessions in the existing better-sqlite3 DB.
-// Zero extra dependencies; sessions survive server restarts.
+// PostgresSessionStore — persists sessions in the application Postgres DB.
 // ---------------------------------------------------------------------------
-class SQLiteSessionStore extends session.Store {
+class PostgresSessionStore extends session.Store {
   constructor(database, ttlSeconds = 7 * 24 * 60 * 60) {
     super();
     this._db = database;
     this._ttl = ttlSeconds;
 
-    // Create sessions table if it doesn't exist
-    this._db.exec(`
-      CREATE TABLE IF NOT EXISTS sessions (
-        sid     TEXT    PRIMARY KEY,
-        expires INTEGER NOT NULL,
-        data    TEXT    NOT NULL
-      )
-    `);
-
-    // Prepare statements once for performance
-    this._get     = this._db.prepare('SELECT data, expires FROM sessions WHERE sid = ?');
-    this._set     = this._db.prepare('INSERT OR REPLACE INTO sessions (sid, expires, data) VALUES (?, ?, ?)');
-    this._destroy = this._db.prepare('DELETE FROM sessions WHERE sid = ?');
-    this._touch   = this._db.prepare('UPDATE sessions SET expires = ? WHERE sid = ?');
-    this._prune   = this._db.prepare('DELETE FROM sessions WHERE expires < ?');
-
-    // Prune expired sessions hourly
     setInterval(() => {
-      try { this._prune.run(Math.floor(Date.now() / 1000)); } catch (_) {}
+      this._db.sessionPrune(Math.floor(Date.now() / 1000)).catch(() => {});
     }, 60 * 60 * 1000).unref();
   }
 
-  get(sid, cb) {
+  async get(sid, cb) {
     try {
-      const row = this._get.get(sid);
+      const row = await this._db.sessionGet(sid);
       if (!row) return cb(null, null);
       if (row.expires < Math.floor(Date.now() / 1000)) {
-        this._destroy.run(sid);
+        await this._db.sessionDestroy(sid);
         return cb(null, null);
       }
       cb(null, JSON.parse(row.data));
     } catch (err) { cb(err); }
   }
 
-  set(sid, sess, cb) {
+  async set(sid, sess, cb) {
     try {
       const expires = Math.floor(Date.now() / 1000) + this._ttl;
-      this._set.run(sid, expires, JSON.stringify(sess));
+      await this._db.sessionSet(sid, expires, JSON.stringify(sess));
       cb(null);
     } catch (err) { cb(err); }
   }
 
-  destroy(sid, cb) {
-    try { this._destroy.run(sid); cb(null); } catch (err) { cb(err); }
+  async destroy(sid, cb) {
+    try { await this._db.sessionDestroy(sid); cb(null); } catch (err) { cb(err); }
   }
 
-  touch(sid, sess, cb) {
+  async touch(sid, sess, cb) {
     try {
       const expires = Math.floor(Date.now() / 1000) + this._ttl;
-      this._touch.run(expires, sid);
+      await this._db.sessionTouch(sid, expires);
       cb(null);
     } catch (err) { cb(err); }
   }
 }
 
 app.use(session({
-  store: new SQLiteSessionStore(db.db),
+  store: new PostgresSessionStore(db),
   secret: process.env.SESSION_SECRET || 'dev-secret-please-set-SESSION_SECRET-in-env',
   resave: false,
   saveUninitialized: false,
@@ -1329,10 +1311,10 @@ app.post('/api/alexa', async (req, res) => {
     // Helper: build fresh display APL with current DB state.
     // displayDayOffset is intentionally limited to 0 (today) or -1 (yesterday)
     // because the Echo Show footer is a simple today/yesterday toggle.
-    function freshDisplayApl(displayDayOffset = 0) {
+    async function freshDisplayApl(displayDayOffset = 0) {
       const offset = Number(displayDayOffset) === -1 ? -1 : 0;
       const dayKey = offset === -1 ? shiftDayKey(db.getDayKey(), -1) : db.getDayKey();
-      const s   = db.getDaySummary(dayKey);
+      const s   = await db.getDaySummary(dayKey);
       const lim = getDailyLimit();
       const oMl = s.outputs.reduce((acc, o) => acc + (o.amount_ml || 0), 0);
       // 7th param = raw outputs array (right panel), 8th = raw inputs array (fulllog mode)
@@ -1340,8 +1322,8 @@ app.post('/api/alexa', async (req, res) => {
     }
 
     // Helper: build full log APL with current DB state
-    function freshFullLogApl() {
-      const s   = db.getDaySummary(db.getDayKey());
+    async function freshFullLogApl() {
+      const s   = await db.getDaySummary(db.getDayKey());
       const lim = getDailyLimit();
       const oMl = s.outputs.reduce((acc, o) => acc + (o.amount_ml || 0), 0);
       return buildAplDirective(s.totalIntake, lim, 'fulllog', null, oMl, null, s.outputs, s.inputs);
@@ -1349,7 +1331,7 @@ app.post('/api/alexa', async (req, res) => {
 
     // -- LaunchRequest: show fluid status display (mic closed — touch-first)
     if (request.type === 'LaunchRequest') {
-      const summary = db.getDaySummary(db.getDayKey());
+      const summary = await db.getDaySummary(db.getDayKey());
       const limit   = getDailyLimit();
       const outputMl  = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
       const dirs = supportsApl(req)
@@ -1372,16 +1354,16 @@ app.post('/api/alexa', async (req, res) => {
       if (action === 'mode') {
         const newMode = args[1] || 'input';
         if (newMode === 'display') {
-          const apl = freshDisplayApl();
+          const apl = await freshDisplayApl();
           return res.json(alexaResponse('', null, null,
             supportsApl(req) ? [apl] : []));
         }
         if (newMode === 'fulllog') {
-          const apl = freshFullLogApl();
+          const apl = await freshFullLogApl();
           return res.json(alexaResponse('', null, null,
             supportsApl(req) ? [apl] : []));
         }
-        const summary = db.getDaySummary(db.getDayKey());
+        const summary = await db.getDaySummary(db.getDayKey());
         const limit   = getDailyLimit();
         const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
         // Clear customDigits on mode switch
@@ -1395,7 +1377,7 @@ app.post('/api/alexa', async (req, res) => {
       if (action === 'select') {
         const fluid = args[1];
         const mode  = args[2] || 'input';
-        const summary  = db.getDaySummary(db.getDayKey());
+        const summary  = await db.getDaySummary(db.getDayKey());
         const limit    = getDailyLimit();
         const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
         // Clear customDigits on new fluid selection
@@ -1416,7 +1398,7 @@ app.post('/api/alexa', async (req, res) => {
         const current     = sessionAttrs.customDigits || '';
         // Max 4 digits (9999 ml is a reasonable upper bound)
         const newDigits   = current.length < 4 ? current + digit : current;
-        const summary  = db.getDaySummary(db.getDayKey());
+        const summary  = await db.getDaySummary(db.getDayKey());
         const limit    = getDailyLimit();
         const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
         const apl = buildAplDirective(summary.totalIntake, limit, mode, fluid, outputMl, null, null, null, null, newDigits);
@@ -1433,7 +1415,7 @@ app.post('/api/alexa', async (req, res) => {
         const sessionAttrs = req.body?.session?.attributes || {};
         const current     = sessionAttrs.customDigits || '';
         const newDigits   = current.slice(0, -1);
-        const summary  = db.getDaySummary(db.getDayKey());
+        const summary  = await db.getDaySummary(db.getDayKey());
         const limit    = getDailyLimit();
         const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
         const apl = buildAplDirective(summary.totalIntake, limit, mode, fluid, outputMl, null, null, null, null, newDigits);
@@ -1452,7 +1434,7 @@ app.post('/api/alexa', async (req, res) => {
         const amount      = parseInt(digits, 10);
 
         if (!fluid || fluid === 'null' || fluid === 'undefined') {
-          const summary  = db.getDaySummary(db.getDayKey());
+          const summary  = await db.getDaySummary(db.getDayKey());
           const limit    = getDailyLimit();
           const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
           const apl = buildAplDirective(summary.totalIntake, limit, mode, null, outputMl, null, null, null, null, '');
@@ -1463,7 +1445,7 @@ app.post('/api/alexa', async (req, res) => {
         }
 
         if (!amount || amount <= 0 || amount > 9999) {
-          const summary  = db.getDaySummary(db.getDayKey());
+          const summary  = await db.getDaySummary(db.getDayKey());
           const limit    = getDailyLimit();
           const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
           const apl = buildAplDirective(summary.totalIntake, limit, mode, fluid, outputMl, null, null, null, null, digits);
@@ -1473,14 +1455,14 @@ app.post('/api/alexa', async (req, res) => {
           ));
         }
 
-        db.logEntry({
+        await db.logEntry({
           timestamp: Date.now(), day_key: db.getDayKey(),
           entry_type: mode === 'output' ? 'output' : 'input',
           fluid_type: fluid, amount_ml: amount, source: 'alexa',
         });
 
-        const apl    = freshDisplayApl();
-        const s2     = db.getDaySummary(db.getDayKey());
+        const apl    = await freshDisplayApl();
+        const s2     = await db.getDaySummary(db.getDayKey());
         const speech = buildAlexaSpeech(s2);
         return res.json(alexaResponse(speech, null, null,
           supportsApl(req) ? [apl] : []));
@@ -1488,7 +1470,7 @@ app.post('/api/alexa', async (req, res) => {
 
       if (action === 'day') {
         const offset = Number(args[1]) === -1 ? -1 : 0;
-        const apl = freshDisplayApl(offset);
+        const apl = await freshDisplayApl(offset);
         return res.json(alexaResponse('', null, null,
           supportsApl(req) ? [apl] : [],
           { displayDayOffset: offset }
@@ -1496,8 +1478,8 @@ app.post('/api/alexa', async (req, res) => {
       }
 
       if (action === 'gag') {
-        db.logGag(1, Date.now());
-        const apl = freshDisplayApl();
+        await db.logGag(1, Date.now());
+        const apl = await freshDisplayApl();
         return res.json(alexaResponse('Gag logged.', null, null,
           supportsApl(req) ? [apl] : []));
       }
@@ -1508,7 +1490,7 @@ app.post('/api/alexa', async (req, res) => {
         const mode   = args[3] || 'input';
 
         if (!fluid || fluid === 'null' || fluid === 'undefined') {
-          const summary  = db.getDaySummary(db.getDayKey());
+          const summary  = await db.getDaySummary(db.getDayKey());
           const limit    = getDailyLimit();
           const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
           const apl = buildAplDirective(summary.totalIntake, limit, mode, null, outputMl);
@@ -1516,15 +1498,15 @@ app.post('/api/alexa', async (req, res) => {
             null, null, supportsApl(req) ? [apl] : []));
         }
 
-        db.logEntry({
+        await db.logEntry({
           timestamp: Date.now(), day_key: db.getDayKey(),
           entry_type: mode === 'output' ? 'output' : 'input',
           fluid_type: fluid, amount_ml: amount, source: 'alexa',
         });
 
         // Return to display after logging so totals are visible immediately
-        const apl    = freshDisplayApl();
-        const s2     = db.getDaySummary(db.getDayKey());
+        const apl    = await freshDisplayApl();
+        const s2     = await db.getDaySummary(db.getDayKey());
         const speech = buildAlexaSpeech(s2);
         return res.json(alexaResponse(speech, null, null,
           supportsApl(req) ? [apl] : []));
@@ -1551,7 +1533,7 @@ app.post('/api/alexa', async (req, res) => {
         const sessionAttrs = req.body?.session?.attributes || {};
         const offsetArg = args.length > 2 ? args[2] : sessionAttrs.displayDayOffset;
         const offset = Number(offsetArg) === -1 ? -1 : 0;
-        const apl = freshDisplayApl(offset);
+        const apl = await freshDisplayApl(offset);
         return res.json(alexaResponse('', null, null,
           supportsApl(req) ? [apl] : [],
           { ...sessionAttrs, displayDayOffset: offset }
@@ -1560,7 +1542,7 @@ app.post('/api/alexa', async (req, res) => {
 
       // Unknown UserEvent — refresh display
       {
-        const apl = freshDisplayApl();
+        const apl = await freshDisplayApl();
         return res.json(alexaResponse('', null, null,
           supportsApl(req) ? [apl] : []));
       }
@@ -1628,7 +1610,7 @@ app.post('/api/alexa', async (req, res) => {
         if (numMatch) {
           const amount = Math.round(parseFloat(numMatch[1]));
           const entryType = pendingMode === 'output' ? 'output' : 'input';
-          db.logEntry({
+          await db.logEntry({
             timestamp: Date.now(),
             day_key: db.getDayKey(),
             entry_type: entryType,
@@ -1636,13 +1618,13 @@ app.post('/api/alexa', async (req, res) => {
             amount_ml: amount,
             source: 'alexa',
           });
-          const summary = db.getDaySummary(db.getDayKey());
+          const summary = await db.getDaySummary(db.getDayKey());
           const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
           const dirs = supportsApl(req)
             ? [buildAplDirective(summary.totalIntake, getDailyLimit(), pendingMode, null, outputMl)]
             : [];
           // Clear pending fluid from session attributes; return to display, mic closed
-          const dispApl = supportsApl(req) ? [freshDisplayApl()] : [];
+          const dispApl = supportsApl(req) ? [await freshDisplayApl()] : [];
           return res.json(alexaResponse(buildAlexaSpeech(summary), null, null, dispApl, {}));
         }
       }
@@ -1687,7 +1669,7 @@ app.post('/api/alexa', async (req, res) => {
       let weightLogged = null;
       for (const action of parsed.actions) {
         if (action.type === 'input' || action.type === 'output') {
-          db.logEntry({
+          await db.logEntry({
             timestamp: now,
             day_key: dayKey,
             entry_type: action.type,
@@ -1697,7 +1679,7 @@ app.post('/api/alexa', async (req, res) => {
             source: 'alexa',
           });
         } else if (action.type === 'wellness') {
-          db.logWellness({
+          await db.logWellness({
             timestamp: now,
             day_key: dayKey,
             check_time: action.check_time,
@@ -1708,9 +1690,9 @@ app.post('/api/alexa', async (req, res) => {
             source: 'alexa',
           });
         } else if (action.type === 'gag') {
-          db.logGag(action.count, now);
+          await db.logGag(action.count, now);
         } else if (action.type === 'weight') {
-          db.logWeight(dayKey, action.weight_kg, null);
+          await db.logWeight(dayKey, action.weight_kg, null);
           weightLogged = action.weight_kg;
         }
       }
@@ -1720,8 +1702,8 @@ app.post('/api/alexa', async (req, res) => {
         return res.json(alexaResponse(`Weight logged. ${weightLogged} kilograms.`));
       }
 
-      const summary  = db.getDaySummary(dayKey);
-      const aplDirs  = supportsApl(req) ? [freshDisplayApl()] : [];
+      const summary  = await db.getDaySummary(dayKey);
+      const aplDirs  = supportsApl(req) ? [await freshDisplayApl()] : [];
       // Logged successfully — return to display, mic closed
       return res.json(alexaResponse(buildAlexaSpeech(summary), null, null, aplDirs));
     }
@@ -1749,13 +1731,13 @@ app.get('/display', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'display.html'));
 });
 
-app.get('/api/display-data', (req, res) => {
+app.get('/api/display-data', async (req, res) => {
   const displayToken = process.env.DISPLAY_TOKEN;
   if (!displayToken || req.query.token !== displayToken) {
     return res.status(403).json({ error: 'Forbidden' });
   }
 
-  const summary = db.getDaySummary(db.getDayKey());
+  const summary = await db.getDaySummary(db.getDayKey());
   const limit = getDailyLimit();
 
   // Output breakdown by type (ml + count for poop)
@@ -1795,18 +1777,21 @@ app.use(requireAuth);
 // ---------------------------------------------------------------------------
 // Database backup endpoint (API key only — for automated backups)
 // ---------------------------------------------------------------------------
-app.get('/api/backup', (req, res) => {
+app.get('/api/backup', async (req, res) => {
   // Restrict to API key auth only (not browser sessions)
   if (!API_KEY || req.headers['x-api-key'] !== API_KEY) {
     return res.status(403).json({ ok: false, error: 'API key required for backup' });
   }
-  const dataDir = process.env.DATA_DIR || path.join(__dirname, 'data');
-  const dbPath = path.join(dataDir, 'elina.db');
-  if (!fs.existsSync(dbPath)) {
-    return res.status(404).json({ ok: false, error: 'Database file not found' });
+  try {
+    const datestamp = new Date().toISOString().slice(0, 10);
+    const data = await db.exportAllData();
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename=elina-postgres-backup-${datestamp}.json`);
+    res.send(JSON.stringify(data, null, 2));
+  } catch (err) {
+    console.error('[GET /api/backup]', err);
+    res.status(500).json({ ok: false, error: err.message });
   }
-  const datestamp = new Date().toISOString().slice(0, 10);
-  res.download(dbPath, `elina-backup-${datestamp}.db`);
 });
 
 // Static files (served after auth check)
@@ -1987,7 +1972,7 @@ function formatTimeInput(tsMs) {
  * GET /api/today and /api/day
  * Returns all data for the requested fluid day.
  */
-app.get(['/api/today', '/api/day'], (req, res) => {
+app.get(['/api/today', '/api/day'], async (req, res) => {
   try {
     const dayResult = resolveRequestedDayKey({
       date: req.query.date,
@@ -1998,7 +1983,7 @@ app.get(['/api/today', '/api/day'], (req, res) => {
     }
 
     const dayKey = dayResult.date;
-    const summary = db.getDaySummary(dayKey);
+    const summary = await db.getDaySummary(dayKey);
     res.json({
       ok: true,
       dayKey,
@@ -2037,10 +2022,10 @@ app.get(['/api/today', '/api/day'], (req, res) => {
  * GET /api/report
  * Returns the formatted nurse handoff report for today.
  */
-app.get('/api/report', (req, res) => {
+app.get('/api/report', async (req, res) => {
   try {
     const dayKey = db.getDayKey();
-    const text = buildReport(dayKey);
+    const text = await buildReport(dayKey);
     res.json({ ok: true, dayKey, report: text });
   } catch (err) {
     console.error('[GET /api/report]', err);
@@ -2055,7 +2040,7 @@ app.get('/api/report', (req, res) => {
  *   OR  { type: 'wellness', check_time, appetite, energy, mood, cyanosis }
  *   OR  { type: 'gag', count }
  */
-app.post('/api/log', (req, res) => {
+app.post('/api/log', async (req, res) => {
   try {
     const body = req.body;
     if (!body || typeof body !== 'object') {
@@ -2088,7 +2073,7 @@ app.post('/api/log', (req, res) => {
     }
 
     if (body.type === 'wellness') {
-      const w = db.upsertWellness({
+      const w = await db.upsertWellness({
         day_key: dayKey,
         check_time: body.check_time || '5pm',
         appetite: body.appetite ?? null,
@@ -2100,11 +2085,11 @@ app.post('/api/log', (req, res) => {
       results.push({ kind: 'wellness', data: w });
     } else if (body.type === 'gag') {
       const count = Math.max(1, parseInt(body.count, 10) || 1);
-      const gags = db.logGag(count, overrideTimestamp || Date.now(), dayKey);
+      const gags = await db.logGag(count, overrideTimestamp || Date.now(), dayKey);
       results.push({ kind: 'gag', count, data: gags });
     } else {
       // Fluid input or output
-      const entry = db.logEntry({
+      const entry = await db.logEntry({
         timestamp: overrideTimestamp || Date.now(),
         day_key: dayKey,
         entry_type: body.entry_type,
@@ -2117,7 +2102,7 @@ app.post('/api/log', (req, res) => {
       results.push({ kind: 'fluid', data: entry });
     }
 
-    const summary = db.getDaySummary(db.getDayKey());
+    const summary = await db.getDaySummary(db.getDayKey());
     res.json({ ok: true, results, totalIntake: summary.totalIntake });
   } catch (err) {
     console.error('[POST /api/log]', err);
@@ -2129,14 +2114,14 @@ app.post('/api/log', (req, res) => {
  * PATCH /api/log/:id
  * Update a specific fluid input/output entry.
  */
-app.patch('/api/log/:id', (req, res) => {
+app.patch('/api/log/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (!id || isNaN(id)) {
       return res.status(400).json({ ok: false, error: 'Invalid ID' });
     }
 
-    const existing = db.getLogById(id);
+    const existing = await db.getLogById(id);
     if (!existing) {
       return res.status(404).json({ ok: false, error: 'Entry not found' });
     }
@@ -2162,7 +2147,7 @@ app.patch('/api/log/:id', (req, res) => {
 
     const timestamp = zonedDateTimeToTimestamp(dateResult.date, timeResult.time, getTimezone());
 
-    db.updateLog({
+    await db.updateLog({
       id,
       timestamp,
       day_key: dateResult.date,
@@ -2173,7 +2158,7 @@ app.patch('/api/log/:id', (req, res) => {
       notes: body.notes ?? existing.notes ?? null,
     });
 
-    const updated = db.getLogById(id);
+    const updated = await db.getLogById(id);
     res.json({
       ok: true,
       entry: {
@@ -2193,14 +2178,14 @@ app.patch('/api/log/:id', (req, res) => {
  * PATCH /api/gag/:id
  * Update a specific gag event time/day.
  */
-app.patch('/api/gag/:id', (req, res) => {
+app.patch('/api/gag/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (!id || isNaN(id)) {
       return res.status(400).json({ ok: false, error: 'Invalid ID' });
     }
 
-    const existing = db.getGagById(id);
+    const existing = await db.getGagById(id);
     if (!existing) {
       return res.status(404).json({ ok: false, error: 'Gag entry not found' });
     }
@@ -2216,9 +2201,9 @@ app.patch('/api/gag/:id', (req, res) => {
     }
 
     const timestamp = zonedDateTimeToTimestamp(dateResult.date, timeResult.time, getTimezone());
-    db.updateGag({ id, timestamp, day_key: dateResult.date });
+    await db.updateGag({ id, timestamp, day_key: dateResult.date });
 
-    const updated = db.getGagById(id);
+    const updated = await db.getGagById(id);
     res.json({ ok: true, entry: { ...updated, time: formatTimestamp(updated.timestamp), time24: formatTimeInput(updated.timestamp) } });
   } catch (err) {
     console.error('[PATCH /api/gag/:id]', err);
@@ -2230,7 +2215,7 @@ app.patch('/api/gag/:id', (req, res) => {
  * GET /api/history?days=7
  * Returns a richer per-day summary for the last N fluid days.
  */
-app.get('/api/history', (req, res) => {
+app.get('/api/history', async (req, res) => {
   try {
     const days = Math.min(90, Math.max(1, parseInt(req.query.days, 10) || 7));
     const todayKey = db.getDayKey();
@@ -2246,8 +2231,8 @@ app.get('/api/history', (req, res) => {
     }
     const uniqueKeys = [...new Set(dayKeys)].slice(0, days);
 
-    const dayData = uniqueKeys.map((dayKey) => {
-      const summary = db.getDaySummary(dayKey);
+    const dayData = await Promise.all(uniqueKeys.map(async (dayKey) => {
+      const summary = await db.getDaySummary(dayKey);
 
       // Build a readable label from the dayKey string
       const [year, month, day] = dayKey.split('-').map(Number);
@@ -2310,7 +2295,7 @@ app.get('/api/history', (req, res) => {
           evening: pickWellness(eveningRow),
         },
       };
-    });
+    }));
 
     res.json({ ok: true, days: dayData });
   } catch (err) {
@@ -2323,13 +2308,13 @@ app.get('/api/history', (req, res) => {
  * DELETE /api/gag/:id
  * Remove a specific gag event by ID.
  */
-app.delete('/api/gag/:id', (req, res) => {
+app.delete('/api/gag/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (!id || isNaN(id)) {
       return res.status(400).json({ ok: false, error: 'Invalid ID' });
     }
-    const result = db.deleteGag(id);
+    const result = await db.deleteGag(id);
     if (result.changes === 0) {
       return res.status(404).json({ ok: false, error: 'Gag entry not found' });
     }
@@ -2344,13 +2329,13 @@ app.delete('/api/gag/:id', (req, res) => {
  * DELETE /api/log/:id
  * Remove a specific log entry by ID.
  */
-app.delete('/api/log/:id', (req, res) => {
+app.delete('/api/log/:id', async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (!id || isNaN(id)) {
       return res.status(400).json({ ok: false, error: 'Invalid ID' });
     }
-    const result = db.deleteLog(id);
+    const result = await db.deleteLog(id);
     if (result.changes === 0) {
       return res.status(404).json({ ok: false, error: 'Entry not found' });
     }
@@ -2365,7 +2350,7 @@ app.delete('/api/log/:id', (req, res) => {
  * DELETE /api/wellness?date=YYYY-MM-DD&check_time=5pm|10pm
  * Remove a specific wellness entry for the day/period.
  */
-app.delete('/api/wellness', (req, res) => {
+app.delete('/api/wellness', async (req, res) => {
   try {
     const dateResult = validateLogDate(req.query.date);
     if (!dateResult.ok) {
@@ -2377,7 +2362,7 @@ app.delete('/api/wellness', (req, res) => {
       return res.status(400).json({ ok: false, error: 'Invalid check_time. Use 5pm or 10pm.' });
     }
 
-    const result = db.deleteWellness(dateResult.date, checkTime);
+    const result = await db.deleteWellness(dateResult.date, checkTime);
     if (result.changes === 0) {
       return res.status(404).json({ ok: false, error: 'Wellness entry not found' });
     }
@@ -2398,7 +2383,7 @@ app.delete('/api/wellness', (req, res) => {
  * Body: { weight_kg, notes? }
  * Logs weight for today's fluid day key. Returns { ok, weight_kg, date, replaced }.
  */
-app.post('/api/weight', (req, res) => {
+app.post('/api/weight', async (req, res) => {
   try {
     const { weight_kg, notes } = req.body;
     if (typeof weight_kg !== 'number' || weight_kg <= 0) {
@@ -2412,8 +2397,8 @@ app.post('/api/weight', (req, res) => {
     }
     const date = dateResult.date;
 
-    const existing = db.getWeightForDate(date);
-    db.logWeight(date, weight_kg, notes ?? null);
+    const existing = await db.getWeightForDate(date);
+    await db.logWeight(date, weight_kg, notes ?? null);
     res.json({ ok: true, weight_kg, date, replaced: !!existing });
   } catch (err) {
     console.error('[POST /api/weight]', err);
@@ -2425,7 +2410,7 @@ app.post('/api/weight', (req, res) => {
  * GET /api/weight/today
  * Returns the requested day's weight entry or { ok, weight: null }.
  */
-app.get('/api/weight/today', (req, res) => {
+app.get('/api/weight/today', async (req, res) => {
   try {
     const dayResult = resolveRequestedDayKey({
       date: req.query.date,
@@ -2436,7 +2421,7 @@ app.get('/api/weight/today', (req, res) => {
     }
 
     const date = dayResult.date;
-    const entry = db.getWeightForDate(date);
+    const entry = await db.getWeightForDate(date);
     res.json({ ok: true, date, weight: entry || null });
   } catch (err) {
     console.error('[GET /api/weight/today]', err);
@@ -2448,7 +2433,7 @@ app.get('/api/weight/today', (req, res) => {
  * GET /api/weight/history?days=7
  * Returns last N weight entries ordered by date desc.
  */
-app.get('/api/weight/history', (req, res) => {
+app.get('/api/weight/history', async (req, res) => {
   try {
     const days = Math.min(90, Math.max(1, parseInt(req.query.days, 10) || 7));
     let entries;
@@ -2458,9 +2443,9 @@ app.get('/api/weight/history', (req, res) => {
       if (!dateResult.ok) {
         return res.status(400).json({ ok: false, error: dateResult.error });
       }
-      entries = db.getWeightHistoryUpTo(dateResult.date, days);
+      entries = await db.getWeightHistoryUpTo(dateResult.date, days);
     } else {
-      entries = db.getWeightHistory(days);
+      entries = await db.getWeightHistory(days);
     }
 
     res.json({ ok: true, entries });
@@ -2474,14 +2459,14 @@ app.get('/api/weight/history', (req, res) => {
  * DELETE /api/weight/:date
  * Remove a specific day weight entry.
  */
-app.delete('/api/weight/:date', (req, res) => {
+app.delete('/api/weight/:date', async (req, res) => {
   try {
     const dateResult = validateLogDate(req.params.date);
     if (!dateResult.ok) {
       return res.status(400).json({ ok: false, error: dateResult.error });
     }
 
-    const result = db.deleteWeight(dateResult.date);
+    const result = await db.deleteWeight(dateResult.date);
     if (result.changes === 0) {
       return res.status(404).json({ ok: false, error: 'Weight entry not found' });
     }
@@ -2578,7 +2563,7 @@ app.post('/api/chat', async (req, res) => {
 
     for (const action of parsed.actions) {
       if (action.type === 'input' || action.type === 'output') {
-        const entry = db.logEntry({
+        const entry = await db.logEntry({
           timestamp: now,
           day_key: dayKey,
           entry_type: action.type,
@@ -2587,9 +2572,9 @@ app.post('/api/chat', async (req, res) => {
           subtype: action.subtype ?? null,
           source: 'chat',
         });
-        entries.push({ kind: action.type, ...action, id: entry?.lastInsertRowid });
+        entries.push({ kind: action.type, ...action, id: entry?.id });
       } else if (action.type === 'wellness') {
-        db.logWellness({
+        await db.logWellness({
           timestamp: now,
           day_key: dayKey,
           check_time: action.check_time,
@@ -2600,12 +2585,12 @@ app.post('/api/chat', async (req, res) => {
         });
         entries.push({ kind: 'wellness', ...action });
       } else if (action.type === 'gag') {
-        db.logGag(action.count, now);
+        await db.logGag(action.count, now);
         entries.push({ kind: 'gag', count: action.count });
       }
     }
 
-    const summary = db.getDaySummary(dayKey);
+    const summary = await db.getDaySummary(dayKey);
     const message = buildChatConfirmation(parsed.actions, summary);
 
     res.json({ ok: true, message, entries });
@@ -2677,7 +2662,7 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
  * GET /api/settings
  * Returns all settings as a flat object.
  */
-app.get('/api/settings', (req, res) => {
+app.get('/api/settings', async (req, res) => {
   try {
     const settings = db.getAllSettings();
     res.json({ ok: true, ...settings });
@@ -2691,7 +2676,7 @@ app.get('/api/settings', (req, res) => {
  * POST /api/settings
  * Accepts partial object, updates provided keys, returns updated settings.
  */
-app.post('/api/settings', (req, res) => {
+app.post('/api/settings', async (req, res) => {
   try {
     const body = req.body;
     if (!body || typeof body !== 'object') {
@@ -2699,7 +2684,7 @@ app.post('/api/settings', (req, res) => {
     }
     for (const [key, value] of Object.entries(body)) {
       if (value !== undefined && value !== null) {
-        db.setSetting(key, value);
+        await db.setSetting(key, value);
       }
     }
     const settings = db.getAllSettings();
@@ -2734,8 +2719,8 @@ app.get('*', (req, res) => {
 // Report builder (shared by API and scheduler)
 // ---------------------------------------------------------------------------
 
-function buildReport(dayKey) {
-  const summary = db.getDaySummary(dayKey);
+async function buildReport(dayKey) {
+  const summary = await db.getDaySummary(dayKey);
   const tz = getTimezone();
   const now = new Date();
   const dateStr = now.toLocaleDateString('en-US', { timeZone: tz, weekday: 'short', month: 'short', day: 'numeric' });
@@ -2794,22 +2779,27 @@ module.exports.getDailyLimit = getDailyLimit;
 // Start server
 // ---------------------------------------------------------------------------
 
-app.listen(PORT, () => {
-  console.log(`[server] Smart Patient Wellness Tracker running on port ${PORT}`);
-  console.log(`[server] Dashboard: http://localhost:${PORT}`);
-  console.log(`[server] Fluid day TZ: ${getTimezone()}`);
+db.ready.then(() => {
+  app.listen(PORT, () => {
+    console.log(`[server] Smart Patient Wellness Tracker running on port ${PORT}`);
+    console.log(`[server] Dashboard: http://localhost:${PORT}`);
+    console.log(`[server] Fluid day TZ: ${getTimezone()}`);
+  });
+
+  // Start Telegram bot (non-fatal if token missing in dev)
+  try {
+    require('./bot');
+  } catch (err) {
+    console.warn('[server] Bot failed to start:', err.message);
+  }
+
+  // Start cron scheduler
+  try {
+    require('./scheduler').start();
+  } catch (err) {
+    console.warn('[server] Scheduler failed to start:', err.message);
+  }
+}).catch((err) => {
+  console.error('[server] Database initialization failed:', err);
+  process.exit(1);
 });
-
-// Start Telegram bot (non-fatal if token missing in dev)
-try {
-  require('./bot');
-} catch (err) {
-  console.warn('[server] Bot failed to start:', err.message);
-}
-
-// Start cron scheduler
-try {
-  require('./scheduler');
-} catch (err) {
-  console.warn('[server] Scheduler failed to start:', err.message);
-}
