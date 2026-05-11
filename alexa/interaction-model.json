@@ -1,7 +1,7 @@
 {
   "interactionModel": {
     "languageModel": {
-      "invocationName": "fluid tracking",
+      "invocationName": "fluid monitor",
       "intents": [
         {
           "name": "LogEntryIntent",

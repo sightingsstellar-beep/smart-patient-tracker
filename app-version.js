@@ -24,7 +24,7 @@ function releaseInfo() {
       },
       alexaSkill: {
         name: 'Patient Wellness Tracker',
-        invocationName: 'fluid tracking',
+        invocationName: 'fluid monitor',
         version: ALEXA_SKILL_VERSION,
       },
     },
