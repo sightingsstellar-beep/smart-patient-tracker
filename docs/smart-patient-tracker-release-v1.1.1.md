@@ -63,12 +63,39 @@ Observed `/api/version` shape:
 }
 ```
 
-## Deployment notes
+## Production deployment
 
-Because this app is live/daily-use, deploy should be a deliberate production step after review. After deployment, verify:
+- Railway project: `splendid-tenderness` (`9198afad-2420-489b-84f5-0c73587953d2`)
+- Railway service: `elina-tracker` (`f5a61a90-646b-4187-a628-0a93595c9c1d`)
+- Production URL: `https://elina-tracker-production.up.railway.app`
+- Deployment ID: `013b9656-dc18-4eb9-b3a0-5d1c3771e0e8`
+- Deployed from local source commit: `8c83223`
+- Release variables set: `RELEASE_VERSION=v1.1.1`, `ALEXA_SKILL_VERSION=1.1.1`, `BUILD_TIMESTAMP=2026-05-11T15:11:59Z`
 
-1. production `/api/version` returns `1.1.1`
-2. dashboard/login UI display `Smart Patient Tracker v1.1.1`
-3. Alexa interaction model is rebuilt/deployed so `VersionIntent` is available
-4. Alexa skill answers a version question correctly
+Production verification passed:
+
+```bash
+curl -fsS https://elina-tracker-production.up.railway.app/health
+curl -fsS https://elina-tracker-production.up.railway.app/api/version
+```
+
+Observed production `/health`:
+
+```json
+{"ok":true,"version":"1.1.1"}
+```
+
+Observed production `/api/version`:
+
+```json
+{"name":"smart-patient-tracker","version":"1.1.1","release":"v1.1.1","environment":"development","commit":null,"builtAt":"2026-05-11T15:11:59Z","components":{"webApp":{"name":"smart-patient-tracker","version":"1.1.1"},"alexaSkill":{"name":"Patient Wellness Tracker","invocationName":"fluid tracking","version":"1.1.1"}}}
+```
+
+Alexa endpoint verification passed by POSTing a `VersionIntent` request with the configured skill ID to `/api/alexa`; response included:
+
+```xml
+<speak>Smart Patient Wellness Tracker is running version 1.1.1.</speak>
+```
+
+Remaining follow-up: deploy/rebuild the Alexa interaction model in the Alexa developer console/SMAPI so real-user utterances for `VersionIntent` are recognized. The production endpoint already handles the intent.
 
