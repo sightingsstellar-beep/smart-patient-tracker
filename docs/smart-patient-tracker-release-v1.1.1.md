@@ -68,8 +68,8 @@ Observed `/api/version` shape:
 - Railway project: `splendid-tenderness` (`9198afad-2420-489b-84f5-0c73587953d2`)
 - Railway service: `elina-tracker` (`f5a61a90-646b-4187-a628-0a93595c9c1d`)
 - Production URL: `https://elina-tracker-production.up.railway.app`
-- Deployment ID: `013b9656-dc18-4eb9-b3a0-5d1c3771e0e8`
-- Deployed from local source commit: `8c83223`
+- Initial deployment ID: `013b9656-dc18-4eb9-b3a0-5d1c3771e0e8`
+- GitHub-backed deployment followed after pushing release receipt commits; verify the current deployment through Railway and `/api/version`.
 - Release variables set: `RELEASE_VERSION=v1.1.1`, `ALEXA_SKILL_VERSION=1.1.1`, `BUILD_TIMESTAMP=2026-05-11T15:11:59Z`
 
 Production verification passed:
@@ -88,7 +88,7 @@ Observed production `/health`:
 Observed production `/api/version`:
 
 ```json
-{"name":"smart-patient-tracker","version":"1.1.1","release":"v1.1.1","environment":"development","commit":null,"builtAt":"2026-05-11T15:11:59Z","components":{"webApp":{"name":"smart-patient-tracker","version":"1.1.1"},"alexaSkill":{"name":"Patient Wellness Tracker","invocationName":"fluid tracking","version":"1.1.1"}}}
+{"name":"smart-patient-tracker","version":"1.1.1","release":"v1.1.1","environment":"development","commit":"<current deployed commit or null for local upload>","builtAt":"2026-05-11T15:11:59Z","components":{"webApp":{"name":"smart-patient-tracker","version":"1.1.1"},"alexaSkill":{"name":"Patient Wellness Tracker","invocationName":"fluid tracking","version":"1.1.1"}}}
 ```
 
 Alexa endpoint verification passed by POSTing a `VersionIntent` request with the configured skill ID to `/api/alexa`; response included:
