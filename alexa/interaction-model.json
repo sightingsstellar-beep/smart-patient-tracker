@@ -37,6 +37,18 @@
           ]
         },
         {
+          "name": "VersionIntent",
+          "slots": [],
+          "samples": [
+            "what version are you running",
+            "what version is this",
+            "tell me the version",
+            "version",
+            "app version",
+            "tracker version"
+          ]
+        },
+        {
           "name": "AMAZON.HelpIntent",
           "samples": []
         },

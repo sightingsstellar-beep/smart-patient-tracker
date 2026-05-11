@@ -99,6 +99,7 @@
     }
     button[type="submit"]:hover { background: #1558b0; }
     button[type="submit"]:active { transform: scale(0.98); }
+    .version { margin-top: 18px; font-size: 0.78rem; color: #8a94a6; }
   </style>
 </head>
 <body>
@@ -124,6 +125,7 @@
       />
       <button type="submit">Sign In</button>
     </form>
+    <div class="version" id="app-version">Version loading…</div>
   </div>
 
   <script>
@@ -131,6 +133,15 @@
     if (new URLSearchParams(location.search).get('error') === '1') {
       document.getElementById('errorBanner').classList.add('visible');
     }
+
+    fetch('/api/version')
+      .then((res) => res.json())
+      .then((info) => {
+        document.getElementById('app-version').textContent = `Smart Patient Tracker v${info.version}`;
+      })
+      .catch(() => {
+        document.getElementById('app-version').textContent = 'Smart Patient Tracker';
+      });
   </script>
 </body>
 </html>

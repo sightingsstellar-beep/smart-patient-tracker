@@ -982,3 +982,19 @@ applyInitialDateFromUrl();
 loadSettings();
 initEventListeners();
 refreshDay();
+
+
+async function loadAppVersion() {
+  const el = document.getElementById('app-version');
+  if (!el) return;
+  try {
+    const res = await fetch('/api/version');
+    if (!res.ok) throw new Error('version request failed');
+    const info = await res.json();
+    el.textContent = `Smart Patient Tracker v${info.version}`;
+  } catch (_) {
+    el.textContent = 'Smart Patient Tracker';
+  }
+}
+
+loadAppVersion();

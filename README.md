@@ -15,6 +15,22 @@ All logging is done via **natural language** through a Telegram bot (powered by 
 
 ---
 
+## Versioning and accountability
+
+This live app follows the Family Care Bundle App Versioning & Accountability Standard in `../docs/app-versioning-accountability-standard.md`.
+
+Release/accountability surfaces:
+
+- `package.json` owns the web app version.
+- `ALEXA_SKILL_VERSION` may override the Alexa component version when the skill needs separate rollout tracking; otherwise it follows the app version.
+- `CHANGELOG.md` records meaningful product changes.
+- `/api/version` exposes release metadata for production verification.
+- The dashboard/login UI displays the deployed app version.
+- The Alexa skill includes a `VersionIntent` so it can answer version questions after the interaction model is deployed.
+
+Before marking a tracker/Alexa change done, record the deployed version, verification evidence, and any regression/rollback notes in Mission Control.
+
+
 ## Features
 
 - 📱 **Telegram bot** - log entries naturally: "120ml pediasure" or "pee 85ml"

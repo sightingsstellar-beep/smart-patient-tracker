@@ -15,6 +15,7 @@ const multer = require('multer');
 const fs = require('fs');
 const db = require('./db');
 const { parseMessage } = require('./parser');
+const { APP_VERSION, ALEXA_SKILL_VERSION, releaseInfo } = require('./app-version');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -112,7 +113,8 @@ app.use(session({
 }));
 
 // Health check (public — used by Railway to verify the container is up)
-app.get('/health', (req, res) => res.json({ ok: true }));
+app.get('/health', (req, res) => res.json({ ok: true, version: APP_VERSION }));
+app.get('/api/version', (req, res) => res.json(releaseInfo()));
 
 // PWA assets — must be public so iOS/Android can fetch them without a session
 app.get('/apple-touch-icon.png', (req, res) =>
@@ -1576,6 +1578,12 @@ app.post('/api/alexa', async (req, res) => {
     const intentName = request.intent?.name;
 
     // Built-in intents
+    if (intentName === 'VersionIntent') {
+      return res.json(alexaResponse(
+        `Smart Patient Wellness Tracker is running version ${ALEXA_SKILL_VERSION}.`
+      ));
+    }
+
     if (intentName === 'AMAZON.HelpIntent') {
       return res.json(alexaResponse(
         'To log fluid intake, say: log 120 milliliters pediasure. ' +
