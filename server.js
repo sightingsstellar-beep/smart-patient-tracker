@@ -182,7 +182,10 @@ app.get('/clerk-spike', (req, res) => {
   <p>This isolated page validates Clerk login/session plumbing only. It does not replace the production shared-password login.</p>
   <div id="signed-out" class="card" hidden>
     <h2>Sign in</h2>
+    <p>The embedded Clerk UI may not render for every Clerk development instance, so this spike uses Clerk's hosted redirect flow as the reliable path.</p>
+    <p><button id="hosted-sign-in">Sign in with Clerk</button></p>
     <div id="sign-in"></div>
+    <pre id="sign-in-output" hidden></pre>
   </div>
   <div id="signed-in" class="card" hidden>
     <h2>Signed in</h2>
@@ -197,7 +200,16 @@ app.get('/clerk-spike', (req, res) => {
       document.getElementById('signed-out').hidden = signedIn;
       document.getElementById('signed-in').hidden = !signedIn;
       if (!signedIn) {
-        window.Clerk.mountSignIn(document.getElementById('sign-in'));
+        document.getElementById('hosted-sign-in').addEventListener('click', () => {
+          window.Clerk.redirectToSignIn({ redirectUrl: window.location.href });
+        });
+        try {
+          window.Clerk.mountSignIn(document.getElementById('sign-in'));
+        } catch (error) {
+          const output = document.getElementById('sign-in-output');
+          output.hidden = false;
+          output.textContent = 'Embedded sign-in unavailable; use the Sign in with Clerk button above. Detail: ' + error.message;
+        }
         return;
       }
       const check = async () => {
