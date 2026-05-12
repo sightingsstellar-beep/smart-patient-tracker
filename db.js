@@ -54,6 +54,13 @@ function normalizeRow(row) {
   return row;
 }
 
+function scopeIds(scope = {}) {
+  return {
+    familyId: scope.familyId || scope.family_id || DEFAULT_FAMILY_ID,
+    patientId: scope.patientId || scope.patient_id || DEFAULT_PATIENT_ID,
+  };
+}
+
 async function query(text, params = []) {
   await ready;
   return pool.query(text, params);
@@ -216,6 +223,7 @@ function getDayKey(date = new Date()) {
 }
 
 async function logEntry(entry) {
+  const { familyId, patientId } = scopeIds(entry);
   const now = Date.now();
   const row = {
     timestamp: entry.timestamp || now,
@@ -230,15 +238,16 @@ async function logEntry(entry) {
   const { rows } = await query(
     `INSERT INTO fluid_logs (family_id, patient_id, timestamp, day_key, entry_type, fluid_type, amount_ml, subtype, notes, source)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING *`,
-    [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, row.timestamp, row.day_key, row.entry_type, row.fluid_type, row.amount_ml, row.subtype, row.notes, row.source]
+    [familyId, patientId, row.timestamp, row.day_key, row.entry_type, row.fluid_type, row.amount_ml, row.subtype, row.notes, row.source]
   );
   return normalizeRow(rows[0]);
 }
 
-async function getLogsByDay(dayKey) {
+async function getLogsByDay(dayKey, scope = {}) {
+  const { familyId, patientId } = scopeIds(scope);
   const { rows } = await query(
     'SELECT * FROM fluid_logs WHERE family_id=$1 AND patient_id=$2 AND day_key=$3 ORDER BY timestamp ASC, id ASC',
-    [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, dayKey]
+    [familyId, patientId, dayKey]
   );
   return rows.map(normalizeRow);
 }
@@ -290,6 +299,7 @@ async function getLogsForDays(days) {
 }
 
 async function logWellness(entry) {
+  const { familyId, patientId } = scopeIds(entry);
   const now = Date.now();
   const row = {
     timestamp: entry.timestamp || now,
@@ -303,15 +313,16 @@ async function logWellness(entry) {
   const { rows } = await query(
     `INSERT INTO wellness_checks (family_id, patient_id, timestamp, day_key, check_time, appetite, energy, mood, cyanosis)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *`,
-    [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, row.timestamp, row.day_key, row.check_time, row.appetite, row.energy, row.mood, row.cyanosis]
+    [familyId, patientId, row.timestamp, row.day_key, row.check_time, row.appetite, row.energy, row.mood, row.cyanosis]
   );
   return normalizeRow(rows[0]);
 }
 
-async function getWellnessByDay(dayKey) {
+async function getWellnessByDay(dayKey, scope = {}) {
+  const { familyId, patientId } = scopeIds(scope);
   const { rows } = await query(
     'SELECT * FROM wellness_checks WHERE family_id=$1 AND patient_id=$2 AND day_key=$3 ORDER BY timestamp ASC, id ASC',
-    [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, dayKey]
+    [familyId, patientId, dayKey]
   );
   return rows.map(normalizeRow);
 }
@@ -370,23 +381,25 @@ async function deleteWellness(dayKey, checkTime) {
   return { changes: result.rowCount };
 }
 
-async function logGag(count = 1, timestamp = Date.now(), dayKeyOverride = null) {
+async function logGag(count = 1, timestamp = Date.now(), dayKeyOverride = null, scope = {}) {
+  const { familyId, patientId } = scopeIds(scope);
   const dayKey = dayKeyOverride || getDayKey(new Date(timestamp));
   const results = [];
   for (let i = 0; i < count; i++) {
     const { rows } = await query(
       'INSERT INTO gag_events (family_id, patient_id, timestamp, day_key) VALUES ($1,$2,$3,$4) RETURNING *',
-      [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, timestamp + i, dayKey]
+      [familyId, patientId, timestamp + i, dayKey]
     );
     results.push(normalizeRow(rows[0]));
   }
   return results;
 }
 
-async function getGagsByDay(dayKey) {
+async function getGagsByDay(dayKey, scope = {}) {
+  const { familyId, patientId } = scopeIds(scope);
   const { rows } = await query(
     'SELECT * FROM gag_events WHERE family_id=$1 AND patient_id=$2 AND day_key=$3 ORDER BY timestamp ASC, id ASC',
-    [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, dayKey]
+    [familyId, patientId, dayKey]
   );
   return rows.map(normalizeRow);
 }
@@ -412,10 +425,10 @@ async function deleteGag(id) {
   return { changes: result.rowCount };
 }
 
-async function getDaySummary(dayKey) {
-  const logs = await getLogsByDay(dayKey);
-  const wellness = collapseLatestWellnessRows(await getWellnessByDay(dayKey));
-  const gags = await getGagsByDay(dayKey);
+async function getDaySummary(dayKey, scope = {}) {
+  const logs = await getLogsByDay(dayKey, scope);
+  const wellness = collapseLatestWellnessRows(await getWellnessByDay(dayKey, scope));
+  const gags = await getGagsByDay(dayKey, scope);
   const inputs = logs.filter((l) => l.entry_type === 'input');
   const outputs = logs.filter((l) => l.entry_type === 'output');
   const totalIntake = inputs.reduce((sum, l) => sum + (l.amount_ml || 0), 0);
@@ -455,14 +468,15 @@ async function initDefaultSettings() {
   return reloadSettings();
 }
 
-async function logWeight(date, weight_kg, notes) {
+async function logWeight(date, weight_kg, notes, scope = {}) {
+  const { familyId, patientId } = scopeIds(scope);
   const logged_at = new Date().toISOString();
   const { rows } = await query(
     `INSERT INTO weight_logs (family_id, patient_id, date, weight_kg, logged_at, notes)
      VALUES ($1,$2,$3,$4,$5,$6)
      ON CONFLICT (family_id, patient_id, date) DO UPDATE SET weight_kg=EXCLUDED.weight_kg, logged_at=EXCLUDED.logged_at, notes=EXCLUDED.notes
      RETURNING *`,
-    [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, date, weight_kg, logged_at, notes ?? null]
+    [familyId, patientId, date, weight_kg, logged_at, notes ?? null]
   );
   return normalizeRow(rows[0]);
 }
@@ -495,6 +509,44 @@ async function exportAllData() {
     data[table] = rows.map(normalizeRow);
   }
   return { exportedAt: new Date().toISOString(), defaultFamilyId: DEFAULT_FAMILY_ID, defaultPatientId: DEFAULT_PATIENT_ID, tables: data };
+}
+
+async function getAlexaAccountLinkBySubject(authSubject) {
+  const { rows } = await query('SELECT * FROM alexa_account_links WHERE auth_subject=$1', [authSubject]);
+  return rows[0] || null;
+}
+
+async function getAlexaAccountLinkByAlexaUserId(alexaUserId) {
+  if (!alexaUserId) return null;
+  const { rows } = await query('SELECT * FROM alexa_account_links WHERE alexa_user_id=$1', [alexaUserId]);
+  return rows[0] || null;
+}
+
+async function upsertAlexaAccountLink({ alexaUserId, authSubject, familyId = DEFAULT_FAMILY_ID, patientId = DEFAULT_PATIENT_ID }) {
+  if (!authSubject) throw new Error('authSubject is required for Alexa account linking');
+  const { rows } = await query(
+    `INSERT INTO alexa_account_links (family_id, patient_id, alexa_user_id, auth_subject, updated_at)
+     VALUES ($1,$2,$3,$4,now())
+     ON CONFLICT (auth_subject) DO UPDATE SET
+       family_id=EXCLUDED.family_id,
+       patient_id=EXCLUDED.patient_id,
+       alexa_user_id=COALESCE(EXCLUDED.alexa_user_id, alexa_account_links.alexa_user_id),
+       updated_at=now()
+     RETURNING *`,
+    [familyId, patientId, alexaUserId || null, authSubject]
+  );
+  return rows[0];
+}
+
+async function setAlexaAccountLinkUserId(authSubject, alexaUserId) {
+  if (!authSubject || !alexaUserId) return null;
+  const { rows } = await query(
+    `UPDATE alexa_account_links SET alexa_user_id=$2, updated_at=now()
+     WHERE auth_subject=$1 AND alexa_user_id IS NULL
+     RETURNING *`,
+    [authSubject, alexaUserId]
+  );
+  return rows[0] || null;
 }
 
 async function sessionGet(sid) {
@@ -552,6 +604,10 @@ module.exports = {
   getWeightHistoryUpTo,
   deleteWeight,
   exportAllData,
+  getAlexaAccountLinkBySubject,
+  getAlexaAccountLinkByAlexaUserId,
+  upsertAlexaAccountLink,
+  setAlexaAccountLinkUserId,
   sessionGet,
   sessionSet,
   sessionDestroy,

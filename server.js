@@ -14,6 +14,7 @@ const path = require('path');
 const multer = require('multer');
 const fs = require('fs');
 const { clerkMiddleware, getAuth, createClerkClient } = require('@clerk/express');
+const { verifyMachineAuthToken } = require('@clerk/backend/internal');
 const db = require('./db');
 const { parseMessage } = require('./parser');
 const { APP_VERSION, ALEXA_SKILL_VERSION, releaseInfo } = require('./app-version');
@@ -24,6 +25,7 @@ const API_KEY = process.env.API_KEY; // Programmatic access (Mr. Stellar)
 const CLERK_SPIKE_ENABLED = ['1', 'true', 'yes'].includes(String(process.env.CLERK_SPIKE_ENABLED || '').toLowerCase());
 const CLERK_PUBLISHABLE_KEY = process.env.CLERK_PUBLISHABLE_KEY || '';
 const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY || '';
+const ALEXA_ACCOUNT_LINKING_REQUIRED = ['1', 'true', 'yes'].includes(String(process.env.ALEXA_ACCOUNT_LINKING_REQUIRED || '').toLowerCase());
 const clerkClient = CLERK_SECRET_KEY ? createClerkClient({ secretKey: CLERK_SECRET_KEY }) : null;
 
 // Railway (and most PaaS) sit behind a reverse proxy — needed for
@@ -266,7 +268,7 @@ app.get('/api/clerk-spike/session', clerkSpikeMiddleware, async (req, res) => {
 /**
  * Build an Alexa JSON response with SSML speech output.
  */
-function alexaResponse(ssml, shouldEndSession = true, repromptSsml = null, directives = [], sessionAttributes = {}) {
+function alexaResponse(ssml, shouldEndSession = true, repromptSsml = null, directives = [], sessionAttributes = {}, card = null) {
   const resp = {
     version: '1.0',
     sessionAttributes,
@@ -287,7 +289,61 @@ function alexaResponse(ssml, shouldEndSession = true, repromptSsml = null, direc
     };
   }
   if (directives.length > 0) resp.response.directives = directives;
+  if (card) resp.response.card = card;
   return resp;
+}
+
+function alexaLinkAccountResponse() {
+  return alexaResponse(
+    'Please use the Alexa app to link your Patient Wellness Tracker account first.',
+    true,
+    null,
+    [],
+    {},
+    { type: 'LinkAccount' }
+  );
+}
+
+function getAlexaAccessToken(body) {
+  return body?.context?.System?.user?.accessToken || body?.session?.user?.accessToken || '';
+}
+
+function getAlexaUserId(body) {
+  return body?.context?.System?.user?.userId || body?.session?.user?.userId || null;
+}
+
+async function resolveAlexaAccountContext(body) {
+  const accessToken = getAlexaAccessToken(body);
+  if (!accessToken) return { ok: false, reason: 'missing_access_token' };
+  if (!CLERK_SECRET_KEY) return { ok: false, reason: 'clerk_not_configured' };
+
+  let verified;
+  try {
+    verified = await verifyMachineAuthToken(accessToken, { secretKey: CLERK_SECRET_KEY });
+  } catch (err) {
+    return { ok: false, reason: 'invalid_access_token', error: err.message || 'Token verification failed' };
+  }
+  const { data, errors } = verified;
+  if (errors) return { ok: false, reason: 'invalid_access_token', error: errors[0]?.message || 'Token verification failed' };
+
+  const subject = data?.subject || data?.sub;
+  if (!subject) return { ok: false, reason: 'missing_subject' };
+
+  const alexaUserId = getAlexaUserId(body);
+  const link = await db.getAlexaAccountLinkBySubject(subject);
+  if (!link) return { ok: false, reason: 'unmapped_subject' };
+  if (alexaUserId && !link.alexa_user_id) {
+    await db.setAlexaAccountLinkUserId(subject, alexaUserId);
+    link.alexa_user_id = alexaUserId;
+  }
+
+  return {
+    ok: true,
+    tokenClaims: data,
+    link,
+    familyId: link.family_id,
+    patientId: link.patient_id,
+  };
 }
 
 function supportsApl(req) {
@@ -1428,13 +1484,24 @@ app.post('/api/alexa', async (req, res) => {
     const request = req.body?.request;
     if (!request) return res.status(400).json({ error: 'Invalid Alexa request' });
 
+    const accountContext = await resolveAlexaAccountContext(req.body);
+    if (!accountContext.ok) {
+      const hasAlexaToken = Boolean(getAlexaAccessToken(req.body));
+      if (ALEXA_ACCOUNT_LINKING_REQUIRED || hasAlexaToken) {
+        console.warn('[alexa] Account linking required or invalid:', accountContext.reason);
+        return res.json(alexaLinkAccountResponse());
+      }
+    }
+    req.alexaAccountContext = accountContext.ok ? accountContext : null;
+    const alexaScope = accountContext.ok ? { familyId: accountContext.familyId, patientId: accountContext.patientId } : {};
+
     // Helper: build fresh display APL with current DB state.
     // displayDayOffset is intentionally limited to 0 (today) or -1 (yesterday)
     // because the Echo Show footer is a simple today/yesterday toggle.
     async function freshDisplayApl(displayDayOffset = 0) {
       const offset = Number(displayDayOffset) === -1 ? -1 : 0;
       const dayKey = offset === -1 ? shiftDayKey(db.getDayKey(), -1) : db.getDayKey();
-      const s   = await db.getDaySummary(dayKey);
+      const s   = await db.getDaySummary(dayKey, alexaScope);
       const lim = getDailyLimit();
       const oMl = s.outputs.reduce((acc, o) => acc + (o.amount_ml || 0), 0);
       // 7th param = raw outputs array (right panel), 8th = raw inputs array (fulllog mode)
@@ -1443,7 +1510,7 @@ app.post('/api/alexa', async (req, res) => {
 
     // Helper: build full log APL with current DB state
     async function freshFullLogApl() {
-      const s   = await db.getDaySummary(db.getDayKey());
+      const s   = await db.getDaySummary(db.getDayKey(), alexaScope);
       const lim = getDailyLimit();
       const oMl = s.outputs.reduce((acc, o) => acc + (o.amount_ml || 0), 0);
       return buildAplDirective(s.totalIntake, lim, 'fulllog', null, oMl, null, s.outputs, s.inputs);
@@ -1451,7 +1518,7 @@ app.post('/api/alexa', async (req, res) => {
 
     // -- LaunchRequest: show fluid status display (mic closed — touch-first)
     if (request.type === 'LaunchRequest') {
-      const summary = await db.getDaySummary(db.getDayKey());
+      const summary = await db.getDaySummary(db.getDayKey(), alexaScope);
       const limit   = getDailyLimit();
       const outputMl  = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
       const dirs = supportsApl(req)
@@ -1483,7 +1550,7 @@ app.post('/api/alexa', async (req, res) => {
           return res.json(alexaResponse('', null, null,
             supportsApl(req) ? [apl] : []));
         }
-        const summary = await db.getDaySummary(db.getDayKey());
+        const summary = await db.getDaySummary(db.getDayKey(), alexaScope);
         const limit   = getDailyLimit();
         const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
         // Clear customDigits on mode switch
@@ -1497,7 +1564,7 @@ app.post('/api/alexa', async (req, res) => {
       if (action === 'select') {
         const fluid = args[1];
         const mode  = args[2] || 'input';
-        const summary  = await db.getDaySummary(db.getDayKey());
+        const summary  = await db.getDaySummary(db.getDayKey(), alexaScope);
         const limit    = getDailyLimit();
         const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
         // Clear customDigits on new fluid selection
@@ -1518,7 +1585,7 @@ app.post('/api/alexa', async (req, res) => {
         const current     = sessionAttrs.customDigits || '';
         // Max 4 digits (9999 ml is a reasonable upper bound)
         const newDigits   = current.length < 4 ? current + digit : current;
-        const summary  = await db.getDaySummary(db.getDayKey());
+        const summary  = await db.getDaySummary(db.getDayKey(), alexaScope);
         const limit    = getDailyLimit();
         const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
         const apl = buildAplDirective(summary.totalIntake, limit, mode, fluid, outputMl, null, null, null, null, newDigits);
@@ -1535,7 +1602,7 @@ app.post('/api/alexa', async (req, res) => {
         const sessionAttrs = req.body?.session?.attributes || {};
         const current     = sessionAttrs.customDigits || '';
         const newDigits   = current.slice(0, -1);
-        const summary  = await db.getDaySummary(db.getDayKey());
+        const summary  = await db.getDaySummary(db.getDayKey(), alexaScope);
         const limit    = getDailyLimit();
         const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
         const apl = buildAplDirective(summary.totalIntake, limit, mode, fluid, outputMl, null, null, null, null, newDigits);
@@ -1554,7 +1621,7 @@ app.post('/api/alexa', async (req, res) => {
         const amount      = parseInt(digits, 10);
 
         if (!fluid || fluid === 'null' || fluid === 'undefined') {
-          const summary  = await db.getDaySummary(db.getDayKey());
+          const summary  = await db.getDaySummary(db.getDayKey(), alexaScope);
           const limit    = getDailyLimit();
           const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
           const apl = buildAplDirective(summary.totalIntake, limit, mode, null, outputMl, null, null, null, null, '');
@@ -1565,7 +1632,7 @@ app.post('/api/alexa', async (req, res) => {
         }
 
         if (!amount || amount <= 0 || amount > 9999) {
-          const summary  = await db.getDaySummary(db.getDayKey());
+          const summary  = await db.getDaySummary(db.getDayKey(), alexaScope);
           const limit    = getDailyLimit();
           const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
           const apl = buildAplDirective(summary.totalIntake, limit, mode, fluid, outputMl, null, null, null, null, digits);
@@ -1579,10 +1646,11 @@ app.post('/api/alexa', async (req, res) => {
           timestamp: Date.now(), day_key: db.getDayKey(),
           entry_type: mode === 'output' ? 'output' : 'input',
           fluid_type: fluid, amount_ml: amount, source: 'alexa',
+          ...alexaScope,
         });
 
         const apl    = await freshDisplayApl();
-        const s2     = await db.getDaySummary(db.getDayKey());
+        const s2     = await db.getDaySummary(db.getDayKey(), alexaScope);
         const speech = buildAlexaSpeech(s2);
         return res.json(alexaResponse(speech, null, null,
           supportsApl(req) ? [apl] : []));
@@ -1598,7 +1666,7 @@ app.post('/api/alexa', async (req, res) => {
       }
 
       if (action === 'gag') {
-        await db.logGag(1, Date.now());
+        await db.logGag(1, Date.now(), null, alexaScope);
         const apl = await freshDisplayApl();
         return res.json(alexaResponse('Gag logged.', null, null,
           supportsApl(req) ? [apl] : []));
@@ -1610,7 +1678,7 @@ app.post('/api/alexa', async (req, res) => {
         const mode   = args[3] || 'input';
 
         if (!fluid || fluid === 'null' || fluid === 'undefined') {
-          const summary  = await db.getDaySummary(db.getDayKey());
+          const summary  = await db.getDaySummary(db.getDayKey(), alexaScope);
           const limit    = getDailyLimit();
           const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
           const apl = buildAplDirective(summary.totalIntake, limit, mode, null, outputMl);
@@ -1622,11 +1690,12 @@ app.post('/api/alexa', async (req, res) => {
           timestamp: Date.now(), day_key: db.getDayKey(),
           entry_type: mode === 'output' ? 'output' : 'input',
           fluid_type: fluid, amount_ml: amount, source: 'alexa',
+          ...alexaScope,
         });
 
         // Return to display after logging so totals are visible immediately
         const apl    = await freshDisplayApl();
-        const s2     = await db.getDaySummary(db.getDayKey());
+        const s2     = await db.getDaySummary(db.getDayKey(), alexaScope);
         const speech = buildAlexaSpeech(s2);
         return res.json(alexaResponse(speech, null, null,
           supportsApl(req) ? [apl] : []));
@@ -1737,8 +1806,9 @@ app.post('/api/alexa', async (req, res) => {
             fluid_type: pendingFluid,
             amount_ml: amount,
             source: 'alexa',
+            ...alexaScope,
           });
-          const summary = await db.getDaySummary(db.getDayKey());
+          const summary = await db.getDaySummary(db.getDayKey(), alexaScope);
           const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
           const dirs = supportsApl(req)
             ? [buildAplDirective(summary.totalIntake, getDailyLimit(), pendingMode, null, outputMl)]
@@ -1797,6 +1867,7 @@ app.post('/api/alexa', async (req, res) => {
             amount_ml: action.amount_ml,
             subtype: action.subtype ?? null,
             source: 'alexa',
+            ...alexaScope,
           });
         } else if (action.type === 'wellness') {
           await db.logWellness({
@@ -1808,11 +1879,12 @@ app.post('/api/alexa', async (req, res) => {
             mood: action.mood,
             cyanosis: action.cyanosis,
             source: 'alexa',
+            ...alexaScope,
           });
         } else if (action.type === 'gag') {
-          await db.logGag(action.count, now);
+          await db.logGag(action.count, now, dayKey, alexaScope);
         } else if (action.type === 'weight') {
-          await db.logWeight(dayKey, action.weight_kg, null);
+          await db.logWeight(dayKey, action.weight_kg, null, alexaScope);
           weightLogged = action.weight_kg;
         }
       }
@@ -1822,7 +1894,7 @@ app.post('/api/alexa', async (req, res) => {
         return res.json(alexaResponse(`Weight logged. ${weightLogged} kilograms.`));
       }
 
-      const summary  = await db.getDaySummary(dayKey);
+      const summary  = await db.getDaySummary(dayKey, alexaScope);
       const aplDirs  = supportsApl(req) ? [await freshDisplayApl()] : [];
       // Logged successfully — return to display, mic closed
       return res.json(alexaResponse(buildAlexaSpeech(summary), null, null, aplDirs));
