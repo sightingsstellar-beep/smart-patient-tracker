@@ -39,6 +39,27 @@ Use the ASK CLI development stage first. A safe verification is:
 5. Confirm missing/unmapped token requests return a `LinkAccount` card.
 6. Confirm mapped requests read/write only the mapped family/patient context.
 
+## Required-linking smoke test
+
+`ALEXA_ACCOUNT_LINKING_REQUIRED=true` can be smoke-tested without flipping production by running the server locally with Railway's public Postgres URL and posting a synthetic Alexa `LaunchRequest` without an access token.
+
+Expected result:
+
+- HTTP 200
+- `response.card.type === "LinkAccount"`
+- `response.shouldEndSession === true`
+
+This confirms the missing-token account-linking prompt path while production remains in opportunistic linked-request mode.
+
 ## Certification notes
 
 Before store submission, prepare reviewer-safe account-linking credentials in Clerk and a mapped `alexa_account_links` row for that reviewer identity. Keep those credentials out of the repo and Mission Control.
+
+Reviewer-account checklist:
+
+1. Create or designate a Clerk test user for Amazon certification review.
+2. Store the username/password only in the approved secret store or Amazon Developer Console fields; do not commit them or journal them.
+3. Link the development-stage Alexa skill once with that reviewer identity.
+4. Create/verify the matching `alexa_account_links.auth_subject` row for the reviewer Clerk subject.
+5. Run one ASK development-stage launch with the reviewer-linked identity and confirm a normal tracker response.
+6. Only after reviewer mapping is verified, consider enabling `ALEXA_ACCOUNT_LINKING_REQUIRED=true` for the intended release stage.
