@@ -163,6 +163,26 @@
       </div>
     </section>
 
+    <!-- ========== CAREGIVERS ========== -->
+    <section class="card settings-card" id="caregiver-card">
+      <div class="settings-section-title">👥 Caregivers</div>
+      <p class="settings-help">Invite another caregiver to access this same family/patient tracker with their own login.</p>
+      <div class="settings-field">
+        <label for="invite_email">Caregiver email</label>
+        <input type="email" id="invite_email" name="invite_email" placeholder="caregiver@example.com" autocomplete="email" />
+      </div>
+      <div class="settings-field">
+        <label for="invite_role">Role</label>
+        <select id="invite_role" name="invite_role">
+          <option value="caregiver">Caregiver</option>
+          <option value="viewer">Viewer</option>
+          <option value="admin">Admin</option>
+        </select>
+      </div>
+      <button class="settings-save-btn" id="invite-btn" type="button">Send Invite</button>
+      <div class="settings-status" id="invite-status" aria-live="polite"></div>
+    </section>
+
     <!-- ========== SAVE ========== -->
     <div class="settings-save-row">
       <button class="settings-save-btn" id="save-btn">💾 Save Settings</button>

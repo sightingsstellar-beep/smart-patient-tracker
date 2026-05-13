@@ -172,6 +172,51 @@ async function saveSettings() {
 }
 
 // ---------------------------------------------------------------------------
+// Caregiver invites
+// ---------------------------------------------------------------------------
+
+async function sendCaregiverInvite() {
+  const btn = document.getElementById('invite-btn');
+  const emailEl = document.getElementById('invite_email');
+  const roleEl = document.getElementById('invite_role');
+  const statusEl = document.getElementById('invite-status');
+  if (!btn || !emailEl || !roleEl || !statusEl) return;
+
+  const email = emailEl.value.trim().toLowerCase();
+  const role = roleEl.value || 'caregiver';
+  if (!email) {
+    statusEl.textContent = '❌ Enter an email address.';
+    statusEl.className = 'settings-status error';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Sending…';
+  statusEl.textContent = '';
+  statusEl.className = 'settings-status';
+
+  try {
+    const res = await fetch('/api/family/invitations', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, role }),
+    });
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    statusEl.textContent = `✅ ${email} can sign in and access this tracker.`;
+    statusEl.className = 'settings-status success';
+    emailEl.value = '';
+  } catch (err) {
+    console.error('[settings] Invite error:', err);
+    statusEl.textContent = '❌ Invite failed: ' + err.message;
+    statusEl.className = 'settings-status error';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = 'Send Invite';
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Status display
 // ---------------------------------------------------------------------------
 
@@ -199,3 +244,5 @@ function showStatus(message, type) {
 loadSettings();
 
 document.getElementById('save-btn').addEventListener('click', saveSettings);
+const inviteBtn = document.getElementById('invite-btn');
+if (inviteBtn) inviteBtn.addEventListener('click', sendCaregiverInvite);
