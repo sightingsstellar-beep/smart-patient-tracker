@@ -23,9 +23,9 @@
         "en-US": {
           "description": "Glide Beside helps parents and caregivers log and review day-to-day care context such as fluid intake, fluid output, wellness observations, gag episodes, weight entries, and summaries during a hospital stay. It is designed for caregiver organization and family handoff support. It does not provide medical advice, diagnosis, treatment, emergency support, or official medical records. Always follow the patient care team for medical decisions.",
           "examplePhrases": [
-            "Alexa, open glide beside",
-            "Alexa, ask glide beside for today's summary",
-            "Alexa, tell glide beside one hundred milliliters of water"
+            "Alexa, open fluid monitor",
+            "Alexa, ask fluid monitor for today's summary",
+            "Alexa, tell fluid monitor one hundred milliliters of water"
           ],
           "keywords": [
             "caregiver",

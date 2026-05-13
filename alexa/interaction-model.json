@@ -1,7 +1,7 @@
 {
   "interactionModel": {
     "languageModel": {
-      "invocationName": "glide beside",
+      "invocationName": "fluid monitor",
       "intents": [
         {
           "name": "LogEntryIntent",
