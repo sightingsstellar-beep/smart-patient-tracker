@@ -203,7 +203,9 @@ async function sendCaregiverInvite() {
     });
     const data = await res.json();
     if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`);
-    statusEl.textContent = `✅ ${email} can sign in and access this tracker.`;
+    statusEl.textContent = data.email?.sent
+      ? `✅ Invite email sent to ${email}.`
+      : `✅ ${email} can sign in and access this tracker. Invite email is not configured yet.`;
     statusEl.className = 'settings-status success';
     emailEl.value = '';
   } catch (err) {

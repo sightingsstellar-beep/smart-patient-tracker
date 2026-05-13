@@ -16,6 +16,7 @@ const fs = require('fs');
 const { clerkMiddleware, getAuth, createClerkClient } = require('@clerk/express');
 const { verifyMachineAuthToken } = require('@clerk/backend/internal');
 const db = require('./db');
+const mailer = require('./mailer');
 const { parseMessage } = require('./parser');
 const { APP_VERSION, ALEXA_SKILL_VERSION, releaseInfo } = require('./app-version');
 
@@ -2321,7 +2322,24 @@ app.post('/api/family/invitations', async (req, res) => {
       role,
       invitedByClerkUserId: scope.clerkUserId,
     });
-    res.json({ ok: true, invitation: { id: invite.id, email: invite.email, role: invite.role, status: invite.status } });
+    let emailDelivery = { sent: false, reason: 'mail_not_configured' };
+    try {
+      emailDelivery = await mailer.sendCaregiverInviteEmail({
+        to: email,
+        familyName: scope.familyName,
+        patientName: scope.patientName,
+        inviterName: scope.displayName || scope.email,
+        role,
+      });
+    } catch (emailErr) {
+      console.error('[invite-email] Failed to send caregiver invite:', emailErr.message);
+      emailDelivery = { sent: false, reason: 'mail_send_failed' };
+    }
+    res.json({
+      ok: true,
+      invitation: { id: invite.id, email: invite.email, role: invite.role, status: invite.status },
+      email: emailDelivery,
+    });
   } catch (err) {
     console.error('[POST /api/family/invitations]', err);
     res.status(500).json({ ok: false, error: err.message });
