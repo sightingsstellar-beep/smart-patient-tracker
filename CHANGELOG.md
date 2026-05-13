@@ -1,14 +1,14 @@
 # Changelog
 
-All notable changes to the Glide Beside web app and Alexa skill are documented here.
+All notable changes to the Glide Bedside web app and Alexa skill are documented here.
 
 This project follows semantic versioning. Because the tracker is live and used daily, every deployed behavior change should link back to Mission Control context and include verification evidence.
 
 ## [Unreleased]
 
 ### Changed
-- Adopted the updated official Glide tool-family names: Glide Beside, Glide Hello, and Glide Guide.
-- Updated web app/PWA labels, Alexa manifest metadata, Alexa invocation examples, runtime messages, invite emails, and publication docs from Patient Tracker / Handoff Videos / Community Guidebook naming to Glide Beside / Glide Hello / Glide Guide.
+- Adopted the updated official Glide tool-family names: Glide Bedside, Glide Hello, and Glide Guide.
+- Updated web app/PWA labels, Alexa manifest metadata, Alexa invocation examples, runtime messages, invite emails, and publication docs from Patient Tracker / Handoff Videos / Community Guidebook naming to Glide Bedside / Glide Hello / Glide Guide.
 
 ### Verification
 - `node --check server.js`
@@ -35,7 +35,7 @@ This project follows semantic versioning. Because the tracker is live and used d
 ### Mission Control
 - Parent project: Glide tool family — Hour Glide.
 - Cross-product initiative: Glide tool family packaging and release accountability.
-- Task: Implement multi-family tenancy for Glide Beside.
+- Task: Implement multi-family tenancy for Glide Bedside.
 
 ## [1.1.1] - 2026-05-11
 
@@ -55,12 +55,12 @@ This project follows semantic versioning. Because the tracker is live and used d
 ### Mission Control
 - Parent project: Glide tool family — Hour Glide.
 - Cross-product initiative: Glide tool family packaging and release accountability.
-- Task: Add versioning to Glide Beside web app and Alexa skill.
+- Task: Add versioning to Glide Bedside web app and Alexa skill.
 
 ## [1.0.0] - historical baseline
 
 ### Added
-- Live Glide Beside web app.
+- Live Glide Bedside web app.
 - Telegram natural-language logging.
 - SQLite-backed fluid intake/output, wellness, gag, weight, and settings data.
 - Mobile-first dashboard and day/trends views.

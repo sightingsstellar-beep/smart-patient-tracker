@@ -1,5 +1,5 @@
 /**
- * app.js — mobile-first Day view for Glide Beside
+ * app.js — mobile-first Day view for Glide Bedside
  */
 
 'use strict';
@@ -991,9 +991,9 @@ async function loadAppVersion() {
     const res = await fetch('/api/version');
     if (!res.ok) throw new Error('version request failed');
     const info = await res.json();
-    el.textContent = `Glide Beside v${info.version}`;
+    el.textContent = `Glide Bedside v${info.version}`;
   } catch (_) {
-    el.textContent = 'Glide Beside';
+    el.textContent = 'Glide Bedside';
   }
 }
 

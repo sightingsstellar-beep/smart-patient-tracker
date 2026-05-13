@@ -231,7 +231,7 @@ function renderClerkLoginPage({ misconfigured = false } = {}) {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sign In — Glide Beside</title>
+  <title>Sign In — Glide Bedside</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { width:100%; max-width:100%; overflow-x:hidden; }
@@ -260,8 +260,8 @@ function renderClerkLoginPage({ misconfigured = false } = {}) {
 <body>
   <div class="card">
     <div class="icon">❤️</div>
-    <h1>Glide Beside</h1>
-    <p class="subtitle">Sign in with your Glide Beside account.</p>
+    <h1>Glide Bedside</h1>
+    <p class="subtitle">Sign in with your Glide Bedside account.</p>
     ${misconfigured ? '<div class="notice">Clerk login is enabled but not fully configured. Please contact support.</div>' : `<p class="muted" id="login-help">Loading secure sign-in…</p><div id="sign-in" aria-live="polite"></div>`}
     <div class="version" id="app-version">Version loading…</div>
   </div>
@@ -270,8 +270,8 @@ function renderClerkLoginPage({ misconfigured = false } = {}) {
     window.addEventListener('load', async () => {
       const version = document.getElementById('app-version');
       fetch('/api/version').then((res) => res.json()).then((info) => {
-        version.textContent = 'Glide Beside v' + info.version;
-      }).catch(() => { version.textContent = 'Glide Beside'; });
+        version.textContent = 'Glide Bedside v' + info.version;
+      }).catch(() => { version.textContent = 'Glide Bedside'; });
       const signIn = document.getElementById('sign-in');
       const help = document.getElementById('login-help');
       try {
@@ -342,7 +342,7 @@ app.get('/logout', (req, res) => {
   if (CLERK_AUTH_ENABLED) {
     if (!CLERK_CONFIGURED) return res.redirect('/login');
     return res.type('html').send(`<!doctype html>
-<html lang="en"><head><meta charset="UTF-8"><title>Signing out — Glide Beside</title></head>
+<html lang="en"><head><meta charset="UTF-8"><title>Signing out — Glide Bedside</title></head>
 <body><p>Signing out…</p>
 <script async crossorigin="anonymous" data-clerk-publishable-key=${JSON.stringify(CLERK_PUBLISHABLE_KEY)} src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"></script>
 <script>window.addEventListener('load', async () => { await window.Clerk.load(); await window.Clerk.signOut(); window.location.assign('/login'); });</script>
@@ -357,7 +357,7 @@ function renderOnboardingPage() {
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Set up your family — Glide Beside</title>
+  <title>Set up your family — Glide Bedside</title>
   <style>
     *, *::before, *::after { box-sizing:border-box; }
     body { margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:#f0f4f8; min-height:100svh; display:flex; align-items:center; justify-content:center; padding:16px; color:#202124; }
@@ -471,7 +471,7 @@ app.get('/clerk-spike', (req, res) => {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Clerk Auth Spike · Glide Beside</title>
+  <title>Clerk Auth Spike · Glide Bedside</title>
   <style>
     body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 760px; margin: 2rem auto; padding: 0 1rem; color: #172033; }
     code, pre { background: #f4f6fb; border-radius: 8px; padding: 0.75rem; }
@@ -597,7 +597,7 @@ function alexaResponse(ssml, shouldEndSession = true, repromptSsml = null, direc
 
 function alexaLinkAccountResponse() {
   return alexaResponse(
-    'Please use the Alexa app to link your Glide Beside account first.',
+    'Please use the Alexa app to link your Glide Bedside account first.',
     true,
     null,
     [],
@@ -2053,7 +2053,7 @@ app.post('/api/alexa', async (req, res) => {
     // Built-in intents
     if (intentName === 'VersionIntent') {
       return res.json(alexaResponse(
-        `Glide Beside is running version ${ALEXA_SKILL_VERSION}.`
+        `Glide Bedside is running version ${ALEXA_SKILL_VERSION}.`
       ));
     }
 
@@ -3387,7 +3387,7 @@ module.exports.getDailyLimit = getDailyLimit;
 
 db.ready.then(() => {
   app.listen(PORT, () => {
-    console.log(`[server] Glide Beside running on port ${PORT}`);
+    console.log(`[server] Glide Bedside running on port ${PORT}`);
     console.log(`[server] Dashboard: http://localhost:${PORT}`);
     console.log(`[server] Fluid day TZ: ${getTimezone()}`);
   });

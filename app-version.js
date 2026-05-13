@@ -23,7 +23,7 @@ function releaseInfo() {
         version: APP_VERSION,
       },
       alexaSkill: {
-        name: 'Glide Beside',
+        name: 'Glide Bedside',
         invocationName: 'fluid monitor',
         version: ALEXA_SKILL_VERSION,
       },

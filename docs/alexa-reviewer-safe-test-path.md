@@ -1,6 +1,6 @@
 # Alexa reviewer-safe test path
 
-Purpose: prepare Amazon certification access for Glide Beside without storing reviewer passwords, tokens, or secret values in the repo, Mission Control, docs, or chat.
+Purpose: prepare Amazon certification access for Glide Bedside without storing reviewer passwords, tokens, or secret values in the repo, Mission Control, docs, or chat.
 
 ## Guardrails
 

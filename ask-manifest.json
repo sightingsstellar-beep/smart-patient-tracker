@@ -21,7 +21,7 @@
       "isAvailableWorldwide": true,
       "locales": {
         "en-US": {
-          "description": "Glide Beside helps parents and caregivers log and review day-to-day care context such as fluid intake, fluid output, wellness observations, gag episodes, weight entries, and summaries during a hospital stay. It is designed for caregiver organization and family handoff support. It does not provide medical advice, diagnosis, treatment, emergency support, or official medical records. Always follow the patient care team for medical decisions.",
+          "description": "Glide Bedside helps parents and caregivers log and review day-to-day care context such as fluid intake, fluid output, wellness observations, gag episodes, weight entries, and summaries during a hospital stay. It is designed for caregiver organization and family handoff support. It does not provide medical advice, diagnosis, treatment, emergency support, or official medical records. Always follow the patient care team for medical decisions.",
           "examplePhrases": [
             "Alexa, open fluid monitor",
             "Alexa, ask fluid monitor for today's summary",
@@ -35,7 +35,7 @@
             "handoff",
             "wellness"
           ],
-          "name": "Glide Beside",
+          "name": "Glide Bedside",
           "summary": "Caregiver logging and handoff support for fluid, wellness, and daily care notes."
         }
       },

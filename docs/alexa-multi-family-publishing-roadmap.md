@@ -2,11 +2,11 @@
 
 ## Purpose
 
-Prepare the Glide Beside web app + Alexa skill for multi-family use and eventual Alexa Skills Store publication under the Hour Glide / GlideChart product line.
+Prepare the Glide Bedside web app + Alexa skill for multi-family use and eventual Alexa Skills Store publication under the Hour Glide / GlideChart product line.
 
 ## Current state
 
-- Skill name: Glide Beside
+- Skill name: Glide Bedside
 - Invocation name: fluid monitor
 - Skill ID: `amzn1.ask.skill.ae8d6755-a9c7-425a-8034-6f1230c8ae9c`
 - Vendor ID: `M1T7RSPC9KXQ7W`
