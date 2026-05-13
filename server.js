@@ -142,6 +142,15 @@ function authStatus(req = null) {
 
 function renderClerkLoginPage({ misconfigured = false } = {}) {
   const key = JSON.stringify(CLERK_PUBLISHABLE_KEY);
+  let hostedSignInUrl = '/login';
+  try {
+    const encoded = CLERK_PUBLISHABLE_KEY.split('_').pop() || '';
+    const decoded = Buffer.from(encoded, 'base64').toString('utf8');
+    const clerkHost = decoded.replace(/\$$/, '');
+    if (clerkHost) {
+      hostedSignInUrl = `https://${clerkHost}/sign-in?redirect_url=${encodeURIComponent('https://app.glidechart.com/')}`;
+    }
+  } catch (_) {}
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -156,6 +165,9 @@ function renderClerkLoginPage({ misconfigured = false } = {}) {
     h1 { font-size:1.3rem; font-weight:700; color:#202124; margin-bottom:6px; }
     .subtitle { font-size:.9rem; color:#5f6368; margin-bottom:24px; }
     .notice { background:#fff7e6; color:#7a4a00; border-radius:10px; padding:10px 14px; font-size:.88rem; margin-bottom:18px; text-align:left; }
+    .button { display:block; width:100%; padding:14px; background:#1a73e8; color:#fff; border:none; border-radius:12px; font-size:1rem; font-weight:600; text-decoration:none; cursor:pointer; }
+    .button:hover { background:#1558b0; }
+    .muted { color:#5f6368; font-size:.86rem; line-height:1.4; margin-top:12px; }
     .version { margin-top:18px; font-size:.78rem; color:#8a94a6; }
     #sign-in { min-height:180px; }
   </style>
@@ -165,7 +177,7 @@ function renderClerkLoginPage({ misconfigured = false } = {}) {
     <div class="icon">❤️</div>
     <h1>Glide Patient Tracker</h1>
     <p class="subtitle">Sign in with your Glide Patient Tracker account.</p>
-    ${misconfigured ? '<div class="notice">Clerk login is enabled but not fully configured. Please contact support.</div>' : '<div id="sign-in">Loading sign in…</div>'}
+    ${misconfigured ? '<div class="notice">Clerk login is enabled but not fully configured. Please contact support.</div>' : `<p><a class="button" id="hosted-sign-in" href="${hostedSignInUrl}">Continue to sign in</a></p><p class="muted" id="login-help">If the embedded sign-in form does not appear, use the button above.</p><div id="sign-in" aria-live="polite"></div>`}
     <div class="version" id="app-version">Version loading…</div>
   </div>
   ${misconfigured ? '' : `<script async crossorigin="anonymous" data-clerk-publishable-key=${key} src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"></script>
@@ -175,16 +187,25 @@ function renderClerkLoginPage({ misconfigured = false } = {}) {
       fetch('/api/version').then((res) => res.json()).then((info) => {
         version.textContent = 'Glide Patient Tracker v' + info.version;
       }).catch(() => { version.textContent = 'Glide Patient Tracker'; });
-      await window.Clerk.load();
-      if (window.Clerk.user) {
-        window.location.assign('/');
-        return;
+      const signIn = document.getElementById('sign-in');
+      const help = document.getElementById('login-help');
+      try {
+        if (!window.Clerk) throw new Error('Clerk browser library did not load.');
+        await window.Clerk.load();
+        if (window.Clerk.user) {
+          window.location.assign('/');
+          return;
+        }
+        window.Clerk.mountSignIn(signIn, {
+          afterSignInUrl: '/',
+          afterSignUpUrl: '/',
+          redirectUrl: '/',
+        });
+        help.textContent = 'Use the embedded form below, or continue through Clerk hosted sign-in.';
+      } catch (error) {
+        signIn.innerHTML = '<div class="notice">Embedded sign-in did not load. Use the Continue to sign in button above.</div>';
+        console.error('[auth] Clerk sign-in render failed:', error);
       }
-      window.Clerk.mountSignIn(document.getElementById('sign-in'), {
-        afterSignInUrl: '/',
-        afterSignUpUrl: '/',
-        redirectUrl: '/',
-      });
     });
   </script>`}
 </body>
