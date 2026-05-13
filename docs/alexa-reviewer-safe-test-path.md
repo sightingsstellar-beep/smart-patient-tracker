@@ -23,14 +23,15 @@ Purpose: prepare Amazon certification access for Glide Bedside without storing r
 1. Create or designate a Clerk reviewer test user for Amazon certification.
 2. Store that username/password only in the approved secret store and, when ready to submit, in Amazon's reviewer credential field.
 3. Verify `https://bedside.glidechart.com/login` uses Clerk production login and accepts the reviewer identity.
-4. Configure the Alexa account-linking resource using the Clerk OAuth application endpoints/client details. Do not store client secrets in this repo.
-5. Link the development-stage Alexa skill using the reviewer identity.
-6. Capture only nonsecret verification facts:
+4. Have the reviewer/test identity complete the short onboarding flow to create a clean reviewer-only family/patient workspace.
+5. Configure the Alexa account-linking resource using the Clerk OAuth application endpoints/client details. Do not store client secrets in this repo.
+6. Link the development-stage Alexa skill using the reviewer identity.
+7. Capture only nonsecret verification facts:
    - reviewer user exists
+   - onboarding completed for a reviewer-only test workspace
    - account linking completed
    - Clerk token subject was observed server-side without printing the token
-   - `alexa_account_links.auth_subject` maps to the intended reviewer family/patient
-7. Create or verify the `alexa_account_links` row for the reviewer identity.
+   - `alexa_account_links.auth_subject` maps to the intended reviewer family/patient, either from an existing row or from automatic onboarding-backed link creation
 8. Run a development-stage Alexa launch/summary request with that linked identity.
 9. Confirm the response reads/writes only the mapped reviewer family/patient context.
 10. Run a missing-token smoke test and confirm Alexa receives a `LinkAccount` card.

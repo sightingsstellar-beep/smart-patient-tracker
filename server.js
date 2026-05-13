@@ -652,8 +652,26 @@ async function resolveAlexaAccountContext(body) {
   if (!subject) return { ok: false, reason: 'missing_subject' };
 
   const alexaUserId = getAlexaUserId(body);
-  const link = await db.getAlexaAccountLinkBySubject(subject);
-  if (!link) return { ok: false, reason: 'unmapped_subject' };
+  let link = await db.getAlexaAccountLinkBySubject(subject);
+
+  if (!link) {
+    // Reviewer/self-serve path: after a Clerk user completes web onboarding,
+    // use that user's first active family membership for Alexa and persist the
+    // link for future requests. This keeps certification accounts isolated from
+    // the legacy/default patient without requiring a manual DB row first.
+    const memberships = await db.getFamilyMembershipsByClerkUserId(subject);
+    const membership = memberships[0] || null;
+    if (!membership) return { ok: false, reason: 'unmapped_subject' };
+    const patient = await db.getPrimaryPatientForFamily(membership.family_id);
+    if (!patient) return { ok: false, reason: 'patient_required' };
+    link = await db.upsertAlexaAccountLink({
+      alexaUserId,
+      authSubject: subject,
+      familyId: membership.family_id,
+      patientId: patient.id,
+    });
+  }
+
   if (alexaUserId && !link.alexa_user_id) {
     await db.setAlexaAccountLinkUserId(subject, alexaUserId);
     link.alexa_user_id = alexaUserId;
