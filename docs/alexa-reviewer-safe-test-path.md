@@ -12,6 +12,7 @@ Purpose: prepare Amazon certification access for Glide Patient Tracker without s
 ## Public surfaces for certification
 
 - Skill endpoint: `https://app.glidechart.com/api/alexa`
+- Reviewer/app login: `https://app.glidechart.com/login`
 - App health check: `https://app.glidechart.com/health`
 - Privacy policy: `https://glidechart.com/privacy`
 - Terms of use: `https://glidechart.com/terms`
@@ -21,17 +22,19 @@ Purpose: prepare Amazon certification access for Glide Patient Tracker without s
 
 1. Create or designate a Clerk reviewer test user for Amazon certification.
 2. Store that username/password only in the approved secret store and, when ready to submit, in Amazon's reviewer credential field.
-3. Link the development-stage Alexa skill using the reviewer identity.
-4. Capture only nonsecret verification facts:
+3. Verify `https://app.glidechart.com/login` uses Clerk production login and accepts the reviewer identity.
+4. Configure the Alexa account-linking resource using the Clerk OAuth application endpoints/client details. Do not store client secrets in this repo.
+5. Link the development-stage Alexa skill using the reviewer identity.
+6. Capture only nonsecret verification facts:
    - reviewer user exists
    - account linking completed
    - Clerk token subject was observed server-side without printing the token
    - `alexa_account_links.auth_subject` maps to the intended reviewer family/patient
-5. Create or verify the `alexa_account_links` row for the reviewer identity.
-6. Run a development-stage Alexa launch/summary request with that linked identity.
-7. Confirm the response reads/writes only the mapped reviewer family/patient context.
-8. Run a missing-token smoke test and confirm Alexa receives a `LinkAccount` card.
-9. Only after the reviewer path works, consider enabling `ALEXA_ACCOUNT_LINKING_REQUIRED=true` for the release stage.
+7. Create or verify the `alexa_account_links` row for the reviewer identity.
+8. Run a development-stage Alexa launch/summary request with that linked identity.
+9. Confirm the response reads/writes only the mapped reviewer family/patient context.
+10. Run a missing-token smoke test and confirm Alexa receives a `LinkAccount` card.
+11. Only after the reviewer path works, consider enabling `ALEXA_ACCOUNT_LINKING_REQUIRED=true` for the release stage.
 
 ## Suggested nonsecret certification notes
 

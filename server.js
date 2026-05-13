@@ -22,11 +22,14 @@ const { APP_VERSION, ALEXA_SKILL_VERSION, releaseInfo } = require('./app-version
 const app = express();
 const PORT = process.env.PORT || 3000;
 const API_KEY = process.env.API_KEY; // Programmatic access (Mr. Stellar)
-const CLERK_SPIKE_ENABLED = ['1', 'true', 'yes'].includes(String(process.env.CLERK_SPIKE_ENABLED || '').toLowerCase());
+const truthy = (value) => ['1', 'true', 'yes'].includes(String(value || '').toLowerCase());
+const CLERK_AUTH_ENABLED = truthy(process.env.CLERK_AUTH_ENABLED);
+const CLERK_SPIKE_ENABLED = truthy(process.env.CLERK_SPIKE_ENABLED);
 const CLERK_PUBLISHABLE_KEY = process.env.CLERK_PUBLISHABLE_KEY || '';
 const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY || '';
-const ALEXA_ACCOUNT_LINKING_REQUIRED = ['1', 'true', 'yes'].includes(String(process.env.ALEXA_ACCOUNT_LINKING_REQUIRED || '').toLowerCase());
+const ALEXA_ACCOUNT_LINKING_REQUIRED = truthy(process.env.ALEXA_ACCOUNT_LINKING_REQUIRED);
 const clerkClient = CLERK_SECRET_KEY ? createClerkClient({ secretKey: CLERK_SECRET_KEY }) : null;
+const CLERK_CONFIGURED = Boolean(CLERK_PUBLISHABLE_KEY && CLERK_SECRET_KEY && clerkClient);
 
 // Railway (and most PaaS) sit behind a reverse proxy — needed for
 // secure cookies and correct req.ip / req.protocol values.
@@ -34,6 +37,10 @@ app.set('trust proxy', 1);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+if ((CLERK_AUTH_ENABLED || CLERK_SPIKE_ENABLED) && CLERK_CONFIGURED) {
+  app.use(clerkMiddleware());
+}
 
 // ---------------------------------------------------------------------------
 // Session + Auth
@@ -113,14 +120,94 @@ app.get('/manifest.json', (req, res) =>
   res.sendFile(path.join(__dirname, 'public', 'manifest.json'))
 );
 
+function authStatus(req = null) {
+  let clerkAuthenticated = false;
+  if (req && CLERK_AUTH_ENABLED && CLERK_CONFIGURED) {
+    try {
+      const auth = getAuth(req);
+      clerkAuthenticated = Boolean(auth?.isAuthenticated && auth?.userId);
+    } catch (_) {
+      clerkAuthenticated = false;
+    }
+  }
+  return {
+    mode: CLERK_AUTH_ENABLED ? 'clerk' : 'shared-password',
+    clerkEnabled: CLERK_AUTH_ENABLED,
+    clerkConfigured: CLERK_CONFIGURED,
+    clerkAuthenticated,
+    legacySessionAuthenticated: Boolean(req?.session?.authenticated),
+    appVersion: APP_VERSION,
+  };
+}
+
+function renderClerkLoginPage({ misconfigured = false } = {}) {
+  const key = JSON.stringify(CLERK_PUBLISHABLE_KEY);
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sign In — Glide Patient Tracker</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background:#f0f4f8; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
+    .card { background:#fff; border-radius:20px; box-shadow:0 4px 24px rgba(0,0,0,.10); padding:40px 36px 36px; width:100%; max-width:430px; text-align:center; }
+    .icon { font-size:2.8rem; margin-bottom:12px; }
+    h1 { font-size:1.3rem; font-weight:700; color:#202124; margin-bottom:6px; }
+    .subtitle { font-size:.9rem; color:#5f6368; margin-bottom:24px; }
+    .notice { background:#fff7e6; color:#7a4a00; border-radius:10px; padding:10px 14px; font-size:.88rem; margin-bottom:18px; text-align:left; }
+    .version { margin-top:18px; font-size:.78rem; color:#8a94a6; }
+    #sign-in { min-height:180px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="icon">❤️</div>
+    <h1>Glide Patient Tracker</h1>
+    <p class="subtitle">Sign in with your Glide Patient Tracker account.</p>
+    ${misconfigured ? '<div class="notice">Clerk login is enabled but not fully configured. Please contact support.</div>' : '<div id="sign-in">Loading sign in…</div>'}
+    <div class="version" id="app-version">Version loading…</div>
+  </div>
+  ${misconfigured ? '' : `<script async crossorigin="anonymous" data-clerk-publishable-key=${key} src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"></script>
+  <script>
+    window.addEventListener('load', async () => {
+      const version = document.getElementById('app-version');
+      fetch('/api/version').then((res) => res.json()).then((info) => {
+        version.textContent = 'Glide Patient Tracker v' + info.version;
+      }).catch(() => { version.textContent = 'Glide Patient Tracker'; });
+      await window.Clerk.load();
+      if (window.Clerk.user) {
+        window.location.assign('/');
+        return;
+      }
+      window.Clerk.mountSignIn(document.getElementById('sign-in'), {
+        afterSignInUrl: '/',
+        afterSignUpUrl: '/',
+        redirectUrl: '/',
+      });
+    });
+  </script>`}
+</body>
+</html>`;
+}
+
+app.get('/api/auth/status', (req, res) => res.json(authStatus(req)));
+
 // Login page (public — no auth required)
 app.get('/login', (req, res) => {
+  if (CLERK_AUTH_ENABLED) {
+    if (!CLERK_CONFIGURED) return res.status(503).type('html').send(renderClerkLoginPage({ misconfigured: true }));
+    const auth = getAuth(req);
+    if (auth?.isAuthenticated && auth?.userId) return res.redirect('/');
+    return res.type('html').send(renderClerkLoginPage());
+  }
   if (req.session && req.session.authenticated) return res.redirect('/');
   res.sendFile(path.join(__dirname, 'public', 'login.html'));
 });
 
 // Login form submission
 app.post('/login', (req, res) => {
+  if (CLERK_AUTH_ENABLED) return res.redirect(303, '/login');
   const { password } = req.body;
   const correct = process.env.DASHBOARD_PASSWORD;
   if (!correct) {
@@ -143,6 +230,15 @@ app.post('/login', (req, res) => {
 
 // Logout
 app.get('/logout', (req, res) => {
+  if (CLERK_AUTH_ENABLED) {
+    if (!CLERK_CONFIGURED) return res.redirect('/login');
+    return res.type('html').send(`<!doctype html>
+<html lang="en"><head><meta charset="UTF-8"><title>Signing out — Glide Patient Tracker</title></head>
+<body><p>Signing out…</p>
+<script async crossorigin="anonymous" data-clerk-publishable-key=${JSON.stringify(CLERK_PUBLISHABLE_KEY)} src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"></script>
+<script>window.addEventListener('load', async () => { await window.Clerk.load(); await window.Clerk.signOut(); window.location.assign('/login'); });</script>
+</body></html>`);
+  }
   req.session.destroy(() => res.redirect('/login'));
 });
 
@@ -1957,6 +2053,30 @@ app.get('/api/display-data', async (req, res) => {
 function requireAuth(req, res, next) {
   // API key auth (programmatic access — Mr. Stellar)
   if (API_KEY && req.headers['x-api-key'] === API_KEY) return next();
+
+  // Clerk auth (production browser/reviewer access)
+  if (CLERK_AUTH_ENABLED) {
+    if (!CLERK_CONFIGURED) {
+      if (req.path.startsWith('/api/')) {
+        return res.status(503).json({ ok: false, error: 'clerk_not_configured' });
+      }
+      return res.redirect('/login');
+    }
+    try {
+      const auth = getAuth(req);
+      if (auth?.isAuthenticated && auth?.userId) {
+        req.clerkAuth = auth;
+        return next();
+      }
+    } catch (err) {
+      console.error('[auth] Clerk auth check failed:', err.message);
+    }
+    if (req.path.startsWith('/api/')) {
+      return res.status(401).json({ ok: false, error: 'Unauthorized' });
+    }
+    return res.redirect('/login');
+  }
+
   // Session auth (browser access)
   if (req.session && req.session.authenticated) return next();
   if (req.path.startsWith('/api/')) {

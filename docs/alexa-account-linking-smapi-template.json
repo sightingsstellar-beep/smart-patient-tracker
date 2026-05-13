@@ -1,0 +1,11 @@
+{
+  "accountLinkingRequest": {
+    "type": "AUTH_CODE",
+    "authorizationUrl": "https://<clerk-oauth-domain>/oauth/authorize",
+    "accessTokenUrl": "https://<clerk-oauth-domain>/oauth/token",
+    "clientId": "<clerk-oauth-application-client-id>",
+    "scopes": ["openid", "profile", "email"],
+    "accessTokenScheme": "HTTP_BASIC",
+    "defaultTokenExpirationInSeconds": 86400
+  }
+}

@@ -2,7 +2,9 @@
 
 ## Current state
 
-The development-stage Alexa skill is configured for Clerk account linking and sends a Clerk OAuth access token on skill requests.
+The development-stage Alexa skill backend supports Clerk account linking and expects a Clerk OAuth access token on linked skill requests.
+
+Important: Alexa account-linking configuration is managed as a separate SMAPI account-linking resource, not inside `ask-manifest.json`. Use `docs/alexa-account-linking-smapi-template.json` as the non-secret template after the Clerk OAuth application is confirmed.
 
 `/api/alexa` now supports account-linked requests before patient-specific reads or writes:
 
@@ -53,7 +55,7 @@ This confirms the missing-token account-linking prompt path while production rem
 
 ## Certification notes
 
-Before store submission, prepare reviewer-safe account-linking credentials in Clerk and a mapped `alexa_account_links` row for that reviewer identity. Keep those credentials out of the repo and Mission Control.
+Before store submission, prepare reviewer-safe account-linking credentials in Clerk, configure the Alexa SMAPI account-linking resource, and create a mapped `alexa_account_links` row for that reviewer identity. Keep credentials, client secrets, and token values out of the repo and Mission Control.
 
 Canonical checklist: `docs/alexa-reviewer-safe-test-path.md`.
 
@@ -61,9 +63,10 @@ Reviewer-account checklist:
 
 1. Create or designate a Clerk test user for Amazon certification review.
 2. Store the username/password only in the approved secret store or Amazon Developer Console fields; do not commit them, journal them, screenshot them, or paste them into chat.
-3. Link the development-stage Alexa skill once with that reviewer identity.
-4. Create/verify the matching `alexa_account_links.auth_subject` row for the reviewer Clerk subject without logging raw tokens.
-5. Run one ASK development-stage launch with the reviewer-linked identity and confirm a normal tracker response.
-6. Confirm the missing-token path returns a `LinkAccount` card.
-7. Only after reviewer mapping is verified, consider enabling `ALEXA_ACCOUNT_LINKING_REQUIRED=true` for the intended release stage.
-8. Rotate exposed app/Railway secrets before certification submission.
+3. Configure the Alexa account-linking resource from the non-secret template, using the Clerk OAuth authorization/token endpoints and the Clerk OAuth application client ID/secret in the Amazon Developer Console or SMAPI secret-bearing request.
+4. Link the development-stage Alexa skill once with that reviewer identity.
+5. Create/verify the matching `alexa_account_links.auth_subject` row for the reviewer Clerk subject without logging raw tokens.
+6. Run one ASK development-stage launch with the reviewer-linked identity and confirm a normal tracker response.
+7. Confirm the missing-token path returns a `LinkAccount` card.
+8. Only after reviewer mapping is verified, consider enabling `ALEXA_ACCOUNT_LINKING_REQUIRED=true` for the intended release stage.
+9. Rotate exposed app/Railway secrets before certification submission.
