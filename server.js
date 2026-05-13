@@ -1846,9 +1846,8 @@ app.post('/api/alexa', async (req, res) => {
       const dirs = supportsApl(req)
         ? [buildAplDirective(summary.totalIntake, limit, 'display', null, outputMl, summary.intakeByType, summary.outputs, summary.inputs, getViewportProfile(req), '', 0)]
         : [];
-      const pn = db.getSetting('child_name');
       return res.json(alexaResponse(
-        pn ? `${pn} fluid status.` : 'Wellness tracker ready.',
+        'Fluid status.',
         null,   // omit shouldEndSession — display stays up, mic stays closed
         null,
         dirs
