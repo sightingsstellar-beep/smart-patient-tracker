@@ -121,7 +121,7 @@ Internal invitations are the authorization source of truth: an invited email can
 Production invite email uses generic SMTP configuration so credentials stay in Railway/secret storage rather than the repo:
 
 - `INVITE_EMAIL_ENABLED=true`
-- `APP_PUBLIC_URL=https://app.glidechart.com`
+- `APP_PUBLIC_URL=https://bedside.glidechart.com`
 - `MAIL_FROM="Glide Bedside <support@glidechart.com>"`
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`
 

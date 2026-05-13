@@ -11,9 +11,9 @@ Purpose: prepare Amazon certification access for Glide Bedside without storing r
 
 ## Public surfaces for certification
 
-- Skill endpoint: `https://app.glidechart.com/api/alexa`
-- Reviewer/app login: `https://app.glidechart.com/login`
-- App health check: `https://app.glidechart.com/health`
+- Skill endpoint: `https://bedside.glidechart.com/api/alexa`
+- Reviewer/app login: `https://bedside.glidechart.com/login`
+- App health check: `https://bedside.glidechart.com/health`
 - Privacy policy: `https://glidechart.com/privacy`
 - Terms of use: `https://glidechart.com/terms`
 - Support / deletion / export requests: `https://glidechart.com/support`
@@ -22,7 +22,7 @@ Purpose: prepare Amazon certification access for Glide Bedside without storing r
 
 1. Create or designate a Clerk reviewer test user for Amazon certification.
 2. Store that username/password only in the approved secret store and, when ready to submit, in Amazon's reviewer credential field.
-3. Verify `https://app.glidechart.com/login` uses Clerk production login and accepts the reviewer identity.
+3. Verify `https://bedside.glidechart.com/login` uses Clerk production login and accepts the reviewer identity.
 4. Configure the Alexa account-linking resource using the Clerk OAuth application endpoints/client details. Do not store client secrets in this repo.
 5. Link the development-stage Alexa skill using the reviewer identity.
 6. Capture only nonsecret verification facts:
@@ -50,5 +50,5 @@ Before certification submission:
 
 - Rotate app/Railway secrets that were exposed during inventory tooling output.
 - Confirm Railway/GitHub/Cloudflare/registrar/Amazon Developer/Clerk ownership posture is Hour Glide-controlled or explicitly accepted as operator-owned governance.
-- Confirm `app.glidechart.com` remains DNS-only and has valid TLS.
+- Confirm `bedside.glidechart.com` remains DNS-only and has valid TLS.
 - Confirm `openclaw.enounceai.ai` remains working separately from the GlideChart app/domain migration.

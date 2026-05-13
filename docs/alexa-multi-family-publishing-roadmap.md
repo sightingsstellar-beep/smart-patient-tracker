@@ -12,8 +12,8 @@ Prepare the Glide Bedside web app + Alexa skill for multi-family use and eventua
 - Vendor ID: `M1T7RSPC9KXQ7W`
 - Stage verified through ASK CLI: development
 - ASK CLI profile on host: `mr-stellar`
-- Backend endpoint: `https://app.glidechart.com/api/alexa`
-- Public app URL: `https://app.glidechart.com`
+- Backend endpoint: `https://bedside.glidechart.com/api/alexa`
+- Public app URL: `https://bedside.glidechart.com`
 - Public policy URLs: `https://glidechart.com/privacy`, `https://glidechart.com/terms`, `https://glidechart.com/support`
 - Current production version: `1.2.0`
 

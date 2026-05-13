@@ -4,7 +4,7 @@ const nodemailer = require('nodemailer');
 
 const truthy = (value) => ['1', 'true', 'yes'].includes(String(value || '').toLowerCase());
 
-const APP_PUBLIC_URL = (process.env.APP_PUBLIC_URL || process.env.PUBLIC_APP_URL || 'https://app.glidechart.com').replace(/\/$/, '');
+const APP_PUBLIC_URL = (process.env.APP_PUBLIC_URL || process.env.PUBLIC_APP_URL || 'https://bedside.glidechart.com').replace(/\/$/, '');
 const MAIL_FROM = process.env.MAIL_FROM || '';
 const SMTP_HOST = process.env.SMTP_HOST || '';
 const SMTP_PORT = Number(process.env.SMTP_PORT || 587);

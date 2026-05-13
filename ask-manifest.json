@@ -4,7 +4,7 @@
       "custom": {
         "endpoint": {
           "sslCertificateType": "Wildcard",
-          "uri": "https://app.glidechart.com/api/alexa"
+          "uri": "https://bedside.glidechart.com/api/alexa"
         },
         "interfaces": [
           {
@@ -39,7 +39,7 @@
           "summary": "Caregiver logging and handoff support for fluid, wellness, and daily care notes."
         }
       },
-      "testingInstructions": "Development-stage endpoint: https://app.glidechart.com/api/alexa. Use reviewer/test account only after Clerk account-linking mapping is prepared. This skill is for caregiver logging and handoff support only; it does not provide medical advice, diagnosis, treatment, emergency support, or official care plans."
+      "testingInstructions": "Development-stage endpoint: https://bedside.glidechart.com/api/alexa. Use reviewer/test account only after Clerk account-linking mapping is prepared. This skill is for caregiver logging and handoff support only; it does not provide medical advice, diagnosis, treatment, emergency support, or official care plans."
     },
     "privacyAndCompliance": {
       "allowsPurchases": false,
