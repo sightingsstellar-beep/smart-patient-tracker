@@ -169,7 +169,7 @@ app.get('/clerk-spike', (req, res) => {
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Clerk Auth Spike · Smart Patient Tracker</title>
+  <title>Clerk Auth Spike · Glide Patient Tracker</title>
   <style>
     body { font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; max-width: 760px; margin: 2rem auto; padding: 0 1rem; color: #172033; }
     code, pre { background: #f4f6fb; border-radius: 8px; padding: 0.75rem; }
@@ -295,7 +295,7 @@ function alexaResponse(ssml, shouldEndSession = true, repromptSsml = null, direc
 
 function alexaLinkAccountResponse() {
   return alexaResponse(
-    'Please use the Alexa app to link your Patient Wellness Tracker account first.',
+    'Please use the Alexa app to link your Glide Patient Tracker account first.',
     true,
     null,
     [],
@@ -1751,7 +1751,7 @@ app.post('/api/alexa', async (req, res) => {
     // Built-in intents
     if (intentName === 'VersionIntent') {
       return res.json(alexaResponse(
-        `Smart Patient Wellness Tracker is running version ${ALEXA_SKILL_VERSION}.`
+        `Glide Patient Tracker is running version ${ALEXA_SKILL_VERSION}.`
       ));
     }
 
@@ -2973,7 +2973,7 @@ module.exports.getDailyLimit = getDailyLimit;
 
 db.ready.then(() => {
   app.listen(PORT, () => {
-    console.log(`[server] Smart Patient Wellness Tracker running on port ${PORT}`);
+    console.log(`[server] Glide Patient Tracker running on port ${PORT}`);
     console.log(`[server] Dashboard: http://localhost:${PORT}`);
     console.log(`[server] Fluid day TZ: ${getTimezone()}`);
   });

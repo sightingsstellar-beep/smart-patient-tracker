@@ -2,18 +2,20 @@
 
 ## Purpose
 
-Prepare the Smart Patient Wellness Tracker web app + Patient Wellness Tracker Alexa skill for multi-family use and eventual Alexa Skills Store publication under the Family Care Bundle / Enounce AI product line.
+Prepare the Glide Patient Tracker web app + Alexa skill for multi-family use and eventual Alexa Skills Store publication under the Hour Glide / GlideChart product line.
 
 ## Current state
 
-- Skill name: Patient Wellness Tracker
+- Skill name: Glide Patient Tracker
 - Invocation name: fluid monitor
 - Skill ID: `amzn1.ask.skill.ae8d6755-a9c7-425a-8034-6f1230c8ae9c`
 - Vendor ID: `M1T7RSPC9KXQ7W`
 - Stage verified through ASK CLI: development
 - ASK CLI profile on host: `mr-stellar`
-- Backend endpoint: `https://elina-tracker-production.up.railway.app/api/alexa`
-- Current production version: `1.1.1`
+- Backend endpoint: `https://app.glidechart.com/api/alexa`
+- Public app URL: `https://app.glidechart.com`
+- Public policy URLs: `https://glidechart.com/privacy`, `https://glidechart.com/terms`, `https://glidechart.com/support`
+- Current production version: `1.2.0`
 
 ## Key certification implications
 
@@ -62,13 +64,13 @@ Acceptance bar:
 
 ### 2. Alexa account linking
 
-Alexa account linking is the clean path for multi-family identity. Each Alexa user links their Amazon account to a Family Care Bundle account. Alexa requests include an access token; the backend resolves the token to a family/patient context.
+Alexa account linking is the clean path for multi-family identity. Each Alexa user links their Amazon account to a GlideChart / Hour Glide account. Alexa requests include an access token; the backend resolves the token to a family/patient context.
 
 Needed:
 
 - OAuth 2.0 authorization server or provider-backed login.
 - Authorization URI and token URI over HTTPS.
-- Login/linking page branded to Enounce AI / Family Care Bundle.
+- Login/linking page branded to GlideChart / Hour Glide.
 - Access token validation in `/api/alexa`.
 - If token missing, return a LinkAccount card.
 - Certification test credentials for Amazon reviewers.
@@ -160,7 +162,7 @@ Beta test prerequisites overlap with certification readiness: required distribut
 
 ### Phase 3 — Public readiness
 
-- Add public Enounce AI / Family Care Bundle product pages.
+- Add public GlideChart / Hour Glide product pages.
 - Add privacy policy, terms, support, deletion/export process.
 - Rewrite skill metadata and invocation examples for publication.
 - Add disclaimers in skill description and possibly launch/help responses.
@@ -176,6 +178,7 @@ Beta test prerequisites overlap with certification readiness: required distribut
 
 - Freeze a release candidate.
 - Finalize metadata, icons, privacy/compliance answers, and testing instructions.
+- Use `docs/alexa-reviewer-safe-test-path.md` for the reviewer path; never store reviewer passwords or token values in repo/docs/MC.
 - Submit for certification, preferably “certify now and publish later” for first pass.
 - Respond to certification findings.
 

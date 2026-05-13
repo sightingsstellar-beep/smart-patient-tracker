@@ -55,11 +55,15 @@ This confirms the missing-token account-linking prompt path while production rem
 
 Before store submission, prepare reviewer-safe account-linking credentials in Clerk and a mapped `alexa_account_links` row for that reviewer identity. Keep those credentials out of the repo and Mission Control.
 
+Canonical checklist: `docs/alexa-reviewer-safe-test-path.md`.
+
 Reviewer-account checklist:
 
 1. Create or designate a Clerk test user for Amazon certification review.
-2. Store the username/password only in the approved secret store or Amazon Developer Console fields; do not commit them or journal them.
+2. Store the username/password only in the approved secret store or Amazon Developer Console fields; do not commit them, journal them, screenshot them, or paste them into chat.
 3. Link the development-stage Alexa skill once with that reviewer identity.
-4. Create/verify the matching `alexa_account_links.auth_subject` row for the reviewer Clerk subject.
+4. Create/verify the matching `alexa_account_links.auth_subject` row for the reviewer Clerk subject without logging raw tokens.
 5. Run one ASK development-stage launch with the reviewer-linked identity and confirm a normal tracker response.
-6. Only after reviewer mapping is verified, consider enabling `ALEXA_ACCOUNT_LINKING_REQUIRED=true` for the intended release stage.
+6. Confirm the missing-token path returns a `LinkAccount` card.
+7. Only after reviewer mapping is verified, consider enabling `ALEXA_ACCOUNT_LINKING_REQUIRED=true` for the intended release stage.
+8. Rotate exposed app/Railway secrets before certification submission.

@@ -1,4 +1,4 @@
-# The Smart Patient Wellness Tracker 💙
+# Glide Patient Tracker 💙
 
 A private, open-source fluid intake/output tracking platform for critically ill children in hospital care. Built with love for families navigating long-term medical journeys.
 
@@ -17,7 +17,7 @@ All logging is done via **natural language** through a Telegram bot (powered by 
 
 ## Versioning and accountability
 
-This live app follows the Family Care Bundle App Versioning & Accountability Standard in `../docs/app-versioning-accountability-standard.md`.
+This live app follows the Glide tool family App Versioning & Accountability Standard in `../docs/app-versioning-accountability-standard.md`.
 
 Release/accountability surfaces:
 

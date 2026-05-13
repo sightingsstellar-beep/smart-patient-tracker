@@ -1,6 +1,6 @@
 {
-  "name": "Smart Patient Tracker",
-  "short_name": "Patient Tracker",
+  "name": "Glide Patient Tracker",
+  "short_name": "Glide Tracker",
   "description": "Fluid intake, output, and wellness tracking for critically ill children",
   "start_url": "/",
   "display": "standalone",

@@ -23,7 +23,7 @@ function releaseInfo() {
         version: APP_VERSION,
       },
       alexaSkill: {
-        name: 'Patient Wellness Tracker',
+        name: 'Glide Patient Tracker',
         invocationName: 'fluid monitor',
         version: ALEXA_SKILL_VERSION,
       },
