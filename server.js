@@ -261,7 +261,7 @@ function renderClerkLoginPage({ misconfigured = false } = {}) {
   <div class="card">
     <div class="icon">❤️</div>
     <h1>Glide Bedside</h1>
-    <p class="subtitle">Sign in with your Glide Bedside account.</p>
+    <p class="subtitle">Secure caregiver access for your family care circle.</p>
     ${misconfigured ? '<div class="notice">Clerk login is enabled but not fully configured. Please contact support.</div>' : `<p class="muted" id="login-help">Loading secure sign-in…</p><div id="sign-in" aria-live="polite"></div>`}
     <div class="version" id="app-version">Version loading…</div>
   </div>
@@ -279,10 +279,10 @@ function renderClerkLoginPage({ misconfigured = false } = {}) {
         const clerkLocalization = {
           signIn: {
             start: {
-              title: 'Sign in to Glide Bedside',
-              titleCombined: 'Continue to Glide Bedside',
-              subtitle: 'Use your caregiver account to continue.',
-              subtitleCombined: 'Use your caregiver account to continue.',
+              title: 'Sign in',
+              titleCombined: 'Continue',
+              subtitle: 'Use your caregiver account.',
+              subtitleCombined: 'Use your caregiver account.',
             },
             emailCode: { subtitle: 'to continue to Glide Bedside' },
             emailLink: { subtitle: 'to continue to Glide Bedside' },
@@ -309,7 +309,7 @@ function renderClerkLoginPage({ misconfigured = false } = {}) {
           afterSignUpUrl: '/',
           redirectUrl: '/',
         });
-        help.textContent = 'Use the secure sign-in form below.';
+        help.hidden = true;
       } catch (error) {
         signIn.innerHTML = '<div class="notice">Secure sign-in did not load. Please contact support; the app login is temporarily misconfigured.</div>';
         console.error('[auth] Clerk sign-in render failed:', error);
