@@ -30,6 +30,12 @@ const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY || '';
 const ALEXA_ACCOUNT_LINKING_REQUIRED = truthy(process.env.ALEXA_ACCOUNT_LINKING_REQUIRED);
 const clerkClient = CLERK_SECRET_KEY ? createClerkClient({ secretKey: CLERK_SECRET_KEY }) : null;
 const CLERK_CONFIGURED = Boolean(CLERK_PUBLISHABLE_KEY && CLERK_SECRET_KEY && clerkClient);
+const CLERK_DEFAULT_TENANT_ALLOWED_EMAILS = new Set(
+  String(process.env.CLERK_DEFAULT_TENANT_ALLOWED_EMAILS || '')
+    .split(',')
+    .map((email) => email.trim().toLowerCase())
+    .filter(Boolean)
+);
 
 // Railway (and most PaaS) sit behind a reverse proxy — needed for
 // secure cookies and correct req.ip / req.protocol values.
@@ -134,10 +140,23 @@ function authStatus(req = null) {
     mode: CLERK_AUTH_ENABLED ? 'clerk' : 'shared-password',
     clerkEnabled: CLERK_AUTH_ENABLED,
     clerkConfigured: CLERK_CONFIGURED,
+    defaultTenantAllowlistEnabled: CLERK_DEFAULT_TENANT_ALLOWED_EMAILS.size > 0,
     clerkAuthenticated,
     legacySessionAuthenticated: Boolean(req?.session?.authenticated),
     appVersion: APP_VERSION,
   };
+}
+
+async function allowedForDefaultTenant(auth) {
+  if (!CLERK_DEFAULT_TENANT_ALLOWED_EMAILS.size) return { ok: true };
+  if (!auth?.userId || !clerkClient) return { ok: false, reason: 'missing_clerk_user' };
+  const user = await clerkClient.users.getUser(auth.userId);
+  const emails = [
+    user.primaryEmailAddress?.emailAddress,
+    ...(user.emailAddresses || []).map((email) => email.emailAddress),
+  ].filter(Boolean).map((email) => email.toLowerCase());
+  const allowed = emails.some((email) => CLERK_DEFAULT_TENANT_ALLOWED_EMAILS.has(email));
+  return { ok: allowed, reason: allowed ? null : 'email_not_allowed_for_default_tenant' };
 }
 
 function renderClerkLoginPage({ misconfigured = false } = {}) {
@@ -2084,7 +2103,7 @@ app.get('/api/display-data', async (req, res) => {
 });
 
 // Auth gate — everything below this line requires a valid session or API key
-function requireAuth(req, res, next) {
+async function requireAuth(req, res, next) {
   // API key auth (programmatic access — Mr. Stellar)
   if (API_KEY && req.headers['x-api-key'] === API_KEY) return next();
 
@@ -2099,6 +2118,13 @@ function requireAuth(req, res, next) {
     try {
       const auth = getAuth(req);
       if (auth?.isAuthenticated && auth?.userId) {
+        const defaultTenantAccess = await allowedForDefaultTenant(auth);
+        if (!defaultTenantAccess.ok) {
+          if (req.path.startsWith('/api/')) {
+            return res.status(403).json({ ok: false, error: 'not_authorized_for_patient' });
+          }
+          return res.status(403).send('This account is not authorized for this patient yet. Please contact support.');
+        }
         req.clerkAuth = auth;
         return next();
       }
