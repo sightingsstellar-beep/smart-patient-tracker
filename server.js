@@ -159,6 +159,61 @@ async function allowedForDefaultTenant(auth) {
   return { ok: allowed, reason: allowed ? null : 'email_not_allowed_for_default_tenant' };
 }
 
+async function getClerkUserProfile(auth) {
+  const user = await clerkClient.users.getUser(auth.userId);
+  const email = user.primaryEmailAddress?.emailAddress || user.emailAddresses?.[0]?.emailAddress || null;
+  const displayName = [user.firstName, user.lastName].filter(Boolean).join(' ') || user.fullName || email || null;
+  return { user, email, displayName };
+}
+
+async function resolveClerkScope(auth) {
+  const { email, displayName } = await getClerkUserProfile(auth);
+  await db.acceptPendingInvitations({ clerkUserId: auth.userId, email, displayName });
+
+  let memberships = await db.getFamilyMembershipsByClerkUserId(auth.userId);
+
+  if (!memberships.length && email) {
+    // Migration bridge: if an allowlisted caregiver signs into the new Clerk
+    // surface, attach that Clerk identity to the existing default patient.
+    const defaultTenantAccess = await allowedForDefaultTenant(auth);
+    if (defaultTenantAccess.ok) {
+      await db.upsertFamilyMembership({
+        familyId: db.DEFAULT_FAMILY_ID,
+        clerkUserId: auth.userId,
+        email,
+        displayName,
+        role: 'owner',
+      });
+      memberships = await db.getFamilyMembershipsByClerkUserId(auth.userId);
+    }
+  }
+
+  if (!memberships.length) return { ok: false, reason: 'onboarding_required', email, displayName };
+
+  const requestedFamilyId = auth.sessionClaims?.metadata?.active_family_id || null;
+  const membership = requestedFamilyId
+    ? memberships.find((m) => m.family_id === requestedFamilyId) || memberships[0]
+    : memberships[0];
+  const patient = await db.getPrimaryPatientForFamily(membership.family_id);
+  if (!patient) return { ok: false, reason: 'patient_required', membership, email, displayName };
+
+  return {
+    ok: true,
+    familyId: membership.family_id,
+    patientId: patient.id,
+    role: membership.role || 'caregiver',
+    familyName: membership.family_name || null,
+    patientName: patient.name || null,
+    email,
+    displayName,
+    clerkUserId: auth.userId,
+  };
+}
+
+function requestScope(req) {
+  return req.scope || {};
+}
+
 function renderClerkLoginPage({ misconfigured = false } = {}) {
   const key = JSON.stringify(CLERK_PUBLISHABLE_KEY);
   let clerkScriptSrc = 'https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js';
@@ -293,6 +348,103 @@ app.get('/logout', (req, res) => {
 </body></html>`);
   }
   req.session.destroy(() => res.redirect('/login'));
+});
+
+function renderOnboardingPage() {
+  return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Set up your family — Glide Patient Tracker</title>
+  <style>
+    *, *::before, *::after { box-sizing:border-box; }
+    body { margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:#f0f4f8; min-height:100svh; display:flex; align-items:center; justify-content:center; padding:16px; color:#202124; }
+    .card { background:#fff; width:100%; max-width:430px; border-radius:20px; box-shadow:0 4px 24px rgba(0,0,0,.10); padding:28px 22px; }
+    h1 { font-size:1.35rem; margin:0 0 8px; }
+    p { color:#5f6368; line-height:1.4; }
+    label { display:block; font-size:.82rem; font-weight:700; color:#5f6368; text-transform:uppercase; letter-spacing:.04em; margin:18px 0 6px; }
+    input { width:100%; border:1.5px solid #d9e0ef; border-radius:12px; padding:13px 14px; font-size:1rem; }
+    button { margin-top:22px; width:100%; border:0; border-radius:12px; padding:14px; background:#1a73e8; color:#fff; font-weight:700; font-size:1rem; }
+    .error { display:none; margin-top:14px; background:#fce8e6; color:#a50e0e; border-radius:10px; padding:10px 12px; }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Create your family tracker</h1>
+    <p>This starts a clean, private family/patient workspace. Existing families should use an invite from a caregiver instead.</p>
+    <form id="onboarding-form">
+      <label for="familyName">Family / care circle name</label>
+      <input id="familyName" name="familyName" value="My Family" maxlength="80" required />
+      <label for="patientName">Child / patient name</label>
+      <input id="patientName" name="patientName" maxlength="80" required autofocus />
+      <label for="pronouns">Pronouns</label>
+      <input id="pronouns" name="pronouns" value="she/her" maxlength="40" />
+      <button type="submit">Create private tracker</button>
+      <div class="error" id="error"></div>
+    </form>
+  </main>
+  <script>
+    document.getElementById('onboarding-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const error = document.getElementById('error');
+      error.style.display = 'none';
+      const body = Object.fromEntries(new FormData(event.currentTarget).entries());
+      const response = await fetch('/api/onboarding', { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(body) });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || !data.ok) {
+        error.textContent = data.error || 'Could not create tracker.';
+        error.style.display = 'block';
+        return;
+      }
+      location.assign('/');
+    });
+  </script>
+</body>
+</html>`;
+}
+
+async function clerkPageAuth(req, res, next) {
+  if (!CLERK_AUTH_ENABLED || !CLERK_CONFIGURED) return res.redirect('/login');
+  try {
+    const auth = getAuth(req);
+    if (!auth?.isAuthenticated || !auth?.userId) return res.redirect('/login');
+    req.clerkAuth = auth;
+    return next();
+  } catch (err) {
+    console.error('[auth] Clerk page auth failed:', err.message);
+    return res.redirect('/login');
+  }
+}
+
+app.get('/onboarding', clerkPageAuth, async (req, res) => {
+  const scope = await resolveClerkScope(req.clerkAuth);
+  if (scope.ok) return res.redirect('/');
+  return res.type('html').send(renderOnboardingPage());
+});
+
+app.post('/api/onboarding', clerkPageAuth, async (req, res) => {
+  try {
+    const existing = await resolveClerkScope(req.clerkAuth);
+    if (existing.ok) return res.json({ ok: true, alreadyConfigured: true });
+    const { email, displayName } = await getClerkUserProfile(req.clerkAuth);
+    const familyName = String(req.body.familyName || '').trim();
+    const patientName = String(req.body.patientName || '').trim();
+    const pronouns = String(req.body.pronouns || 'she/her').trim() || 'she/her';
+    if (!familyName || !patientName) return res.status(400).json({ ok: false, error: 'Family name and patient name are required.' });
+    const created = await db.createFamilyWithPatient({
+      familyName,
+      patientName,
+      pronouns,
+      clerkUserId: req.clerkAuth.userId,
+      email,
+      displayName,
+    });
+    res.json({ ok: true, familyId: created.family.id, patientId: created.patient.id });
+  } catch (err) {
+    console.error('[POST /api/onboarding]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -2118,14 +2270,16 @@ async function requireAuth(req, res, next) {
     try {
       const auth = getAuth(req);
       if (auth?.isAuthenticated && auth?.userId) {
-        const defaultTenantAccess = await allowedForDefaultTenant(auth);
-        if (!defaultTenantAccess.ok) {
+        const scope = await resolveClerkScope(auth);
+        if (!scope.ok) {
           if (req.path.startsWith('/api/')) {
-            return res.status(403).json({ ok: false, error: 'not_authorized_for_patient' });
+            return res.status(scope.reason === 'onboarding_required' ? 409 : 403).json({ ok: false, error: scope.reason });
           }
+          if (scope.reason === 'onboarding_required') return res.redirect('/onboarding');
           return res.status(403).send('This account is not authorized for this patient yet. Please contact support.');
         }
         req.clerkAuth = auth;
+        req.scope = scope;
         return next();
       }
     } catch (err) {
@@ -2145,6 +2299,34 @@ async function requireAuth(req, res, next) {
   res.redirect('/login');
 }
 app.use(requireAuth);
+
+app.get('/api/me', async (req, res) => {
+  res.json({ ok: true, scope: req.scope || null });
+});
+
+app.post('/api/family/invitations', async (req, res) => {
+  try {
+    const scope = requestScope(req);
+    if (!['owner', 'admin'].includes(scope.role)) {
+      return res.status(403).json({ ok: false, error: 'Only family owners/admins can invite caregivers.' });
+    }
+    const email = String(req.body.email || '').trim().toLowerCase();
+    const role = ['owner', 'admin', 'caregiver', 'viewer'].includes(req.body.role) ? req.body.role : 'caregiver';
+    if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+      return res.status(400).json({ ok: false, error: 'Valid email is required.' });
+    }
+    const invite = await db.createFamilyInvitation({
+      familyId: scope.familyId,
+      email,
+      role,
+      invitedByClerkUserId: scope.clerkUserId,
+    });
+    res.json({ ok: true, invitation: { id: invite.id, email: invite.email, role: invite.role, status: invite.status } });
+  } catch (err) {
+    console.error('[POST /api/family/invitations]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
 
 // ---------------------------------------------------------------------------
 // Database backup endpoint (API key only — for automated backups)
@@ -2274,8 +2456,16 @@ function getDailyLimit() {
   return parseInt(db.getSetting('daily_limit_ml'), 10) || 1200;
 }
 
+async function getDailyLimitForScope(scope = {}) {
+  return parseInt(await db.getSettingForScope('daily_limit_ml', scope), 10) || 1200;
+}
+
 function getChildName() {
   return db.getSetting('child_name') || 'Elina';
+}
+
+async function getChildNameForScope(scope = {}) {
+  return await db.getSettingForScope('child_name', scope) || 'Child';
 }
 
 function getWarnYellow() {
@@ -2318,6 +2508,10 @@ function getTimezone() {
   return db.getSetting('timezone') || process.env.TZ || 'America/New_York';
 }
 
+async function getTimezoneForScope(scope = {}) {
+  return await db.getSettingForScope('timezone', scope) || process.env.TZ || 'America/New_York';
+}
+
 function formatTimestamp(tsMs) {
   return new Date(tsMs).toLocaleTimeString('en-US', {
     timeZone: getTimezone(),
@@ -2354,15 +2548,17 @@ app.get(['/api/today', '/api/day'], async (req, res) => {
       return res.status(400).json({ ok: false, error: dayResult.error });
     }
 
+    const scope = requestScope(req);
     const dayKey = dayResult.date;
-    const summary = await db.getDaySummary(dayKey);
+    const summary = await db.getDaySummary(dayKey, scope);
+    const limitMl = await getDailyLimitForScope(scope);
     res.json({
       ok: true,
       dayKey,
       todayDayKey: db.getDayKey(),
-      limit_ml: getDailyLimit(),
+      limit_ml: limitMl,
       totalIntake: summary.totalIntake,
-      percent: Math.round((summary.totalIntake / getDailyLimit()) * 100),
+      percent: Math.round((summary.totalIntake / limitMl) * 100),
       intakeByType: summary.intakeByType,
       inputs: summary.inputs.map((l) => ({
         ...l,
@@ -2396,8 +2592,9 @@ app.get(['/api/today', '/api/day'], async (req, res) => {
  */
 app.get('/api/report', async (req, res) => {
   try {
+    const scope = requestScope(req);
     const dayKey = db.getDayKey();
-    const text = await buildReport(dayKey);
+    const text = await buildReport(dayKey, scope);
     res.json({ ok: true, dayKey, report: text });
   } catch (err) {
     console.error('[GET /api/report]', err);
@@ -2414,6 +2611,7 @@ app.get('/api/report', async (req, res) => {
  */
 app.post('/api/log', async (req, res) => {
   try {
+    const scope = requestScope(req);
     const body = req.body;
     if (!body || typeof body !== 'object') {
       return res.status(400).json({ ok: false, error: 'Invalid request body' });
@@ -2453,11 +2651,12 @@ app.post('/api/log', async (req, res) => {
         mood: body.mood ?? null,
         cyanosis: body.cyanosis ?? null,
         source: 'api',
+        ...scope,
       });
       results.push({ kind: 'wellness', data: w });
     } else if (body.type === 'gag') {
       const count = Math.max(1, parseInt(body.count, 10) || 1);
-      const gags = await db.logGag(count, overrideTimestamp || Date.now(), dayKey);
+      const gags = await db.logGag(count, overrideTimestamp || Date.now(), dayKey, scope);
       results.push({ kind: 'gag', count, data: gags });
     } else {
       // Fluid input or output
@@ -2470,11 +2669,12 @@ app.post('/api/log', async (req, res) => {
         subtype: body.subtype ?? null,
         notes: body.notes ?? null,
         source: 'api',
+        ...scope,
       });
       results.push({ kind: 'fluid', data: entry });
     }
 
-    const summary = await db.getDaySummary(db.getDayKey());
+    const summary = await db.getDaySummary(db.getDayKey(), scope);
     res.json({ ok: true, results, totalIntake: summary.totalIntake });
   } catch (err) {
     console.error('[POST /api/log]', err);
@@ -2488,12 +2688,13 @@ app.post('/api/log', async (req, res) => {
  */
 app.patch('/api/log/:id', async (req, res) => {
   try {
+    const scope = requestScope(req);
     const id = parseInt(req.params.id, 10);
     if (!id || isNaN(id)) {
       return res.status(400).json({ ok: false, error: 'Invalid ID' });
     }
 
-    const existing = await db.getLogById(id);
+    const existing = await db.getLogById(id, scope);
     if (!existing) {
       return res.status(404).json({ ok: false, error: 'Entry not found' });
     }
@@ -2528,9 +2729,10 @@ app.patch('/api/log/:id', async (req, res) => {
       amount_ml: isPoop ? (amountMl ?? null) : amountMl,
       subtype: body.subtype ?? existing.subtype ?? null,
       notes: body.notes ?? existing.notes ?? null,
+      ...scope,
     });
 
-    const updated = await db.getLogById(id);
+    const updated = await db.getLogById(id, scope);
     res.json({
       ok: true,
       entry: {
@@ -2552,12 +2754,13 @@ app.patch('/api/log/:id', async (req, res) => {
  */
 app.patch('/api/gag/:id', async (req, res) => {
   try {
+    const scope = requestScope(req);
     const id = parseInt(req.params.id, 10);
     if (!id || isNaN(id)) {
       return res.status(400).json({ ok: false, error: 'Invalid ID' });
     }
 
-    const existing = await db.getGagById(id);
+    const existing = await db.getGagById(id, scope);
     if (!existing) {
       return res.status(404).json({ ok: false, error: 'Gag entry not found' });
     }
@@ -2573,9 +2776,9 @@ app.patch('/api/gag/:id', async (req, res) => {
     }
 
     const timestamp = zonedDateTimeToTimestamp(dateResult.date, timeResult.time, getTimezone());
-    await db.updateGag({ id, timestamp, day_key: dateResult.date });
+    await db.updateGag({ id, timestamp, day_key: dateResult.date, ...scope });
 
-    const updated = await db.getGagById(id);
+    const updated = await db.getGagById(id, scope);
     res.json({ ok: true, entry: { ...updated, time: formatTimestamp(updated.timestamp), time24: formatTimeInput(updated.timestamp) } });
   } catch (err) {
     console.error('[PATCH /api/gag/:id]', err);
@@ -2589,6 +2792,7 @@ app.patch('/api/gag/:id', async (req, res) => {
  */
 app.get('/api/history', async (req, res) => {
   try {
+    const scope = requestScope(req);
     const days = Math.min(90, Math.max(1, parseInt(req.query.days, 10) || 7));
     const todayKey = db.getDayKey();
     const tz = getTimezone();
@@ -2604,7 +2808,7 @@ app.get('/api/history', async (req, res) => {
     const uniqueKeys = [...new Set(dayKeys)].slice(0, days);
 
     const dayData = await Promise.all(uniqueKeys.map(async (dayKey) => {
-      const summary = await db.getDaySummary(dayKey);
+      const summary = await db.getDaySummary(dayKey, scope);
 
       // Build a readable label from the dayKey string
       const [year, month, day] = dayKey.split('-').map(Number);
@@ -2616,7 +2820,7 @@ app.get('/api/history', async (req, res) => {
       });
 
       const total_ml = summary.totalIntake;
-      const limit_ml = getDailyLimit();
+      const limit_ml = await getDailyLimitForScope(scope);
       const percent = Math.round((total_ml / limit_ml) * 100);
 
       const outputs = summary.outputs.map((o) => ({
@@ -2682,11 +2886,12 @@ app.get('/api/history', async (req, res) => {
  */
 app.delete('/api/gag/:id', async (req, res) => {
   try {
+    const scope = requestScope(req);
     const id = parseInt(req.params.id, 10);
     if (!id || isNaN(id)) {
       return res.status(400).json({ ok: false, error: 'Invalid ID' });
     }
-    const result = await db.deleteGag(id);
+    const result = await db.deleteGag(id, scope);
     if (result.changes === 0) {
       return res.status(404).json({ ok: false, error: 'Gag entry not found' });
     }
@@ -2703,11 +2908,12 @@ app.delete('/api/gag/:id', async (req, res) => {
  */
 app.delete('/api/log/:id', async (req, res) => {
   try {
+    const scope = requestScope(req);
     const id = parseInt(req.params.id, 10);
     if (!id || isNaN(id)) {
       return res.status(400).json({ ok: false, error: 'Invalid ID' });
     }
-    const result = await db.deleteLog(id);
+    const result = await db.deleteLog(id, scope);
     if (result.changes === 0) {
       return res.status(404).json({ ok: false, error: 'Entry not found' });
     }
@@ -2724,6 +2930,7 @@ app.delete('/api/log/:id', async (req, res) => {
  */
 app.delete('/api/wellness', async (req, res) => {
   try {
+    const scope = requestScope(req);
     const dateResult = validateLogDate(req.query.date);
     if (!dateResult.ok) {
       return res.status(400).json({ ok: false, error: dateResult.error });
@@ -2734,7 +2941,7 @@ app.delete('/api/wellness', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Invalid check_time. Use 5pm or 10pm.' });
     }
 
-    const result = await db.deleteWellness(dateResult.date, checkTime);
+    const result = await db.deleteWellness(dateResult.date, checkTime, scope);
     if (result.changes === 0) {
       return res.status(404).json({ ok: false, error: 'Wellness entry not found' });
     }
@@ -2757,6 +2964,7 @@ app.delete('/api/wellness', async (req, res) => {
  */
 app.post('/api/weight', async (req, res) => {
   try {
+    const scope = requestScope(req);
     const { weight_kg, notes } = req.body;
     if (typeof weight_kg !== 'number' || weight_kg <= 0) {
       return res.status(400).json({ ok: false, error: 'weight_kg must be a positive number' });
@@ -2769,8 +2977,8 @@ app.post('/api/weight', async (req, res) => {
     }
     const date = dateResult.date;
 
-    const existing = await db.getWeightForDate(date);
-    await db.logWeight(date, weight_kg, notes ?? null);
+    const existing = await db.getWeightForDate(date, scope);
+    await db.logWeight(date, weight_kg, notes ?? null, scope);
     res.json({ ok: true, weight_kg, date, replaced: !!existing });
   } catch (err) {
     console.error('[POST /api/weight]', err);
@@ -2784,6 +2992,7 @@ app.post('/api/weight', async (req, res) => {
  */
 app.get('/api/weight/today', async (req, res) => {
   try {
+    const scope = requestScope(req);
     const dayResult = resolveRequestedDayKey({
       date: req.query.date,
       relative: req.query.relative,
@@ -2793,7 +3002,7 @@ app.get('/api/weight/today', async (req, res) => {
     }
 
     const date = dayResult.date;
-    const entry = await db.getWeightForDate(date);
+    const entry = await db.getWeightForDate(date, scope);
     res.json({ ok: true, date, weight: entry || null });
   } catch (err) {
     console.error('[GET /api/weight/today]', err);
@@ -2807,6 +3016,7 @@ app.get('/api/weight/today', async (req, res) => {
  */
 app.get('/api/weight/history', async (req, res) => {
   try {
+    const scope = requestScope(req);
     const days = Math.min(90, Math.max(1, parseInt(req.query.days, 10) || 7));
     let entries;
 
@@ -2815,9 +3025,9 @@ app.get('/api/weight/history', async (req, res) => {
       if (!dateResult.ok) {
         return res.status(400).json({ ok: false, error: dateResult.error });
       }
-      entries = await db.getWeightHistoryUpTo(dateResult.date, days);
+      entries = await db.getWeightHistoryUpTo(dateResult.date, days, scope);
     } else {
-      entries = await db.getWeightHistory(days);
+      entries = await db.getWeightHistory(days, scope);
     }
 
     res.json({ ok: true, entries });
@@ -2833,12 +3043,13 @@ app.get('/api/weight/history', async (req, res) => {
  */
 app.delete('/api/weight/:date', async (req, res) => {
   try {
+    const scope = requestScope(req);
     const dateResult = validateLogDate(req.params.date);
     if (!dateResult.ok) {
       return res.status(400).json({ ok: false, error: dateResult.error });
     }
 
-    const result = await db.deleteWeight(dateResult.date);
+    const result = await db.deleteWeight(dateResult.date, scope);
     if (result.changes === 0) {
       return res.status(404).json({ ok: false, error: 'Weight entry not found' });
     }
@@ -2858,7 +3069,7 @@ app.delete('/api/weight/:date', async (req, res) => {
  * Builds a short confirmation message listing what was just logged,
  * with a brief intake + output summary.
  */
-function buildChatConfirmation(actions, summary) {
+async function buildChatConfirmation(actions, summary, scope = {}) {
   const parts = [];
   for (const action of actions) {
     if (action.type === 'input') {
@@ -2881,7 +3092,7 @@ function buildChatConfirmation(actions, summary) {
     }
   }
   const logged = parts.length > 0 ? parts.join(' + ') : 'entry';
-  const limit = getDailyLimit();
+  const limit = await getDailyLimitForScope(scope);
   const pct = Math.round((summary.totalIntake / limit) * 100);
 
   const totalOut = summary.outputs.reduce((sum, o) => sum + (o.amount_ml || 0), 0);
@@ -2892,6 +3103,7 @@ function buildChatConfirmation(actions, summary) {
 
 app.post('/api/chat', async (req, res) => {
   try {
+    const scope = requestScope(req);
     const { text } = req.body;
     if (!text || typeof text !== 'string' || !text.trim()) {
       return res.status(400).json({ ok: false, error: 'Missing or empty text' });
@@ -2943,6 +3155,7 @@ app.post('/api/chat', async (req, res) => {
           amount_ml: action.amount_ml,
           subtype: action.subtype ?? null,
           source: 'chat',
+          ...scope,
         });
         entries.push({ kind: action.type, ...action, id: entry?.id });
       } else if (action.type === 'wellness') {
@@ -2954,16 +3167,17 @@ app.post('/api/chat', async (req, res) => {
           energy: action.energy,
           mood: action.mood,
           cyanosis: action.cyanosis,
+          ...scope,
         });
         entries.push({ kind: 'wellness', ...action });
       } else if (action.type === 'gag') {
-        await db.logGag(action.count, now);
+        await db.logGag(action.count, now, null, scope);
         entries.push({ kind: 'gag', count: action.count });
       }
     }
 
-    const summary = await db.getDaySummary(dayKey);
-    const message = buildChatConfirmation(parsed.actions, summary);
+    const summary = await db.getDaySummary(dayKey, scope);
+    const message = await buildChatConfirmation(parsed.actions, summary, scope);
 
     res.json({ ok: true, message, entries });
   } catch (err) {
@@ -3036,7 +3250,7 @@ app.post('/api/transcribe', upload.single('audio'), async (req, res) => {
  */
 app.get('/api/settings', async (req, res) => {
   try {
-    const settings = db.getAllSettings();
+    const settings = await db.getSettings(requestScope(req));
     res.json({ ok: true, ...settings });
   } catch (err) {
     console.error('[GET /api/settings]', err);
@@ -3050,16 +3264,17 @@ app.get('/api/settings', async (req, res) => {
  */
 app.post('/api/settings', async (req, res) => {
   try {
+    const scope = requestScope(req);
     const body = req.body;
     if (!body || typeof body !== 'object') {
       return res.status(400).json({ ok: false, error: 'Invalid request body' });
     }
     for (const [key, value] of Object.entries(body)) {
       if (value !== undefined && value !== null) {
-        await db.setSetting(key, value);
+        await db.setSetting(key, value, scope);
       }
     }
-    const settings = db.getAllSettings();
+    const settings = await db.getSettings(scope);
     res.json({ ok: true, ...settings });
   } catch (err) {
     console.error('[POST /api/settings]', err);
@@ -3091,19 +3306,20 @@ app.get('*', (req, res) => {
 // Report builder (shared by API and scheduler)
 // ---------------------------------------------------------------------------
 
-async function buildReport(dayKey) {
-  const summary = await db.getDaySummary(dayKey);
-  const tz = getTimezone();
+async function buildReport(dayKey, scope = {}) {
+  const summary = await db.getDaySummary(dayKey, scope);
+  const tz = await getTimezoneForScope(scope);
   const now = new Date();
   const dateStr = now.toLocaleDateString('en-US', { timeZone: tz, weekday: 'short', month: 'short', day: 'numeric' });
   const timeStr = now.toLocaleTimeString('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit', hour12: true });
 
-  const percent = Math.round((summary.totalIntake / getDailyLimit()) * 100);
+  const limit = await getDailyLimitForScope(scope);
+  const percent = Math.round((summary.totalIntake / limit) * 100);
 
-  const childName = getChildName();
+  const childName = await getChildNameForScope(scope);
   let report = `📊 ${childName}'s Report — ${dateStr} ${timeStr}\n`;
   report += `━━━━━━━━━━━━━━━━━━━━━━━\n`;
-  report += `\n💧 FLUID INTAKE: ${summary.totalIntake}ml / ${getDailyLimit()}ml (${percent}%)\n`;
+  report += `\n💧 FLUID INTAKE: ${summary.totalIntake}ml / ${limit}ml (${percent}%)\n`;
 
   if (Object.keys(summary.intakeByType).length > 0) {
     for (const [type, ml] of Object.entries(summary.intakeByType)) {

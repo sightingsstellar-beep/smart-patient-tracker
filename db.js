@@ -71,6 +71,8 @@ async function initSchema() {
     CREATE TABLE IF NOT EXISTS families (
       id          UUID PRIMARY KEY,
       name        TEXT NOT NULL,
+      clerk_org_id TEXT UNIQUE,
+      created_by_clerk_user_id TEXT,
       created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
     );
 
@@ -89,6 +91,31 @@ async function initSchema() {
       display_name TEXT,
       role        TEXT NOT NULL DEFAULT 'caregiver',
       created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    );
+
+    CREATE TABLE IF NOT EXISTS family_memberships (
+      id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      family_id   UUID NOT NULL REFERENCES families(id) ON DELETE CASCADE,
+      clerk_user_id TEXT NOT NULL,
+      email       TEXT,
+      display_name TEXT,
+      role        TEXT NOT NULL DEFAULT 'caregiver',
+      status      TEXT NOT NULL DEFAULT 'active',
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+      updated_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+      UNIQUE (family_id, clerk_user_id)
+    );
+
+    CREATE TABLE IF NOT EXISTS family_invitations (
+      id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      family_id   UUID NOT NULL REFERENCES families(id) ON DELETE CASCADE,
+      email       TEXT NOT NULL,
+      role        TEXT NOT NULL DEFAULT 'caregiver',
+      invited_by_clerk_user_id TEXT,
+      status      TEXT NOT NULL DEFAULT 'pending',
+      created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
+      accepted_at TIMESTAMPTZ,
+      UNIQUE (family_id, email)
     );
 
     CREATE TABLE IF NOT EXISTS alexa_account_links (
@@ -165,7 +192,13 @@ async function initSchema() {
     CREATE INDEX IF NOT EXISTS idx_wellness_patient_day ON wellness_checks (family_id, patient_id, day_key, timestamp);
     CREATE INDEX IF NOT EXISTS idx_gag_patient_day ON gag_events (family_id, patient_id, day_key, timestamp);
     CREATE INDEX IF NOT EXISTS idx_weight_patient_date ON weight_logs (family_id, patient_id, date DESC);
+    CREATE INDEX IF NOT EXISTS idx_family_memberships_clerk_user ON family_memberships (clerk_user_id) WHERE status='active';
+    CREATE INDEX IF NOT EXISTS idx_family_invitations_email ON family_invitations (lower(email)) WHERE status='pending';
   `);
+
+  await pool.query(`ALTER TABLE families ADD COLUMN IF NOT EXISTS clerk_org_id TEXT`);
+  await pool.query(`ALTER TABLE families ADD COLUMN IF NOT EXISTS created_by_clerk_user_id TEXT`);
+  await pool.query(`ALTER TABLE patients ADD COLUMN IF NOT EXISTS archived_at TIMESTAMPTZ`);
 
   await pool.query(
     `INSERT INTO families (id, name) VALUES ($1, $2)
@@ -197,6 +230,178 @@ async function reloadSettings() {
   settingsCache.clear();
   for (const [key, value] of Object.entries(DEFAULT_SETTINGS)) settingsCache.set(key, value);
   for (const row of rows) settingsCache.set(row.key, row.value);
+}
+
+function settingsForRows(rows) {
+  const settings = new Map(Object.entries(DEFAULT_SETTINGS));
+  for (const row of rows || []) settings.set(row.key, row.value);
+  return settings;
+}
+
+async function getSettings(scope = {}) {
+  const { familyId, patientId } = scopeIds(scope);
+  const { rows } = await query(
+    'SELECT key, value FROM settings WHERE family_id = $1 AND patient_id = $2',
+    [familyId, patientId]
+  );
+  return Object.fromEntries(settingsForRows(rows).entries());
+}
+
+async function getSettingForScope(key, scope = {}) {
+  const { familyId, patientId } = scopeIds(scope);
+  const { rows } = await query(
+    'SELECT value FROM settings WHERE family_id = $1 AND patient_id = $2 AND key = $3',
+    [familyId, patientId, key]
+  );
+  return rows[0]?.value ?? DEFAULT_SETTINGS[key] ?? null;
+}
+
+async function setSettingForScope(key, value, scope = {}) {
+  const { familyId, patientId } = scopeIds(scope);
+  await query(
+    `INSERT INTO settings (family_id, patient_id, key, value) VALUES ($1,$2,$3,$4)
+     ON CONFLICT (family_id, patient_id, key) DO UPDATE SET value=EXCLUDED.value`,
+    [familyId, patientId, key, String(value)]
+  );
+  if (familyId === DEFAULT_FAMILY_ID && patientId === DEFAULT_PATIENT_ID) settingsCache.set(key, String(value));
+}
+
+async function seedDefaultSettingsForPatient(familyId, patientId, overrides = {}) {
+  const settings = { ...DEFAULT_SETTINGS, ...overrides };
+  for (const [key, value] of Object.entries(settings)) {
+    await query(
+      `INSERT INTO settings (family_id, patient_id, key, value) VALUES ($1,$2,$3,$4)
+       ON CONFLICT (family_id, patient_id, key) DO NOTHING`,
+      [familyId, patientId, key, String(value)]
+    );
+  }
+}
+
+async function getPrimaryPatientForFamily(familyId) {
+  const { rows } = await query(
+    'SELECT * FROM patients WHERE family_id=$1 AND archived_at IS NULL ORDER BY created_at ASC, id ASC LIMIT 1',
+    [familyId]
+  );
+  return rows[0] || null;
+}
+
+async function getFamilyMembershipsByClerkUserId(clerkUserId) {
+  if (!clerkUserId) return [];
+  const { rows } = await query(
+    `SELECT fm.*, f.name AS family_name
+       FROM family_memberships fm
+       JOIN families f ON f.id = fm.family_id
+      WHERE fm.clerk_user_id=$1 AND fm.status='active'
+      ORDER BY fm.created_at ASC`,
+    [clerkUserId]
+  );
+  return rows;
+}
+
+async function getFamilyMembershipByEmail(email) {
+  if (!email) return [];
+  const { rows } = await query(
+    `SELECT fm.*, f.name AS family_name
+       FROM family_memberships fm
+       JOIN families f ON f.id = fm.family_id
+      WHERE lower(fm.email)=lower($1) AND fm.status='active'
+      ORDER BY fm.created_at ASC`,
+    [email]
+  );
+  return rows;
+}
+
+async function upsertFamilyMembership({ familyId, clerkUserId, email, displayName, role = 'caregiver', status = 'active' }) {
+  if (!familyId || !clerkUserId) throw new Error('familyId and clerkUserId are required');
+  const { rows } = await query(
+    `INSERT INTO family_memberships (family_id, clerk_user_id, email, display_name, role, status, updated_at)
+     VALUES ($1,$2,$3,$4,$5,$6,now())
+     ON CONFLICT (family_id, clerk_user_id) DO UPDATE SET
+       email=COALESCE(EXCLUDED.email, family_memberships.email),
+       display_name=COALESCE(EXCLUDED.display_name, family_memberships.display_name),
+       role=EXCLUDED.role,
+       status=EXCLUDED.status,
+       updated_at=now()
+     RETURNING *`,
+    [familyId, clerkUserId, email || null, displayName || null, role, status]
+  );
+  return rows[0];
+}
+
+async function acceptPendingInvitations({ clerkUserId, email, displayName }) {
+  if (!clerkUserId || !email) return [];
+  const { rows: invitations } = await query(
+    `UPDATE family_invitations SET status='accepted', accepted_at=now()
+      WHERE lower(email)=lower($1) AND status='pending'
+      RETURNING *`,
+    [email]
+  );
+  const memberships = [];
+  for (const invite of invitations) {
+    memberships.push(await upsertFamilyMembership({
+      familyId: invite.family_id,
+      clerkUserId,
+      email,
+      displayName,
+      role: invite.role || 'caregiver',
+      status: 'active',
+    }));
+  }
+  return memberships;
+}
+
+async function createFamilyInvitation({ familyId, email, role = 'caregiver', invitedByClerkUserId = null }) {
+  if (!familyId || !email) throw new Error('familyId and email are required');
+  const { rows } = await query(
+    `INSERT INTO family_invitations (family_id, email, role, invited_by_clerk_user_id, status)
+     VALUES ($1, lower($2), $3, $4, 'pending')
+     ON CONFLICT (family_id, email) DO UPDATE SET
+       role=EXCLUDED.role,
+       invited_by_clerk_user_id=EXCLUDED.invited_by_clerk_user_id,
+       status='pending',
+       created_at=now(),
+       accepted_at=NULL
+     RETURNING *`,
+    [familyId, email, role, invitedByClerkUserId]
+  );
+  return rows[0];
+}
+
+async function createFamilyWithPatient({ familyName, patientName, pronouns = 'she/her', clerkUserId, email, displayName }) {
+  if (!familyName || !patientName || !clerkUserId) throw new Error('familyName, patientName, and clerkUserId are required');
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const family = (await client.query(
+      `INSERT INTO families (id, name, created_by_clerk_user_id)
+       VALUES (gen_random_uuid(), $1, $2) RETURNING *`,
+      [familyName, clerkUserId]
+    )).rows[0];
+    const patient = (await client.query(
+      `INSERT INTO patients (id, family_id, name, pronouns)
+       VALUES (gen_random_uuid(), $1, $2, $3) RETURNING *`,
+      [family.id, patientName, pronouns]
+    )).rows[0];
+    await client.query(
+      `INSERT INTO family_memberships (family_id, clerk_user_id, email, display_name, role, status)
+       VALUES ($1,$2,$3,$4,'owner','active')`,
+      [family.id, clerkUserId, email || null, displayName || null]
+    );
+    const settings = { ...DEFAULT_SETTINGS, child_name: patientName, child_pronouns: pronouns };
+    for (const [key, value] of Object.entries(settings)) {
+      await client.query(
+        `INSERT INTO settings (family_id, patient_id, key, value) VALUES ($1,$2,$3,$4)`,
+        [family.id, patient.id, key, String(value)]
+      );
+    }
+    await client.query('COMMIT');
+    return { family, patient };
+  } catch (err) {
+    await client.query('ROLLBACK');
+    throw err;
+  } finally {
+    client.release();
+  }
 }
 
 const ready = initSchema();
@@ -260,25 +465,28 @@ async function getLastLog() {
   return normalizeRow(rows[0]) || null;
 }
 
-async function getLogById(id) {
+async function getLogById(id, scope = {}) {
+  const { familyId, patientId } = scopeIds(scope);
   const { rows } = await query(
     'SELECT * FROM fluid_logs WHERE family_id=$1 AND patient_id=$2 AND id=$3',
-    [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, id]
+    [familyId, patientId, id]
   );
   return normalizeRow(rows[0]) || null;
 }
 
 async function updateLog(entry) {
+  const { familyId, patientId } = scopeIds(entry);
   const result = await query(
     `UPDATE fluid_logs SET timestamp=$4, day_key=$5, entry_type=$6, fluid_type=$7, amount_ml=$8, subtype=$9, notes=$10
      WHERE family_id=$1 AND patient_id=$2 AND id=$3`,
-    [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, entry.id, entry.timestamp, entry.day_key, entry.entry_type, entry.fluid_type, entry.amount_ml ?? null, entry.subtype ?? null, entry.notes ?? null]
+    [familyId, patientId, entry.id, entry.timestamp, entry.day_key, entry.entry_type, entry.fluid_type, entry.amount_ml ?? null, entry.subtype ?? null, entry.notes ?? null]
   );
   return { changes: result.rowCount };
 }
 
-async function deleteLog(id) {
-  const result = await query('DELETE FROM fluid_logs WHERE family_id=$1 AND patient_id=$2 AND id=$3', [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, id]);
+async function deleteLog(id, scope = {}) {
+  const { familyId, patientId } = scopeIds(scope);
+  const result = await query('DELETE FROM fluid_logs WHERE family_id=$1 AND patient_id=$2 AND id=$3', [familyId, patientId, id]);
   return { changes: result.rowCount };
 }
 
@@ -351,33 +559,36 @@ async function getWellnessForDays(days) {
   return rows.map(normalizeRow);
 }
 
-async function getLatestWellnessEntry(dayKey, checkTime) {
+async function getLatestWellnessEntry(dayKey, checkTime, scope = {}) {
+  const { familyId, patientId } = scopeIds(scope);
   const { rows } = await query(
     `SELECT * FROM wellness_checks WHERE family_id=$1 AND patient_id=$2 AND day_key=$3 AND check_time=$4
      ORDER BY timestamp DESC, id DESC LIMIT 1`,
-    [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, dayKey, checkTime]
+    [familyId, patientId, dayKey, checkTime]
   );
   return normalizeRow(rows[0]) || null;
 }
 
 async function upsertWellness(entry) {
+  const { familyId, patientId } = scopeIds(entry);
   const now = entry.timestamp || Date.now();
   const dayKey = entry.day_key || getDayKey(new Date(now));
   const checkTime = entry.check_time || '5pm';
-  const existing = await getLatestWellnessEntry(dayKey, checkTime);
+  const existing = await getLatestWellnessEntry(dayKey, checkTime, entry);
   if (existing) {
     const result = await query(
       `UPDATE wellness_checks SET timestamp=$4, day_key=$5, check_time=$6, appetite=$7, energy=$8, mood=$9, cyanosis=$10
        WHERE family_id=$1 AND patient_id=$2 AND id=$3 RETURNING *`,
-      [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, existing.id, now, dayKey, checkTime, entry.appetite ?? null, entry.energy ?? null, entry.mood ?? null, entry.cyanosis ?? null]
+      [familyId, patientId, existing.id, now, dayKey, checkTime, entry.appetite ?? null, entry.energy ?? null, entry.mood ?? null, entry.cyanosis ?? null]
     );
     return normalizeRow(result.rows[0]);
   }
-  return logWellness({ timestamp: now, day_key: dayKey, check_time: checkTime, appetite: entry.appetite ?? null, energy: entry.energy ?? null, mood: entry.mood ?? null, cyanosis: entry.cyanosis ?? null });
+  return logWellness({ timestamp: now, day_key: dayKey, check_time: checkTime, appetite: entry.appetite ?? null, energy: entry.energy ?? null, mood: entry.mood ?? null, cyanosis: entry.cyanosis ?? null, familyId, patientId });
 }
 
-async function deleteWellness(dayKey, checkTime) {
-  const result = await query('DELETE FROM wellness_checks WHERE family_id=$1 AND patient_id=$2 AND day_key=$3 AND check_time=$4', [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, dayKey, checkTime]);
+async function deleteWellness(dayKey, checkTime, scope = {}) {
+  const { familyId, patientId } = scopeIds(scope);
+  const result = await query('DELETE FROM wellness_checks WHERE family_id=$1 AND patient_id=$2 AND day_key=$3 AND check_time=$4', [familyId, patientId, dayKey, checkTime]);
   return { changes: result.rowCount };
 }
 
@@ -404,13 +615,15 @@ async function getGagsByDay(dayKey, scope = {}) {
   return rows.map(normalizeRow);
 }
 
-async function getGagById(id) {
-  const { rows } = await query('SELECT * FROM gag_events WHERE family_id=$1 AND patient_id=$2 AND id=$3', [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, id]);
+async function getGagById(id, scope = {}) {
+  const { familyId, patientId } = scopeIds(scope);
+  const { rows } = await query('SELECT * FROM gag_events WHERE family_id=$1 AND patient_id=$2 AND id=$3', [familyId, patientId, id]);
   return normalizeRow(rows[0]) || null;
 }
 
 async function updateGag(entry) {
-  const result = await query('UPDATE gag_events SET timestamp=$4, day_key=$5 WHERE family_id=$1 AND patient_id=$2 AND id=$3', [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, entry.id, entry.timestamp, entry.day_key]);
+  const { familyId, patientId } = scopeIds(entry);
+  const result = await query('UPDATE gag_events SET timestamp=$4, day_key=$5 WHERE family_id=$1 AND patient_id=$2 AND id=$3', [familyId, patientId, entry.id, entry.timestamp, entry.day_key]);
   return { changes: result.rowCount };
 }
 
@@ -420,8 +633,9 @@ async function deleteLastGag() {
   return last.rows[0] || null;
 }
 
-async function deleteGag(id) {
-  const result = await query('DELETE FROM gag_events WHERE family_id=$1 AND patient_id=$2 AND id=$3', [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, id]);
+async function deleteGag(id, scope = {}) {
+  const { familyId, patientId } = scopeIds(scope);
+  const result = await query('DELETE FROM gag_events WHERE family_id=$1 AND patient_id=$2 AND id=$3', [familyId, patientId, id]);
   return { changes: result.rowCount };
 }
 
@@ -454,13 +668,8 @@ function getAllSettings() {
   return Object.fromEntries(settingsCache.entries());
 }
 
-async function setSetting(key, value) {
-  await query(
-    `INSERT INTO settings (family_id, patient_id, key, value) VALUES ($1,$2,$3,$4)
-     ON CONFLICT (family_id, patient_id, key) DO UPDATE SET value=EXCLUDED.value`,
-    [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, key, String(value)]
-  );
-  settingsCache.set(key, String(value));
+async function setSetting(key, value, scope = {}) {
+  await setSettingForScope(key, value, scope);
 }
 
 async function initDefaultSettings() {
@@ -481,28 +690,32 @@ async function logWeight(date, weight_kg, notes, scope = {}) {
   return normalizeRow(rows[0]);
 }
 
-async function getWeightForDate(date) {
-  const { rows } = await query('SELECT * FROM weight_logs WHERE family_id=$1 AND patient_id=$2 AND date=$3', [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, date]);
+async function getWeightForDate(date, scope = {}) {
+  const { familyId, patientId } = scopeIds(scope);
+  const { rows } = await query('SELECT * FROM weight_logs WHERE family_id=$1 AND patient_id=$2 AND date=$3', [familyId, patientId, date]);
   return normalizeRow(rows[0]) || null;
 }
 
-async function getWeightHistory(days) {
-  const { rows } = await query('SELECT * FROM weight_logs WHERE family_id=$1 AND patient_id=$2 ORDER BY date DESC LIMIT $3', [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, days]);
+async function getWeightHistory(days, scope = {}) {
+  const { familyId, patientId } = scopeIds(scope);
+  const { rows } = await query('SELECT * FROM weight_logs WHERE family_id=$1 AND patient_id=$2 ORDER BY date DESC LIMIT $3', [familyId, patientId, days]);
   return rows.map(normalizeRow);
 }
 
-async function getWeightHistoryUpTo(date, days) {
-  const { rows } = await query('SELECT * FROM weight_logs WHERE family_id=$1 AND patient_id=$2 AND date <= $3 ORDER BY date DESC LIMIT $4', [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, date, days]);
+async function getWeightHistoryUpTo(date, days, scope = {}) {
+  const { familyId, patientId } = scopeIds(scope);
+  const { rows } = await query('SELECT * FROM weight_logs WHERE family_id=$1 AND patient_id=$2 AND date <= $3 ORDER BY date DESC LIMIT $4', [familyId, patientId, date, days]);
   return rows.map(normalizeRow);
 }
 
-async function deleteWeight(date) {
-  const result = await query('DELETE FROM weight_logs WHERE family_id=$1 AND patient_id=$2 AND date=$3', [DEFAULT_FAMILY_ID, DEFAULT_PATIENT_ID, date]);
+async function deleteWeight(date, scope = {}) {
+  const { familyId, patientId } = scopeIds(scope);
+  const result = await query('DELETE FROM weight_logs WHERE family_id=$1 AND patient_id=$2 AND date=$3', [familyId, patientId, date]);
   return { changes: result.rowCount };
 }
 
 async function exportAllData() {
-  const tables = ['families', 'patients', 'users', 'alexa_account_links', 'settings', 'fluid_logs', 'wellness_checks', 'gag_events', 'weight_logs', 'sessions'];
+  const tables = ['families', 'patients', 'users', 'family_memberships', 'family_invitations', 'alexa_account_links', 'settings', 'fluid_logs', 'wellness_checks', 'gag_events', 'weight_logs', 'sessions'];
   const data = {};
   for (const table of tables) {
     const { rows } = await query(`SELECT * FROM ${table}`);
@@ -596,7 +809,18 @@ module.exports = {
   getDaySummary,
   getSetting,
   getAllSettings,
+  getSettings,
+  getSettingForScope,
   setSetting,
+  setSettingForScope,
+  seedDefaultSettingsForPatient,
+  getPrimaryPatientForFamily,
+  getFamilyMembershipsByClerkUserId,
+  getFamilyMembershipByEmail,
+  upsertFamilyMembership,
+  acceptPendingInvitations,
+  createFamilyInvitation,
+  createFamilyWithPatient,
   initDefaultSettings,
   logWeight,
   getWeightForDate,
