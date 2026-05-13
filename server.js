@@ -159,17 +159,27 @@ function renderClerkLoginPage({ misconfigured = false } = {}) {
   <title>Sign In — Glide Patient Tracker</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background:#f0f4f8; min-height:100vh; display:flex; align-items:center; justify-content:center; padding:24px; }
-    .card { background:#fff; border-radius:20px; box-shadow:0 4px 24px rgba(0,0,0,.10); padding:40px 36px 36px; width:100%; max-width:430px; text-align:center; }
+    html, body { width:100%; max-width:100%; overflow-x:hidden; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background:#f0f4f8; min-height:100svh; display:flex; align-items:center; justify-content:center; padding:16px; }
+    .card { background:#fff; border-radius:20px; box-shadow:0 4px 24px rgba(0,0,0,.10); padding:32px 18px 28px; width:100%; max-width:min(430px, 100%); text-align:center; overflow:hidden; }
     .icon { font-size:2.8rem; margin-bottom:12px; }
-    h1 { font-size:1.3rem; font-weight:700; color:#202124; margin-bottom:6px; }
-    .subtitle { font-size:.9rem; color:#5f6368; margin-bottom:24px; }
+    h1 { font-size:clamp(1.15rem, 5vw, 1.3rem); font-weight:700; color:#202124; margin-bottom:6px; }
+    .subtitle { font-size:.9rem; color:#5f6368; margin-bottom:20px; }
     .notice { background:#fff7e6; color:#7a4a00; border-radius:10px; padding:10px 14px; font-size:.88rem; margin-bottom:18px; text-align:left; }
     .button { display:block; width:100%; padding:14px; background:#1a73e8; color:#fff; border:none; border-radius:12px; font-size:1rem; font-weight:600; text-decoration:none; cursor:pointer; }
     .button:hover { background:#1558b0; }
     .muted { color:#5f6368; font-size:.86rem; line-height:1.4; margin-top:12px; }
     .version { margin-top:18px; font-size:.78rem; color:#8a94a6; }
-    #sign-in { min-height:180px; }
+    #sign-in { min-height:180px; width:100%; max-width:100%; overflow:hidden; }
+    #sign-in :is(.cl-rootBox, .cl-card, .cl-cardBox, .cl-scrollBox, .cl-main, .cl-form, .cl-formField, .cl-formButtonPrimary, .cl-socialButtonsBlockButton, .cl-footer, .cl-footerAction) { width:100% !important; max-width:100% !important; min-width:0 !important; }
+    #sign-in :is(.cl-card, .cl-cardBox) { box-shadow:none !important; border-radius:14px !important; }
+    #sign-in :is(input, button) { max-width:100% !important; }
+    @media (max-width: 380px) {
+      body { padding:10px; align-items:flex-start; }
+      .card { padding:24px 10px 22px; border-radius:16px; }
+      .icon { font-size:2.2rem; }
+      .subtitle { margin-bottom:14px; }
+    }
   </style>
 </head>
 <body>
