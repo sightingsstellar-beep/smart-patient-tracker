@@ -142,6 +142,15 @@ function authStatus(req = null) {
 
 function renderClerkLoginPage({ misconfigured = false } = {}) {
   const key = JSON.stringify(CLERK_PUBLISHABLE_KEY);
+  let clerkScriptSrc = 'https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js';
+  try {
+    const encoded = CLERK_PUBLISHABLE_KEY.split('_').pop() || '';
+    const decoded = Buffer.from(encoded, 'base64').toString('utf8');
+    const clerkHost = decoded.replace(/\$$/, '');
+    if (clerkHost) {
+      clerkScriptSrc = `https://${clerkHost}/npm/@clerk/clerk-js@latest/dist/clerk.browser.js`;
+    }
+  } catch (_) {}
   return `<!doctype html>
 <html lang="en">
 <head>
@@ -171,7 +180,7 @@ function renderClerkLoginPage({ misconfigured = false } = {}) {
     ${misconfigured ? '<div class="notice">Clerk login is enabled but not fully configured. Please contact support.</div>' : `<p class="muted" id="login-help">Loading secure sign-in…</p><div id="sign-in" aria-live="polite"></div>`}
     <div class="version" id="app-version">Version loading…</div>
   </div>
-  ${misconfigured ? '' : `<script async crossorigin="anonymous" data-clerk-publishable-key=${key} src="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js"></script>
+  ${misconfigured ? '' : `<script async crossorigin="anonymous" data-clerk-publishable-key=${key} src="${clerkScriptSrc}"></script>
   <script>
     window.addEventListener('load', async () => {
       const version = document.getElementById('app-version');
