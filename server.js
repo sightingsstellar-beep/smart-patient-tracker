@@ -276,8 +276,28 @@ function renderClerkLoginPage({ misconfigured = false } = {}) {
       const help = document.getElementById('login-help');
       try {
         if (!window.Clerk) throw new Error('Clerk browser library did not load.');
+        const clerkLocalization = {
+          signIn: {
+            start: {
+              title: 'Sign in to Glide Bedside',
+              titleCombined: 'Continue to Glide Bedside',
+              subtitle: 'Use your caregiver account to continue.',
+              subtitleCombined: 'Use your caregiver account to continue.',
+            },
+            emailCode: { subtitle: 'to continue to Glide Bedside' },
+            emailLink: { subtitle: 'to continue to Glide Bedside' },
+            password: { subtitle: 'Enter your Glide Bedside account password' },
+            phoneCode: { subtitle: 'to continue to Glide Bedside' },
+          },
+          signUp: {
+            start: {
+              title: 'Create your Glide Bedside account',
+              subtitle: 'Set up caregiver access for your family care circle.',
+            },
+          },
+        };
         await Promise.race([
-          window.Clerk.load({ publishableKey: ${key} }),
+          window.Clerk.load({ publishableKey: ${key}, localization: clerkLocalization }),
           new Promise((_, reject) => setTimeout(() => reject(new Error('Clerk browser library timed out while loading.')), 8000)),
         ]);
         if (window.Clerk.user) {
