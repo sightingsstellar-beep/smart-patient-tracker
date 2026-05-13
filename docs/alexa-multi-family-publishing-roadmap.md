@@ -2,11 +2,11 @@
 
 ## Purpose
 
-Prepare the Glide Patient Tracker web app + Alexa skill for multi-family use and eventual Alexa Skills Store publication under the Hour Glide / GlideChart product line.
+Prepare the Glide Beside web app + Alexa skill for multi-family use and eventual Alexa Skills Store publication under the Hour Glide / GlideChart product line.
 
 ## Current state
 
-- Skill name: Glide Patient Tracker
+- Skill name: Glide Beside
 - Invocation name: fluid monitor
 - Skill ID: `amzn1.ask.skill.ae8d6755-a9c7-425a-8034-6f1230c8ae9c`
 - Vendor ID: `M1T7RSPC9KXQ7W`

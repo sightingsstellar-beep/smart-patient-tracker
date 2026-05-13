@@ -50,15 +50,15 @@ async function sendCaregiverInviteEmail({ to, familyName, patientName, inviterNa
   const safePatient = patientName || 'their patient';
   const safeInviter = inviterName || 'A caregiver';
   const safeRole = role || 'caregiver';
-  const subject = `You're invited to Glide Patient Tracker`;
-  const text = `${safeInviter} invited you to join ${safeFamily} on Glide Patient Tracker as a ${safeRole}.\n\nSign in with this email address to access ${safePatient}'s tracker:\n${appUrl}/login\n\nIf you were not expecting this invitation, you can ignore this email.`;
+  const subject = `You're invited to Glide Beside`;
+  const text = `${safeInviter} invited you to join ${safeFamily} on Glide Beside as a ${safeRole}.\n\nSign in with this email address to access ${safePatient}'s tracker:\n${appUrl}/login\n\nIf you were not expecting this invitation, you can ignore this email.`;
   const html = `<!doctype html>
 <html><body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;line-height:1.5;color:#202124;">
   <div style="max-width:560px;margin:0 auto;padding:24px;">
-    <h1 style="font-size:22px;margin:0 0 12px;color:#1a73e8;">You're invited to Glide Patient Tracker</h1>
+    <h1 style="font-size:22px;margin:0 0 12px;color:#1a73e8;">You're invited to Glide Beside</h1>
     <p>${escapeHtml(safeInviter)} invited you to join <strong>${escapeHtml(safeFamily)}</strong> as a ${escapeHtml(safeRole)}.</p>
     <p>Sign in with this email address to access ${escapeHtml(safePatient)}'s tracker.</p>
-    <p><a href="${escapeHtml(appUrl)}/login" style="display:inline-block;background:#1a73e8;color:#fff;text-decoration:none;padding:12px 18px;border-radius:10px;font-weight:700;">Open Glide Patient Tracker</a></p>
+    <p><a href="${escapeHtml(appUrl)}/login" style="display:inline-block;background:#1a73e8;color:#fff;text-decoration:none;padding:12px 18px;border-radius:10px;font-weight:700;">Open Glide Beside</a></p>
     <p style="color:#5f6368;font-size:14px;">If you were not expecting this invitation, you can ignore this email.</p>
   </div>
 </body></html>`;

@@ -1,7 +1,7 @@
 {
   "name": "smart-patient-tracker",
   "version": "1.2.0",
-  "description": "Glide Patient Tracker — fluid intake/output, wellness checks, and daily reports via Telegram bot and web dashboard",
+  "description": "Glide Beside — fluid intake/output, wellness checks, and daily reports via Telegram bot and web dashboard",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",

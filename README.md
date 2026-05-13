@@ -1,4 +1,4 @@
-# Glide Patient Tracker 💙
+# Glide Beside 💙
 
 A private, open-source fluid intake/output tracking platform for critically ill children in hospital care. Built with love for families navigating long-term medical journeys.
 

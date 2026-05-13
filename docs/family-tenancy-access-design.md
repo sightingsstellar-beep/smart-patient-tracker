@@ -122,7 +122,7 @@ Production invite email uses generic SMTP configuration so credentials stay in R
 
 - `INVITE_EMAIL_ENABLED=true`
 - `APP_PUBLIC_URL=https://app.glidechart.com`
-- `MAIL_FROM="Glide Patient Tracker <support@glidechart.com>"`
+- `MAIL_FROM="Glide Beside <support@glidechart.com>"`
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_SECURE`, `SMTP_USER`, `SMTP_PASS`
 
 If mail is not configured, the invite endpoint still creates the invitation and returns `email.sent=false`; the Settings UI tells the caregiver that the recipient can sign in but invite email is not configured yet. Do not store SMTP passwords or provider tokens in docs, MC, chat, or code.

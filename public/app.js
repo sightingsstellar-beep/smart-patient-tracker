@@ -1,5 +1,5 @@
 /**
- * app.js — mobile-first Day view for Glide Patient Tracker
+ * app.js — mobile-first Day view for Glide Beside
  */
 
 'use strict';
@@ -991,9 +991,9 @@ async function loadAppVersion() {
     const res = await fetch('/api/version');
     if (!res.ok) throw new Error('version request failed');
     const info = await res.json();
-    el.textContent = `Glide Patient Tracker v${info.version}`;
+    el.textContent = `Glide Beside v${info.version}`;
   } catch (_) {
-    el.textContent = 'Glide Patient Tracker';
+    el.textContent = 'Glide Beside';
   }
 }
 

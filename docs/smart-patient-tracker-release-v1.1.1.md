@@ -1,8 +1,8 @@
-# Smart Patient Wellness Tracker v1.1.1 Release Receipt
+# Glide Beside v1.1.1 Release Receipt
 
 ## Summary
 
-Baseline accountability release for the live Smart Patient Wellness Tracker web app and Alexa skill under the Family Care Bundle / Enounce AI product line.
+Baseline accountability release for the live Glide Beside web app and Alexa skill under the Family Care Bundle / Enounce AI product line.
 
 This release adds explicit version surfaces without changing the core fluid-tracking workflow:
 
@@ -22,7 +22,7 @@ This release adds explicit version surfaces without changing the core fluid-trac
 
 - Parent project: `Family Care Bundle — Enounce AI` (`357341cf-c8a4-4887-9b62-c0054878890c`)
 - Initiative: `Family Care Bundle packaging and release accountability` (`acb63755-d409-4504-a70f-dad35e1f30cd`)
-- Task: `Add versioning to Smart Patient Tracker web app and Alexa skill` (`48f4972b-da19-4ec6-929e-cec4f558a77b`)
+- Task: `Add versioning to Glide Beside web app and Alexa skill` (`48f4972b-da19-4ec6-929e-cec4f558a77b`)
 
 ## Local verification
 
@@ -55,7 +55,7 @@ Observed `/api/version` shape:
       "version": "1.1.1"
     },
     "alexaSkill": {
-      "name": "Patient Wellness Tracker",
+      "name": "Glide Beside",
       "invocationName": "fluid tracking",
       "version": "1.1.1"
     }
@@ -88,13 +88,13 @@ Observed production `/health`:
 Observed production `/api/version`:
 
 ```json
-{"name":"smart-patient-tracker","version":"1.1.1","release":"v1.1.1","environment":"development","commit":"<current deployed commit or null for local upload>","builtAt":"2026-05-11T15:11:59Z","components":{"webApp":{"name":"smart-patient-tracker","version":"1.1.1"},"alexaSkill":{"name":"Patient Wellness Tracker","invocationName":"fluid tracking","version":"1.1.1"}}}
+{"name":"smart-patient-tracker","version":"1.1.1","release":"v1.1.1","environment":"development","commit":"<current deployed commit or null for local upload>","builtAt":"2026-05-11T15:11:59Z","components":{"webApp":{"name":"smart-patient-tracker","version":"1.1.1"},"alexaSkill":{"name":"Glide Beside","invocationName":"fluid tracking","version":"1.1.1"}}}
 ```
 
 Alexa endpoint verification passed by POSTing a `VersionIntent` request with the configured skill ID to `/api/alexa`; response included:
 
 ```xml
-<speak>Smart Patient Wellness Tracker is running version 1.1.1.</speak>
+<speak>Glide Beside is running version 1.1.1.</speak>
 ```
 
 Remaining follow-up: deploy/rebuild the Alexa interaction model in the Alexa developer console/SMAPI so real-user utterances for `VersionIntent` are recognized. The production endpoint already handles the intent.

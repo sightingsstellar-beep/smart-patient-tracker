@@ -2,7 +2,7 @@
 
 Status: experimental / local-only
 
-This spike validates Clerk as the candidate identity provider for Glide Patient Tracker before replacing the existing shared-password dashboard login.
+This spike validates Clerk as the candidate identity provider for Glide Beside before replacing the existing shared-password dashboard login.
 
 ## Goals
 
@@ -17,7 +17,7 @@ This spike validates Clerk as the candidate identity provider for Glide Patient 
 Clerk credentials are stored in 1Password:
 
 - Vault: `Mr. Stellar`
-- Item: `Clerk Credentials for Glide Patient Tracker Spike`
+- Item: `Clerk Credentials for Glide Beside Spike`
 - Fields:
   - `CLERK_PUBLISHABLE_KEY`
   - `CLERK_SECRET_KEY`
@@ -30,8 +30,8 @@ Use 1Password references rather than writing secrets into `.env`:
 
 ```bash
 cat >/tmp/clerk-spike.env <<'EOF'
-CLERK_PUBLISHABLE_KEY=op://Mr. Stellar/Clerk Credentials for Glide Patient Tracker Spike/CLERK_PUBLISHABLE_KEY
-CLERK_SECRET_KEY=op://Mr. Stellar/Clerk Credentials for Glide Patient Tracker Spike/CLERK_SECRET_KEY
+CLERK_PUBLISHABLE_KEY=op://Mr. Stellar/Clerk Credentials for Glide Beside Spike/CLERK_PUBLISHABLE_KEY
+CLERK_SECRET_KEY=op://Mr. Stellar/Clerk Credentials for Glide Beside Spike/CLERK_SECRET_KEY
 EOF
 ```
 

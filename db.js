@@ -31,7 +31,7 @@ const DEFAULT_SETTINGS = {
 
 const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
 if (!connectionString) {
-  throw new Error('DATABASE_URL or POSTGRES_URL is required for Postgres-backed Glide Patient Tracker');
+  throw new Error('DATABASE_URL or POSTGRES_URL is required for Postgres-backed Glide Beside');
 }
 
 const pool = new Pool({

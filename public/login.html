@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Sign In — Glide Patient Tracker</title>
+  <title>Sign In — Glide Beside</title>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -105,7 +105,7 @@
 <body>
   <div class="card">
     <div class="icon">❤️</div>
-    <h1>Glide Patient Tracker</h1>
+    <h1>Glide Beside</h1>
     <p class="subtitle">Enter the dashboard password to continue</p>
 
     <div class="error-banner" id="errorBanner">
@@ -137,10 +137,10 @@
     fetch('/api/version')
       .then((res) => res.json())
       .then((info) => {
-        document.getElementById('app-version').textContent = `Glide Patient Tracker v${info.version}`;
+        document.getElementById('app-version').textContent = `Glide Beside v${info.version}`;
       })
       .catch(() => {
-        document.getElementById('app-version').textContent = 'Glide Patient Tracker';
+        document.getElementById('app-version').textContent = 'Glide Beside';
       });
   </script>
 </body>
