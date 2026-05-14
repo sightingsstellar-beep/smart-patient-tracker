@@ -145,6 +145,8 @@ function authStatus(req = null) {
     defaultTenantAllowlistEnabled: CLERK_DEFAULT_TENANT_ALLOWED_EMAILS.size > 0,
     clerkAuthenticated,
     legacySessionAuthenticated: Boolean(req?.session?.authenticated),
+    clerkPublishableKey: CLERK_AUTH_ENABLED && CLERK_CONFIGURED ? CLERK_PUBLISHABLE_KEY : null,
+    clerkScriptSrc: CLERK_AUTH_ENABLED && CLERK_CONFIGURED ? getClerkScriptSrc() : null,
     appVersion: APP_VERSION,
   };
 }
@@ -220,8 +222,7 @@ function publishCareChange(scope, detail = {}) {
   realtime.publishCareChange(scope, detail);
 }
 
-function renderClerkLoginPage({ misconfigured = false } = {}) {
-  const key = JSON.stringify(CLERK_PUBLISHABLE_KEY);
+function getClerkScriptSrc() {
   let clerkScriptSrc = 'https://cdn.jsdelivr.net/npm/@clerk/clerk-js@latest/dist/clerk.browser.js';
   try {
     const encoded = CLERK_PUBLISHABLE_KEY.split('_').pop() || '';
@@ -231,6 +232,12 @@ function renderClerkLoginPage({ misconfigured = false } = {}) {
       clerkScriptSrc = `https://${clerkHost}/npm/@clerk/clerk-js@latest/dist/clerk.browser.js`;
     }
   } catch (_) {}
+  return clerkScriptSrc;
+}
+
+function renderClerkLoginPage({ misconfigured = false } = {}) {
+  const key = JSON.stringify(CLERK_PUBLISHABLE_KEY);
+  const clerkScriptSrc = getClerkScriptSrc();
   return `<!doctype html>
 <html lang="en">
 <head>
