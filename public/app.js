@@ -157,11 +157,8 @@ function showAppAlert(message, options = {}) {
 async function parseWriteError(res) {
   let data = {};
   try { data = await res.json(); } catch (_) {}
-  if (data?.error === 'wrong_app_domain' && data?.canonicalUrl) {
-    return { message: 'This saved app shortcut is using an old domain.', canonicalUrl: data.canonicalUrl };
-  }
   if (res.status === 401) {
-    return { message: 'Your sign-in session expired or this shortcut is using an old app domain. Please open Glide Bedside and sign in again.', canonicalUrl: 'https://bedside.glidechart.com' };
+    return { message: 'Your sign-in session expired. Please sign in again and retry the save.' };
   }
   return { message: data?.error || `Save failed (HTTP ${res.status}). Please try again.` };
 }

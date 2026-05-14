@@ -29,13 +29,6 @@ const CLERK_SPIKE_ENABLED = truthy(process.env.CLERK_SPIKE_ENABLED);
 const CLERK_PUBLISHABLE_KEY = process.env.CLERK_PUBLISHABLE_KEY || '';
 const CLERK_SECRET_KEY = process.env.CLERK_SECRET_KEY || '';
 const ALEXA_ACCOUNT_LINKING_REQUIRED = truthy(process.env.ALEXA_ACCOUNT_LINKING_REQUIRED);
-const APP_PUBLIC_URL = process.env.APP_PUBLIC_URL || 'https://bedside.glidechart.com';
-let APP_PUBLIC_HOST = '';
-try { APP_PUBLIC_HOST = new URL(APP_PUBLIC_URL).host; } catch (_) {}
-const LEGACY_APP_HOSTS = new Set([
-  'elina-tracker-production.up.railway.app',
-  'glide-bedside-production.up.railway.app',
-].filter(Boolean));
 const clerkClient = CLERK_SECRET_KEY ? createClerkClient({ secretKey: CLERK_SECRET_KEY }) : null;
 const CLERK_CONFIGURED = Boolean(CLERK_PUBLISHABLE_KEY && CLERK_SECRET_KEY && clerkClient);
 const CLERK_DEFAULT_TENANT_ALLOWED_EMAILS = new Set(
@@ -51,21 +44,6 @@ app.set('trust proxy', 1);
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
-
-app.use((req, res, next) => {
-  const host = (req.headers['x-forwarded-host'] || req.headers.host || '').split(',')[0].trim().toLowerCase();
-  const canonicalHost = APP_PUBLIC_HOST.toLowerCase();
-  if (canonicalHost && LEGACY_APP_HOSTS.has(host)) {
-    if (req.path.startsWith('/api/')) {
-      return res.status(401).json({ ok: false, error: 'wrong_app_domain', canonicalUrl: APP_PUBLIC_URL });
-    }
-    if (req.method === 'GET' || req.method === 'HEAD') {
-      const target = new URL(req.originalUrl || '/', APP_PUBLIC_URL);
-      return res.redirect(308, target.toString());
-    }
-  }
-  return next();
-});
 
 if ((CLERK_AUTH_ENABLED || CLERK_SPIKE_ENABLED) && CLERK_CONFIGURED) {
   app.use(clerkMiddleware());
