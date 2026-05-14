@@ -1033,7 +1033,7 @@ function applyInitialDateFromUrl() {
 }
 
 setInterval(updateClock, 1000);
-setInterval(refreshDay, 30000);
+setInterval(refreshDay, 30 * 60 * 1000);
 updateClock();
 applyInitialDateFromUrl();
 loadSettings();

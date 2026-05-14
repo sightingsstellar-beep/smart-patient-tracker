@@ -223,7 +223,7 @@ This keeps patient data safe across deployments.
 
 The web dashboard is served at the root URL (`/`). It:
 
-- Auto-refreshes every 30 seconds
+- Uses realtime refresh for care-log changes, with a 30-minute polling fallback
 - Includes a full-width **Today / Yesterday** switcher just below the main menu
 - Treats that switcher as the page context, not just a logging mode:
   - intake totals and itemized intake cards update
