@@ -2359,6 +2359,18 @@ app.get('/api/me', async (req, res) => {
   res.json({ ok: true, scope: req.scope || null });
 });
 
+app.get('/api/family/members', async (req, res) => {
+  try {
+    const scope = requestScope(req);
+    if (!scope.familyId) return res.status(400).json({ ok: false, error: 'family_scope_required' });
+    const members = await db.getFamilyAccessList(scope.familyId);
+    res.json({ ok: true, family: { id: scope.familyId, name: scope.familyName || null }, members });
+  } catch (err) {
+    console.error('[GET /api/family/members]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
 app.get('/api/events', (req, res) => {
   realtime.addClient(requestScope(req), req, res);
 });

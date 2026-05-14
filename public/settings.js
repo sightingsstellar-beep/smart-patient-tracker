@@ -172,8 +172,78 @@ async function saveSettings() {
 }
 
 // ---------------------------------------------------------------------------
-// Caregiver invites
+// Caregiver access
 // ---------------------------------------------------------------------------
+
+function escapeHtml(value) {
+  return String(value || '').replace(/[&<>"]/g, (char) => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+  }[char]));
+}
+
+function formatDateTime(value) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toLocaleString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+function renderFamilyMembers(members) {
+  const container = document.getElementById('family-members');
+  if (!container) return;
+
+  if (!Array.isArray(members) || members.length === 0) {
+    container.innerHTML = '<div class="family-members-empty">No family access has been added yet.</div>';
+    return;
+  }
+
+  container.innerHTML = members.map((member) => {
+    const isActive = member.status === 'active';
+    const statusLabel = isActive ? 'Accepted' : 'Invite pending';
+    const statusClass = isActive ? 'active' : 'pending';
+    const name = member.display_name || member.email || 'Caregiver';
+    const dateText = isActive
+      ? formatDateTime(member.accepted_at || member.joined_at)
+      : formatDateTime(member.invited_at);
+    const metaText = isActive
+      ? (dateText ? `Accepted ${dateText}` : 'Registered and active')
+      : (dateText ? `Invited ${dateText}` : 'Waiting for signup');
+
+    return `
+      <div class="family-member-row">
+        <div class="family-member-main">
+          <div class="family-member-name">${escapeHtml(name)}</div>
+          <div class="family-member-email">${escapeHtml(member.email || '')}</div>
+          <div class="family-member-meta">${escapeHtml(member.role || 'caregiver')} · ${escapeHtml(metaText)}</div>
+        </div>
+        <span class="family-member-status ${statusClass}">${statusLabel}</span>
+      </div>
+    `;
+  }).join('');
+}
+
+async function loadFamilyMembers() {
+  const container = document.getElementById('family-members');
+  if (!container) return;
+
+  try {
+    const res = await fetch('/api/family/members');
+    const data = await res.json();
+    if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`);
+    renderFamilyMembers(data.members || []);
+  } catch (err) {
+    console.error('[settings] Family access load error:', err);
+    container.innerHTML = `<div class="family-members-error">Could not load family access: ${escapeHtml(err.message)}</div>`;
+  }
+}
 
 async function sendCaregiverInvite() {
   const btn = document.getElementById('invite-btn');
@@ -208,6 +278,7 @@ async function sendCaregiverInvite() {
       : `✅ ${email} can sign in and access this tracker. Invite email is not configured yet.`;
     statusEl.className = 'settings-status success';
     emailEl.value = '';
+    loadFamilyMembers();
   } catch (err) {
     console.error('[settings] Invite error:', err);
     statusEl.textContent = '❌ Invite failed: ' + err.message;
@@ -244,6 +315,7 @@ function showStatus(message, type) {
 // ---------------------------------------------------------------------------
 
 loadSettings();
+loadFamilyMembers();
 
 document.getElementById('save-btn').addEventListener('click', saveSettings);
 const inviteBtn = document.getElementById('invite-btn');

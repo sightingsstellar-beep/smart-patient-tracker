@@ -367,6 +367,76 @@ async function createFamilyInvitation({ familyId, email, role = 'caregiver', inv
   return rows[0];
 }
 
+async function getFamilyAccessList(familyId) {
+  if (!familyId) throw new Error('familyId is required');
+  const { rows } = await query(
+    `WITH active_members AS (
+       SELECT
+         fm.id::text AS id,
+         fm.email,
+         fm.display_name,
+         fm.role,
+         fm.status AS membership_status,
+         fm.created_at AS joined_at,
+         fm.updated_at,
+         fi.id::text AS invitation_id,
+         fi.status AS invitation_status,
+         fi.created_at AS invited_at,
+         fi.accepted_at
+       FROM family_memberships fm
+       LEFT JOIN family_invitations fi
+         ON fi.family_id = fm.family_id
+        AND lower(fi.email) = lower(fm.email)
+       WHERE fm.family_id = $1
+         AND fm.status = 'active'
+     ), pending_invites AS (
+       SELECT
+         fi.id::text AS id,
+         fi.email,
+         NULL::text AS display_name,
+         fi.role,
+         NULL::text AS membership_status,
+         NULL::timestamptz AS joined_at,
+         NULL::timestamptz AS updated_at,
+         fi.id::text AS invitation_id,
+         fi.status AS invitation_status,
+         fi.created_at AS invited_at,
+         fi.accepted_at
+       FROM family_invitations fi
+       WHERE fi.family_id = $1
+         AND fi.status = 'pending'
+         AND NOT EXISTS (
+           SELECT 1 FROM family_memberships fm
+           WHERE fm.family_id = fi.family_id
+             AND fm.status = 'active'
+             AND lower(fm.email) = lower(fi.email)
+         )
+     )
+     SELECT * FROM (
+       SELECT * FROM active_members
+       UNION ALL
+       SELECT * FROM pending_invites
+     ) access_rows
+     ORDER BY
+       CASE WHEN membership_status = 'active' THEN 0 ELSE 1 END,
+       COALESCE(accepted_at, joined_at, invited_at) ASC,
+       lower(email) ASC`,
+    [familyId]
+  );
+  return rows.map((row) => ({
+    id: row.id,
+    email: row.email,
+    display_name: row.display_name,
+    role: row.role,
+    status: row.membership_status === 'active' ? 'active' : 'pending',
+    invitation_status: row.invitation_status || null,
+    invited_at: row.invited_at,
+    accepted_at: row.accepted_at || (row.invitation_status === 'accepted' ? row.joined_at : null),
+    joined_at: row.joined_at,
+    updated_at: row.updated_at,
+  }));
+}
+
 async function createFamilyWithPatient({ familyName, patientName, pronouns = 'she/her', clerkUserId, email, displayName }) {
   if (!familyName || !patientName || !clerkUserId) throw new Error('familyName, patientName, and clerkUserId are required');
   const client = await pool.connect();
@@ -820,6 +890,7 @@ module.exports = {
   upsertFamilyMembership,
   acceptPendingInvitations,
   createFamilyInvitation,
+  getFamilyAccessList,
   createFamilyWithPatient,
   initDefaultSettings,
   logWeight,

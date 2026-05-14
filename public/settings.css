@@ -161,6 +161,70 @@
   line-height: 1.4;
 }
 
+/* ---- Family access ---- */
+
+.family-members {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0 0 16px;
+}
+
+.family-member-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #e8eaed;
+  border-radius: 10px;
+  background: #f8fbff;
+}
+
+.family-member-main {
+  min-width: 0;
+}
+
+.family-member-name {
+  font-weight: 700;
+  color: #202124;
+  overflow-wrap: anywhere;
+}
+
+.family-member-email,
+.family-member-meta,
+.family-members-loading,
+.family-members-empty,
+.family-members-error {
+  font-size: 0.88rem;
+  color: #5f6368;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
+.family-member-status {
+  flex: 0 0 auto;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.family-member-status.active {
+  color: #137333;
+  background: #e6f4ea;
+}
+
+.family-member-status.pending {
+  color: #b06000;
+  background: #fef7e0;
+}
+
+.family-members-error {
+  color: #d93025;
+}
+
 /* ---- Status messages ---- */
 
 .settings-status {

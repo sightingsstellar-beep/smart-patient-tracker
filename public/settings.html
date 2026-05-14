@@ -167,6 +167,9 @@
     <section class="card settings-card" id="caregiver-card">
       <div class="settings-section-title">👥 Caregivers</div>
       <p class="settings-help">Invite another caregiver to access this same family/patient tracker with their own login.</p>
+      <div class="family-members" id="family-members" aria-live="polite">
+        <div class="family-members-loading">Loading family access…</div>
+      </div>
       <div class="settings-field">
         <label for="invite_email">Caregiver email</label>
         <input type="email" id="invite_email" name="invite_email" placeholder="caregiver@example.com" autocomplete="email" />
