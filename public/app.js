@@ -255,6 +255,31 @@ async function refreshDay() {
   }
 }
 
+let realtimeRefreshTimer = null;
+
+function scheduleRealtimeRefresh() {
+  if (realtimeRefreshTimer) return;
+  realtimeRefreshTimer = setTimeout(async () => {
+    realtimeRefreshTimer = null;
+    await refreshDay();
+  }, 250);
+}
+
+function initRealtimeUpdates() {
+  if (!window.EventSource) return;
+
+  try {
+    const events = new EventSource('/api/events');
+    events.addEventListener('care-log-changed', scheduleRealtimeRefresh);
+    events.onerror = () => {
+      // EventSource reconnects automatically. The 30s polling fallback remains
+      // in place for sleeping mobile browsers, proxies, or temporary network loss.
+    };
+  } catch (err) {
+    console.warn('[realtime] unavailable:', err.message);
+  }
+}
+
 function renderAll() {
   renderDayController();
   renderIntake();
@@ -1013,6 +1038,7 @@ updateClock();
 applyInitialDateFromUrl();
 loadSettings();
 initEventListeners();
+initRealtimeUpdates();
 refreshDay();
 
 

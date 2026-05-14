@@ -10,7 +10,7 @@
 const TelegramBot = require('node-telegram-bot-api');
 const db = require('./db');
 const { parseMessage } = require('./parser');
-const { buildReport, formatFluidType, getDailyLimit } = require('./server');
+const { buildReport, formatFluidType, getDailyLimit, publishCareChange } = require('./server');
 
 const token = process.env.TELEGRAM_BOT_TOKEN;
 if (!token) {
@@ -216,6 +216,7 @@ bot.onText(/^\/undo$/, async (msg) => {
       return bot.sendMessage(msg.chat.id, '⚠️ Nothing to undo — no entries logged today.');
     }
     await db.deleteLog(last.id);
+    publishCareChange({}, { action: 'delete', source: 'telegram-undo', dayKey: last.day_key, id: last.id });
     const dayKey = db.getDayKey();
     const summary = await db.getDaySummary(dayKey);
     const label = formatFluidType(last.fluid_type);
@@ -358,6 +359,7 @@ bot.on('message', async (msg) => {
       console.error('[bot] DB error logging action:', dbErr.message, action);
     }
   }
+  publishCareChange({}, { action: 'create', source: 'telegram', dayKey });
 
   // If weight was logged, send a dedicated weight confirmation with trend
   if (weightAction !== null) {

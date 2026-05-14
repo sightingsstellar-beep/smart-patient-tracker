@@ -17,6 +17,7 @@ const { clerkMiddleware, getAuth, createClerkClient } = require('@clerk/express'
 const { verifyMachineAuthToken } = require('@clerk/backend/internal');
 const db = require('./db');
 const mailer = require('./mailer');
+const realtime = require('./realtime');
 const { parseMessage } = require('./parser');
 const { APP_VERSION, ALEXA_SKILL_VERSION, releaseInfo } = require('./app-version');
 
@@ -213,6 +214,10 @@ async function resolveClerkScope(auth) {
 
 function requestScope(req) {
   return req.scope || {};
+}
+
+function publishCareChange(scope, detail = {}) {
+  realtime.publishCareChange(scope, detail);
 }
 
 function renderClerkLoginPage({ misconfigured = false } = {}) {
@@ -1987,6 +1992,7 @@ app.post('/api/alexa', async (req, res) => {
           fluid_type: fluid, amount_ml: amount, source: 'alexa',
           ...alexaScope,
         });
+        publishCareChange(alexaScope, { action: 'create', source: 'alexa', dayKey: db.getDayKey() });
 
         const apl    = await freshDisplayApl();
         const s2     = await db.getDaySummary(db.getDayKey(), alexaScope);
@@ -2006,6 +2012,7 @@ app.post('/api/alexa', async (req, res) => {
 
       if (action === 'gag') {
         await db.logGag(1, Date.now(), null, alexaScope);
+        publishCareChange(alexaScope, { action: 'create', source: 'alexa-gag', dayKey: db.getDayKey() });
         const apl = await freshDisplayApl();
         return res.json(alexaResponse('Gag logged.', null, null,
           supportsApl(req) ? [apl] : []));
@@ -2031,6 +2038,7 @@ app.post('/api/alexa', async (req, res) => {
           fluid_type: fluid, amount_ml: amount, source: 'alexa',
           ...alexaScope,
         });
+        publishCareChange(alexaScope, { action: 'create', source: 'alexa', dayKey: db.getDayKey() });
 
         // Return to display after logging so totals are visible immediately
         const apl    = await freshDisplayApl();
@@ -2147,6 +2155,7 @@ app.post('/api/alexa', async (req, res) => {
             source: 'alexa',
             ...alexaScope,
           });
+          publishCareChange(alexaScope, { action: 'create', source: 'alexa', dayKey: db.getDayKey() });
           const summary = await db.getDaySummary(db.getDayKey(), alexaScope);
           const outputMl = summary.outputs.reduce((s, o) => s + (o.amount_ml || 0), 0);
           const dirs = supportsApl(req)
@@ -2227,6 +2236,7 @@ app.post('/api/alexa', async (req, res) => {
           weightLogged = action.weight_kg;
         }
       }
+      publishCareChange(alexaScope, { action: 'create', source: 'alexa', dayKey });
 
       // If weight was the only/primary action, return a weight-specific response
       if (weightLogged !== null && parsed.actions.every((a) => a.type === 'weight')) {
@@ -2340,6 +2350,10 @@ app.use(requireAuth);
 
 app.get('/api/me', async (req, res) => {
   res.json({ ok: true, scope: req.scope || null });
+});
+
+app.get('/api/events', (req, res) => {
+  realtime.addClient(requestScope(req), req, res);
 });
 
 app.post('/api/family/invitations', async (req, res) => {
@@ -2730,6 +2744,7 @@ app.post('/api/log', async (req, res) => {
     }
 
     const summary = await db.getDaySummary(db.getDayKey(), scope);
+    publishCareChange(scope, { action: 'create', source: 'api-log', dayKey });
     res.json({ ok: true, results, totalIntake: summary.totalIntake });
   } catch (err) {
     console.error('[POST /api/log]', err);
@@ -2788,6 +2803,7 @@ app.patch('/api/log/:id', async (req, res) => {
     });
 
     const updated = await db.getLogById(id, scope);
+    publishCareChange(scope, { action: 'update', source: 'api-log', dayKey: updated?.day_key || dateResult.date, id });
     res.json({
       ok: true,
       entry: {
@@ -2834,6 +2850,7 @@ app.patch('/api/gag/:id', async (req, res) => {
     await db.updateGag({ id, timestamp, day_key: dateResult.date, ...scope });
 
     const updated = await db.getGagById(id, scope);
+    publishCareChange(scope, { action: 'update', source: 'api-gag', dayKey: updated?.day_key || dateResult.date, id });
     res.json({ ok: true, entry: { ...updated, time: formatTimestamp(updated.timestamp), time24: formatTimeInput(updated.timestamp) } });
   } catch (err) {
     console.error('[PATCH /api/gag/:id]', err);
@@ -2950,6 +2967,7 @@ app.delete('/api/gag/:id', async (req, res) => {
     if (result.changes === 0) {
       return res.status(404).json({ ok: false, error: 'Gag entry not found' });
     }
+    publishCareChange(scope, { action: 'delete', source: 'api-gag', id });
     res.json({ ok: true, deleted: id });
   } catch (err) {
     console.error('[DELETE /api/gag/:id]', err);
@@ -2972,6 +2990,7 @@ app.delete('/api/log/:id', async (req, res) => {
     if (result.changes === 0) {
       return res.status(404).json({ ok: false, error: 'Entry not found' });
     }
+    publishCareChange(scope, { action: 'delete', source: 'api-log', id });
     res.json({ ok: true, deleted: id });
   } catch (err) {
     console.error('[DELETE /api/log/:id]', err);
@@ -3001,6 +3020,7 @@ app.delete('/api/wellness', async (req, res) => {
       return res.status(404).json({ ok: false, error: 'Wellness entry not found' });
     }
 
+    publishCareChange(scope, { action: 'delete', source: 'api-wellness', dayKey: dateResult.date });
     res.json({ ok: true, deleted: { date: dateResult.date, check_time: checkTime } });
   } catch (err) {
     console.error('[DELETE /api/wellness]', err);
@@ -3034,6 +3054,7 @@ app.post('/api/weight', async (req, res) => {
 
     const existing = await db.getWeightForDate(date, scope);
     await db.logWeight(date, weight_kg, notes ?? null, scope);
+    publishCareChange(scope, { action: existing ? 'update' : 'create', source: 'api-weight', dayKey: date });
     res.json({ ok: true, weight_kg, date, replaced: !!existing });
   } catch (err) {
     console.error('[POST /api/weight]', err);
@@ -3109,6 +3130,7 @@ app.delete('/api/weight/:date', async (req, res) => {
       return res.status(404).json({ ok: false, error: 'Weight entry not found' });
     }
 
+    publishCareChange(scope, { action: 'delete', source: 'api-weight', dayKey: dateResult.date });
     res.json({ ok: true, deleted: dateResult.date });
   } catch (err) {
     console.error('[DELETE /api/weight/:date]', err);
@@ -3233,6 +3255,7 @@ app.post('/api/chat', async (req, res) => {
 
     const summary = await db.getDaySummary(dayKey, scope);
     const message = await buildChatConfirmation(parsed.actions, summary, scope);
+    publishCareChange(scope, { action: 'create', source: 'api-chat', dayKey });
 
     res.json({ ok: true, message, entries });
   } catch (err) {
@@ -3417,6 +3440,7 @@ async function buildReport(dayKey, scope = {}) {
 module.exports.buildReport = buildReport;
 module.exports.formatFluidType = formatFluidType;
 module.exports.getDailyLimit = getDailyLimit;
+module.exports.publishCareChange = publishCareChange;
 
 // ---------------------------------------------------------------------------
 // Start server
