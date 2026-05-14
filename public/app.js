@@ -158,9 +158,42 @@ async function parseWriteError(res) {
   let data = {};
   try { data = await res.json(); } catch (_) {}
   if (res.status === 401) {
-    return { message: 'Your sign-in session expired. Please sign in again and retry the save.' };
+    return { message: 'Your sign-in session needs to be refreshed. Please reload Glide Bedside and retry the save.' };
   }
   return { message: data?.error || `Save failed (HTTP ${res.status}). Please try again.` };
+}
+
+async function refreshAuthSession() {
+  try {
+    const res = await fetch('/api/me', {
+      method: 'GET',
+      cache: 'no-store',
+      credentials: 'same-origin',
+      headers: { Accept: 'application/json' },
+    });
+    return res.ok;
+  } catch (_) {
+    return false;
+  }
+}
+
+async function writeFetch(url, options = {}) {
+  const request = {
+    ...options,
+    cache: 'no-store',
+    credentials: 'same-origin',
+  };
+
+  let res = await fetch(url, request);
+  if (res.status !== 401) return res;
+
+  // Clerk can refresh expired session cookies on an authenticated GET request,
+  // but not on POST/PATCH/DELETE writes. After mobile network changes or app
+  // resume, do one silent GET refresh and replay the original save once.
+  if (await refreshAuthSession()) {
+    res = await fetch(url, request);
+  }
+  return res;
 }
 
 async function requireWriteOk(res) {
@@ -568,7 +601,7 @@ async function submitQuickLog(payload, btn = null) {
   }
 
   try {
-    const res = await fetch('/api/log', {
+    const res = await writeFetch('/api/log', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
@@ -742,7 +775,7 @@ async function handleSheetSubmit(event) {
 
       const url = state.sheet.mode === 'edit' ? `/api/log/${state.sheet.entry.id}` : '/api/log';
       const method = state.sheet.mode === 'edit' ? 'PATCH' : 'POST';
-      const res = await fetch(url, {
+      const res = await writeFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -755,7 +788,7 @@ async function handleSheetSubmit(event) {
       const body = state.sheet.mode === 'edit'
         ? { time, date: state.selectedDayKey }
         : { type: 'gag', count: 1, time, date: state.selectedDayKey };
-      const res = await fetch(url, {
+      const res = await writeFetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -763,7 +796,7 @@ async function handleSheetSubmit(event) {
       await requireWriteOk(res);
     } else if (state.sheet.kind === 'weight') {
       const weightVal = parseFloat(document.getElementById('sheet-weight-input').value);
-      const res = await fetch('/api/weight', {
+      const res = await writeFetch('/api/weight', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ weight_kg: weightVal, date: state.selectedDayKey }),
@@ -774,7 +807,7 @@ async function handleSheetSubmit(event) {
       const energy = parseInt(document.getElementById('sheet-energy-input').value, 10);
       const appetite = parseInt(document.getElementById('sheet-appetite-input').value, 10);
       const mood = parseInt(document.getElementById('sheet-mood-input').value, 10);
-      const res = await fetch('/api/log', {
+      const res = await writeFetch('/api/log', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -807,17 +840,17 @@ async function handleSheetDelete() {
 
   try {
     if (state.sheet.kind === 'fluid') {
-      const res = await fetch(`/api/log/${state.sheet.entry.id}`, { method: 'DELETE' });
+      const res = await writeFetch(`/api/log/${state.sheet.entry.id}`, { method: 'DELETE' });
       await requireWriteOk(res);
     } else if (state.sheet.kind === 'gag') {
-      const res = await fetch(`/api/gag/${state.sheet.entry.id}`, { method: 'DELETE' });
+      const res = await writeFetch(`/api/gag/${state.sheet.entry.id}`, { method: 'DELETE' });
       await requireWriteOk(res);
     } else if (state.sheet.kind === 'weight') {
-      const res = await fetch(`/api/weight/${encodeURIComponent(state.selectedDayKey)}`, { method: 'DELETE' });
+      const res = await writeFetch(`/api/weight/${encodeURIComponent(state.selectedDayKey)}`, { method: 'DELETE' });
       await requireWriteOk(res);
     } else if (state.sheet.kind === 'wellness') {
       const url = `/api/wellness?date=${encodeURIComponent(state.selectedDayKey)}&check_time=${encodeURIComponent(state.sheet.period)}`;
-      const res = await fetch(url, { method: 'DELETE' });
+      const res = await writeFetch(url, { method: 'DELETE' });
       await requireWriteOk(res);
     }
 
@@ -859,7 +892,7 @@ async function handleUndoCurrentDay() {
 
   try {
     const url = latest._kind === 'gag' ? `/api/gag/${latest.id}` : `/api/log/${latest.id}`;
-    const res = await fetch(url, { method: 'DELETE' });
+    const res = await writeFetch(url, { method: 'DELETE' });
     await requireWriteOk(res);
     btn.textContent = '✅ Undone';
     await refreshDay();
@@ -982,7 +1015,7 @@ function initEventListeners() {
     if (action === 'edit') openEntrySheet({ mode: 'edit', kind: 'weight' });
     if (action === 'delete') {
       if (!window.confirm('Delete this weight entry?')) return;
-      const res = await fetch(`/api/weight/${encodeURIComponent(state.selectedDayKey)}`, { method: 'DELETE' });
+      const res = await writeFetch(`/api/weight/${encodeURIComponent(state.selectedDayKey)}`, { method: 'DELETE' });
       if (res.ok) await refreshDay();
     }
   });
