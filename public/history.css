@@ -15,11 +15,12 @@
 }
 
 .history-main {
-  gap: 14px;
+  gap: 12px;
 }
 
 .trends-toolbar {
-  padding: 18px;
+  padding: 18px 18px 16px;
+  box-shadow: 0 1px 6px rgba(32, 33, 36, 0.06);
 }
 
 .trends-toolbar-top {
@@ -31,10 +32,11 @@
 }
 
 .trends-heading {
-  font-size: 1.1rem;
-  font-weight: 700;
+  font-size: 1.18rem;
+  font-weight: 750;
   color: var(--text);
   margin-bottom: 4px;
+  letter-spacing: -0.02em;
 }
 
 .trends-subheading {
@@ -44,28 +46,35 @@
 
 .range-pills {
   display: flex;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
+  padding: 3px;
+  background: #f1f3f4;
+  border-radius: 999px;
+  width: fit-content;
 }
 
 .range-pill {
   border: none;
   border-radius: 999px;
-  padding: 9px 14px;
-  background: var(--grey-light);
+  padding: 7px 13px;
+  background: transparent;
   color: var(--text-secondary);
-  font-size: 0.86rem;
+  font-size: 0.84rem;
   font-weight: 700;
   cursor: pointer;
 }
 
 .range-pill.active {
-  background: var(--blue);
-  color: white;
+  background: white;
+  color: var(--text);
+  box-shadow: 0 1px 4px rgba(32, 33, 36, 0.12);
 }
 
 .trend-card {
-  padding: 18px;
+  padding: 18px 18px 16px;
+  border: 1px solid rgba(224, 224, 224, 0.75);
+  box-shadow: 0 1px 8px rgba(32, 33, 36, 0.055);
 }
 
 .trend-card + .trend-card {
@@ -73,14 +82,15 @@
 }
 
 .trend-card-header {
-  margin-bottom: 14px;
+  margin-bottom: 12px;
 }
 
 .trend-card-header h3 {
-  font-size: 1rem;
-  font-weight: 700;
+  font-size: 1.03rem;
+  font-weight: 750;
   color: var(--text);
   margin-bottom: 4px;
+  letter-spacing: -0.015em;
 }
 
 .trend-card-header p {
@@ -91,30 +101,39 @@
 .trend-stats {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 10px;
+  gap: 0;
   margin-bottom: 16px;
+  border-top: 1px solid #eef0f2;
+  border-bottom: 1px solid #eef0f2;
 }
 
 .trend-stat {
-  background: var(--grey-light);
-  border-radius: 12px;
-  padding: 12px;
+  background: transparent;
+  border-radius: 0;
+  padding: 11px 0;
+}
+
+.trend-stat + .trend-stat {
+  border-left: 1px solid #eef0f2;
+  padding-left: 14px;
+  margin-left: 14px;
 }
 
 .trend-stat-label {
   display: block;
-  font-size: 0.75rem;
-  font-weight: 700;
+  font-size: 0.7rem;
+  font-weight: 750;
   color: var(--text-secondary);
   text-transform: uppercase;
-  letter-spacing: 0.4px;
+  letter-spacing: 0.06em;
   margin-bottom: 4px;
 }
 
 .trend-stat-value {
-  font-size: 1rem;
-  font-weight: 700;
+  font-size: 1.06rem;
+  font-weight: 750;
   color: var(--text);
+  font-variant-numeric: tabular-nums;
 }
 
 .trend-chart-scroll {
@@ -130,9 +149,9 @@
 .trend-line-shell {
   position: relative;
   height: 164px;
-  border-radius: 14px;
-  background: linear-gradient(180deg, #fbfcfe 0%, #f5f7fa 100%);
-  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: #fbfbfd;
+  border: 1px solid #edf0f2;
   overflow: hidden;
 }
 
@@ -150,7 +169,7 @@
 }
 
 .trend-line-grid span {
-  border-top: 1px dashed #e2e6eb;
+  border-top: 1px solid #eceff2;
 }
 
 .trend-line-svg {
@@ -163,7 +182,7 @@
 
 .trend-line-path {
   fill: none;
-  stroke-width: 2.5;
+  stroke-width: 2;
   stroke-linecap: round;
   stroke-linejoin: round;
 }
@@ -182,12 +201,12 @@
 
 .trend-line-point {
   display: block;
-  width: 10px;
-  height: 10px;
-  margin: 4px;
+  width: 8px;
+  height: 8px;
+  margin: 5px;
   border-radius: 999px;
   border: 2px solid #fff;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.16);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.13);
 }
 
 .trend-line-labels {
@@ -218,16 +237,24 @@
 
 .trend-bars {
   display: grid;
-  gap: 8px;
+  gap: 6px;
   align-items: end;
   min-height: 164px;
+  padding: 8px 2px 0;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0,
+    transparent 40px,
+    #eef1f3 41px
+  );
+  border-radius: 12px;
 }
 
 .trend-bar-btn {
   border: none;
   background: transparent;
   padding: 0;
-  min-width: 28px;
+  min-width: 24px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -240,6 +267,7 @@
   height: 132px;
   display: flex;
   align-items: flex-end;
+  justify-content: center;
 }
 
 .trend-bar-shell--signed {
@@ -252,8 +280,8 @@
   left: 0;
   right: 0;
   top: 50%;
-  height: 2px;
-  background: #dfe3e8;
+  height: 1px;
+  background: #cfd5dc;
   border-radius: 999px;
   transform: translateY(-50%);
 }
@@ -267,52 +295,59 @@
   transform: scaleY(1.03);
 }
 
+.trend-bar-btn:active .trend-bar--signed,
+.trend-bar-btn:hover .trend-bar--signed {
+  transform: translateX(-50%) scaleY(1.03);
+}
+
 .trend-bar {
-  width: 100%;
+  width: min(100%, 9px);
   min-height: 12px;
-  border-radius: 999px 999px 6px 6px;
+  border-radius: 2px 2px 0 0;
   transition: transform 0.15s ease;
 }
 
 .trend-bar--signed {
   position: absolute;
-  left: 0;
-  right: 0;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
 }
 
 .trend-bar--signed-positive {
   bottom: 50%;
-  border-radius: 999px 999px 6px 6px;
+  border-radius: 2px 2px 0 0;
 }
 
 .trend-bar--signed-negative {
   top: 50%;
-  border-radius: 6px 6px 999px 999px;
+  border-radius: 0 0 2px 2px;
 }
 
 .trend-bar-date {
-  font-size: 0.72rem;
-  font-weight: 700;
+  font-size: 0.68rem;
+  font-weight: 650;
   color: var(--text-secondary);
-  writing-mode: vertical-rl;
-  transform: rotate(180deg);
-  letter-spacing: 0.1px;
+  writing-mode: initial;
+  transform: none;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
 }
 
 .trend-bar--blue {
-  background: linear-gradient(180deg, #7fb4ff 0%, var(--blue) 100%);
+  background: #4d8df7;
 }
 
 .trend-bar--green {
-  background: linear-gradient(180deg, #7ddc9a 0%, var(--green) 100%);
+  background: #34a853;
 }
 
 .trend-bar--red {
-  background: linear-gradient(180deg, #ff9f97 0%, var(--red) 100%);
+  background: #e85d4f;
 }
 
 .trend-bar--purple {
-  background: linear-gradient(180deg, #d8a8eb 0%, var(--purple) 100%);
+  background: #9c6ade;
 }
 
 .trend-line--purple {
@@ -321,7 +356,7 @@
 }
 
 .trend-bar--orange {
-  background: linear-gradient(180deg, #ffd27e 0%, #fb8c00 100%);
+  background: #f6a23a;
 }
 
 @media (max-width: 430px) {
@@ -330,6 +365,6 @@
   }
 
   .trend-stats {
-    grid-template-columns: 1fr;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

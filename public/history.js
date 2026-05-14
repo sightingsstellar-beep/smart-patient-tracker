@@ -390,7 +390,8 @@ async function loadTrends() {
 }
 
 function initEvents() {
-  document.getElementById('refresh-btn').addEventListener('click', loadTrends);
+  const refreshBtn = document.getElementById('refresh-btn');
+  if (refreshBtn) refreshBtn.addEventListener('click', loadTrends);
   document.getElementById('range-pills').addEventListener('click', async (event) => {
     const btn = event.target.closest('[data-range]');
     if (!btn) return;
