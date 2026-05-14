@@ -307,7 +307,7 @@ function renderTrends() {
       averageLabel: mean(weightPoints.map((point) => point.value)) !== null ? `${formatNumber(mean(weightPoints.map((point) => point.value)))} kg` : 'No data',
     }),
     buildTrendCard({
-      icon: '💧',
+      icon: '🫧',
       title: 'Intake over time',
       subtitle: 'Daily total intake',
       unit: ' ml',
@@ -337,7 +337,7 @@ function renderTrends() {
       averageLabel: `${formatNumber(mean(gagPoints.map((point) => point.value)) || 0)} / day`,
     }),
     buildTrendCard({
-      icon: '❤️',
+      icon: '🩺',
       title: 'Wellness average',
       subtitle: 'Average of energy, appetite, and mood',
       unit: '',
@@ -385,7 +385,7 @@ async function loadTrends() {
     });
   } catch (err) {
     console.error('[trends] Load error:', err.message);
-    container.innerHTML = `<div class="h-error">⚠️ Failed to load trends: ${escapeHtml(err.message)}</div>`;
+    container.innerHTML = `<div class="h-error">🚦 Failed to load trends: ${escapeHtml(err.message)}</div>`;
   }
 }
 

@@ -880,7 +880,7 @@ async function handleUndoCurrentDay() {
   const btn = document.getElementById('undo-btn');
   if (!allEntries.length) {
     const original = btn.textContent;
-    btn.textContent = '⚠️ Nothing to undo';
+    btn.textContent = '🚦 Nothing to undo';
     setTimeout(() => { btn.textContent = original; }, 1500);
     return;
   }

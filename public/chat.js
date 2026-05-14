@@ -96,7 +96,7 @@ loadSettings();
 // Show initial welcome message
 appendMessage(
   'bot',
-  'Hi! You can type or hold the mic 🎤 to log entries. Try: 120ml pediasure and 45ml water or pee 80ml',
+  'Hi! You can type or hold the mic 🎙️ to log entries. Try: 120ml pediasure and 45ml water or pee 80ml',
   'normal'
 );
 
@@ -453,7 +453,7 @@ async function stopRecording(abort = false) {
     } else {
       // Web Speech gave nothing — fall through to MediaRecorder+Whisper
       hideTranscribing();
-      appendMessage('bot', '🎤 Web Speech returned nothing. Try typing instead, or tap-hold the mic again.', 'warn');
+      appendMessage('bot', '🎙️ Web Speech returned nothing. Try typing instead, or tap-hold the mic again.', 'warn');
     }
   } else {
     // MediaRecorder path
@@ -461,7 +461,7 @@ async function stopRecording(abort = false) {
       const audioBlob = await stopMediaRecorder();
       if (!audioBlob || audioBlob.size < 500) {
         hideTranscribing();
-        appendMessage('bot', '🎤 Recording was too short or empty. Try again.', 'warn');
+        appendMessage('bot', '🎙️ Recording was too short or empty. Try again.', 'warn');
         return;
       }
 

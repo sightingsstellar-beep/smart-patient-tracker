@@ -10,10 +10,12 @@
 
 .settings-heading {
   font-size: 1.25rem;
-  font-weight: 700;
+  font-weight: 800;
   color: #1a73e8;
+  color: var(--blue);
   margin: 0 0 16px;
   padding: 0 4px;
+  letter-spacing: -0.02em;
 }
 
 /* ---- Card sections ---- */
@@ -24,14 +26,19 @@
 }
 
 .settings-section-title {
-  font-size: 0.85rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.78rem;
   font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  color: #5f6368;
+  color: var(--blue-dark);
   margin-bottom: 14px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #e8eaed;
+  padding: 7px 10px;
+  border-radius: 999px;
+  background: var(--blue-light);
+  border: 1px solid rgba(47, 127, 159, 0.12);
 }
 
 /* ---- Individual fields ---- */
@@ -83,7 +90,9 @@
 .settings-field select:focus {
   outline: none;
   border-color: #1a73e8;
+  border-color: var(--blue);
   box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.15);
+  box-shadow: 0 0 0 3px rgba(47, 127, 159, 0.16);
 }
 
 /* ---- Radio group ---- */
@@ -131,7 +140,7 @@
   font-weight: 600;
   font-family: inherit;
   color: #fff;
-  background: #1a73e8;
+  background: var(--blue);
   border: none;
   border-radius: 10px;
   cursor: pointer;
@@ -141,7 +150,7 @@
 }
 
 .settings-save-btn:hover {
-  background: #1557b0;
+  background: var(--blue-dark);
 }
 
 .settings-save-btn:active {
@@ -178,7 +187,7 @@
   padding: 12px;
   border: 1px solid #e8eaed;
   border-radius: 10px;
-  background: #f8fbff;
+  background: linear-gradient(180deg, #ffffff, var(--surface));
 }
 
 .family-member-main {
@@ -251,17 +260,22 @@
     gap: 12px;
   }
 
-  .settings-field label {
+  .settings-field > label {
     flex: 0 0 200px;
     text-align: right;
   }
 
-  .settings-field input,
-  .settings-field select {
+  .settings-field > input[type="text"],
+  .settings-field > input[type="email"],
+  .settings-field > input[type="number"],
+  .settings-field > input[type="time"],
+  .settings-field > select {
     flex: 1;
+    min-width: 0;
   }
 
   .radio-group {
     flex: 1;
+    min-width: 0;
   }
 }

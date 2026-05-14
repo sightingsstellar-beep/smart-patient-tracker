@@ -271,7 +271,7 @@ function renderClerkLoginPage({ misconfigured = false } = {}) {
 </head>
 <body>
   <div class="card">
-    <div class="icon">❤️</div>
+    <div class="icon">💙</div>
     <h1>Glide Bedside</h1>
     <p class="subtitle">Secure caregiver access for your family care circle.</p>
     ${misconfigured ? '<div class="notice">Clerk login is enabled but not fully configured. Please contact support.</div>' : `<p class="muted" id="login-help">Loading secure sign-in…</p><div id="sign-in" aria-live="polite"></div>`}
@@ -920,7 +920,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
     items: [
       {
         type: 'Text',
-        text: patientName ? `💧 ${patientName}` : '💧 Fluid Tracker',
+        text: patientName ? `🫧 ${patientName}` : '🫧 Fluid Tracker',
         color: '#5a8abf',
         fontSize: '17dp',
       },
@@ -1240,7 +1240,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
                           type: 'Frame', backgroundColor: '#0d1a40', borderRadius: 10,
                           alignSelf: 'stretch', width: '100%',
                           paddingTop: '14dp', paddingBottom: '14dp',
-                          item: { type: 'Text', text: '🎤  Log by Voice', color: '#8ab4f8',
+                          item: { type: 'Text', text: '🎙️  Log by Voice', color: '#8ab4f8',
                             width: '100%', fontSize: '20dp', fontWeight: 'bold',
                             textAlign: 'center', textAlignVertical: 'center' },
                         },
@@ -1406,7 +1406,7 @@ function buildAplDirective(intakeMl, limitMl, mode, selectedFluid, outputMl, int
   // ═══════════════════════════════════════════════════════════════════════════
 
   const FLUID_EMOJI = {
-    water: '💧', pediasure: '🍼', milk: '🥛', juice: '🧃',
+    water: '🫧', pediasure: '🍼', milk: '🥛', juice: '🧃',
     yogurt_drink: '🥣', vitamin_water: '💦',
     urine: '🚽', poop: '💩', vomit: '🤮',
   };
@@ -3194,7 +3194,7 @@ async function buildChatConfirmation(actions, summary, scope = {}) {
   const totalOut = summary.outputs.reduce((sum, o) => sum + (o.amount_ml || 0), 0);
   const outStr = totalOut > 0 ? `${totalOut}g` : `${summary.outputs.length} event${summary.outputs.length !== 1 ? 's' : ''}`;
 
-  return `✅ Logged: ${logged} | 💧 Total In: ${summary.totalIntake}/${limit}ml (${pct}%) · 🚽 Total Out: ${outStr}`;
+  return `✅ Logged: ${logged} | 🫧 Total In: ${summary.totalIntake}/${limit}ml (${pct}%) · 🚽 Total Out: ${outStr}`;
 }
 
 app.post('/api/chat', async (req, res) => {
@@ -3231,7 +3231,7 @@ app.post('/api/chat', async (req, res) => {
       const label = formatFluidType(missingAmount.fluid_type);
       return res.json({
         ok: false,
-        message: `⚠️ I need a measurement for ${label}. How many ml was it? (e.g. "${label} 80ml")`,
+        message: `🚦 I need a measurement for ${label}. How many ml was it? (e.g. "${label} 80ml")`,
         entries: [],
       });
     }
@@ -3414,9 +3414,9 @@ async function buildReport(dayKey, scope = {}) {
   const percent = Math.round((summary.totalIntake / limit) * 100);
 
   const childName = await getChildNameForScope(scope);
-  let report = `📊 ${childName}'s Report — ${dateStr} ${timeStr}\n`;
+  let report = `📋 ${childName}'s Report — ${dateStr} ${timeStr}\n`;
   report += `━━━━━━━━━━━━━━━━━━━━━━━\n`;
-  report += `\n💧 FLUID INTAKE: ${summary.totalIntake}ml / ${limit}ml (${percent}%)\n`;
+  report += `\n🫧 FLUID INTAKE: ${summary.totalIntake}ml / ${limit}ml (${percent}%)\n`;
 
   if (Object.keys(summary.intakeByType).length > 0) {
     for (const [type, ml] of Object.entries(summary.intakeByType)) {
@@ -3442,13 +3442,13 @@ async function buildReport(dayKey, scope = {}) {
   // Latest wellness check
   if (summary.wellness.length > 0) {
     const latest = summary.wellness[summary.wellness.length - 1];
-    report += `\n❤️ WELLNESS (${latest.check_time} check):\n`;
+    report += `\n🩺 WELLNESS (${latest.check_time} check):\n`;
     if (latest.appetite !== null) report += `  Appetite: ${latest.appetite}/10\n`;
     if (latest.energy !== null) report += `  Energy: ${latest.energy}/10\n`;
     if (latest.mood !== null) report += `  Mood: ${latest.mood}/10\n`;
     if (latest.cyanosis !== null) report += `  Cyanosis: ${latest.cyanosis}/10\n`;
   } else {
-    report += `\n❤️ WELLNESS: No check logged yet\n`;
+    report += `\n🩺 WELLNESS: No check logged yet\n`;
   }
 
   report += `━━━━━━━━━━━━━━━━━━━━━━━`;
