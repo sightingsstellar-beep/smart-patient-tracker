@@ -54,6 +54,7 @@
 }
 
 .settings-field input[type="text"],
+.settings-field input[type="email"],
 .settings-field input[type="number"],
 .settings-field input[type="time"],
 .settings-field select {
