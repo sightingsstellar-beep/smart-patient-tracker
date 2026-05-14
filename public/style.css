@@ -701,6 +701,27 @@ body {
   gap: 16px;
 }
 
+
+.app-alert {
+  position: fixed;
+  left: 14px;
+  right: 14px;
+  bottom: 72px;
+  z-index: 900;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background: #fce8e6;
+  color: #a50e0e;
+  border: 1px solid #f4b8b2;
+  box-shadow: var(--shadow-hover);
+  font-size: 0.92rem;
+  line-height: 1.35;
+}
+
+.app-alert a { color: inherit; font-weight: 700; }
+
 /* ============================================================
    LOADING & ERROR STATES
    ============================================================ */

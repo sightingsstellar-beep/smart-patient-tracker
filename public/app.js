@@ -143,6 +143,37 @@ function getWeightTrendMeta() {
   return { label, className };
 }
 
+
+function showAppAlert(message, options = {}) {
+  const alert = document.getElementById('app-alert');
+  if (!alert) return;
+  const canonicalUrl = options.canonicalUrl;
+  alert.innerHTML = canonicalUrl
+    ? `${escapeHtml(message)} <a href="${escapeHtml(canonicalUrl)}">Open Glide Bedside</a>`
+    : escapeHtml(message);
+  alert.style.display = 'block';
+}
+
+async function parseWriteError(res) {
+  let data = {};
+  try { data = await res.json(); } catch (_) {}
+  if (data?.error === 'wrong_app_domain' && data?.canonicalUrl) {
+    return { message: 'This saved app shortcut is using an old domain.', canonicalUrl: data.canonicalUrl };
+  }
+  if (res.status === 401) {
+    return { message: 'Your sign-in session expired or this shortcut is using an old app domain. Please open Glide Bedside and sign in again.', canonicalUrl: 'https://bedside.glidechart.com' };
+  }
+  return { message: data?.error || `Save failed (HTTP ${res.status}). Please try again.` };
+}
+
+async function requireWriteOk(res) {
+  if (res.ok) return;
+  const err = await parseWriteError(res);
+  const error = new Error(err.message);
+  error.canonicalUrl = err.canonicalUrl;
+  throw error;
+}
+
 function updateClock() {
   const now = new Date();
   document.getElementById('current-time').textContent = now.toLocaleTimeString('en-US', {
@@ -205,7 +236,7 @@ async function refreshDay() {
     const url = new URL('/api/day', window.location.origin);
     if (state.selectedDayKey) url.searchParams.set('date', state.selectedDayKey);
     const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    await requireWriteOk(res);
 
     const data = await res.json();
     state.data = data;
@@ -520,7 +551,7 @@ async function submitQuickLog(payload, btn = null) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    await requireWriteOk(res);
 
     if (btn) {
       btn.textContent = '✅';
@@ -533,6 +564,7 @@ async function submitQuickLog(payload, btn = null) {
     await refreshDay();
   } catch (err) {
     console.error('[quick-log] Error:', err.message);
+    showAppAlert(err.message, { canonicalUrl: err.canonicalUrl });
     if (btn) {
       btn.textContent = '❌';
       setTimeout(() => {
@@ -693,7 +725,7 @@ async function handleSheetSubmit(event) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await requireWriteOk(res);
     } else if (state.sheet.kind === 'gag') {
       const time = document.getElementById('sheet-time-input').value;
       const url = state.sheet.mode === 'edit' ? `/api/gag/${state.sheet.entry.id}` : '/api/log';
@@ -706,7 +738,7 @@ async function handleSheetSubmit(event) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await requireWriteOk(res);
     } else if (state.sheet.kind === 'weight') {
       const weightVal = parseFloat(document.getElementById('sheet-weight-input').value);
       const res = await fetch('/api/weight', {
@@ -714,7 +746,7 @@ async function handleSheetSubmit(event) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ weight_kg: weightVal, date: state.selectedDayKey }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await requireWriteOk(res);
     } else if (state.sheet.kind === 'wellness') {
       const cyanosis = parseInt(document.querySelector('input[name="cyanosis"]:checked')?.value || '1', 10);
       const energy = parseInt(document.getElementById('sheet-energy-input').value, 10);
@@ -733,13 +765,14 @@ async function handleSheetSubmit(event) {
           date: state.selectedDayKey,
         }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await requireWriteOk(res);
     }
 
     closeEntrySheet();
     await refreshDay();
   } catch (err) {
     console.error('[sheet] Save error:', err.message);
+    showAppAlert(err.message, { canonicalUrl: err.canonicalUrl });
   } finally {
     saveBtn.disabled = false;
     saveBtn.textContent = original;
@@ -753,23 +786,24 @@ async function handleSheetDelete() {
   try {
     if (state.sheet.kind === 'fluid') {
       const res = await fetch(`/api/log/${state.sheet.entry.id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await requireWriteOk(res);
     } else if (state.sheet.kind === 'gag') {
       const res = await fetch(`/api/gag/${state.sheet.entry.id}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await requireWriteOk(res);
     } else if (state.sheet.kind === 'weight') {
       const res = await fetch(`/api/weight/${encodeURIComponent(state.selectedDayKey)}`, { method: 'DELETE' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await requireWriteOk(res);
     } else if (state.sheet.kind === 'wellness') {
       const url = `/api/wellness?date=${encodeURIComponent(state.selectedDayKey)}&check_time=${encodeURIComponent(state.sheet.period)}`;
       const res = await fetch(url, { method: 'DELETE' });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      await requireWriteOk(res);
     }
 
     closeEntrySheet();
     await refreshDay();
   } catch (err) {
     console.error('[sheet] Delete error:', err.message);
+    showAppAlert(err.message, { canonicalUrl: err.canonicalUrl });
   }
 }
 
@@ -804,11 +838,12 @@ async function handleUndoCurrentDay() {
   try {
     const url = latest._kind === 'gag' ? `/api/gag/${latest.id}` : `/api/log/${latest.id}`;
     const res = await fetch(url, { method: 'DELETE' });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    await requireWriteOk(res);
     btn.textContent = '✅ Undone';
     await refreshDay();
   } catch (err) {
     console.error('[undo] Error:', err.message);
+    showAppAlert(err.message, { canonicalUrl: err.canonicalUrl });
     btn.textContent = '❌ Failed';
   } finally {
     setTimeout(() => {
