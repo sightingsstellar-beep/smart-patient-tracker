@@ -118,7 +118,12 @@ app.use(session({
 
 // Health check (public — used by Railway to verify the container is up)
 app.get('/health', (req, res) => res.json({ ok: true, version: APP_VERSION }));
-app.get('/api/version', (req, res) => res.json(releaseInfo()));
+app.get('/api/version', (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
+  res.json(releaseInfo());
+});
 
 // PWA assets — must be public so iOS/Android can fetch them without a session
 app.get('/apple-touch-icon.png', (req, res) =>
@@ -329,6 +334,7 @@ function renderClerkLoginPage({ misconfigured = false } = {}) {
       }
     });
   </script>`}
+  <script src="version-watch.js"></script>
 </body>
 </html>`;
 }
@@ -2437,8 +2443,18 @@ app.get('/api/backup', async (req, res) => {
   }
 });
 
-// Static files (served after auth check)
-app.use(express.static(path.join(__dirname, 'public')));
+// Static files (served after auth check). Revalidate browser assets so
+// deployed UI changes are picked up promptly without sticky stale JS/CSS.
+app.use(express.static(path.join(__dirname, 'public'), {
+  etag: true,
+  lastModified: true,
+  maxAge: 0,
+  setHeaders(res, filePath) {
+    if (/\.(?:html|js|css)$/i.test(filePath)) {
+      res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+    }
+  },
+}));
 
 // ---------------------------------------------------------------------------
 // Date helpers
