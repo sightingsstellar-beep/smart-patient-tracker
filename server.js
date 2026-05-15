@@ -237,6 +237,11 @@ function requestScope(req) {
   return req.scope || {};
 }
 
+function accountPreferenceSubject(req) {
+  const scope = requestScope(req);
+  return scope.clerkUserId ? `clerk:${scope.clerkUserId}` : null;
+}
+
 function publishCareChange(scope, detail = {}) {
   realtime.publishCareChange(scope, detail);
 }
@@ -2379,6 +2384,38 @@ app.use(requireAuth);
 
 app.get('/api/me', async (req, res) => {
   res.json({ ok: true, scope: req.scope || null });
+});
+
+app.get('/api/account/preferences', async (req, res) => {
+  try {
+    const subject = accountPreferenceSubject(req);
+    if (!subject) return res.json({ ok: true, accountScoped: false, preferences: {} });
+    const preferences = await db.getAccountPreferences(subject);
+    res.json({ ok: true, accountScoped: true, preferences });
+  } catch (err) {
+    console.error('[GET /api/account/preferences]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+app.post('/api/account/preferences', async (req, res) => {
+  try {
+    const subject = accountPreferenceSubject(req);
+    if (!subject) return res.status(400).json({ ok: false, error: 'Account-scoped preferences require an authenticated account.' });
+    const body = req.body;
+    if (!body || typeof body !== 'object') {
+      return res.status(400).json({ ok: false, error: 'Invalid request body' });
+    }
+    if (body.ui_palette !== undefined) {
+      const palette = ['calm', 'contrast', 'dark'].includes(body.ui_palette) ? body.ui_palette : 'calm';
+      await db.setAccountPreference(subject, 'ui_palette', palette);
+    }
+    const preferences = await db.getAccountPreferences(subject);
+    res.json({ ok: true, accountScoped: true, preferences });
+  } catch (err) {
+    console.error('[POST /api/account/preferences]', err);
+    res.status(500).json({ ok: false, error: err.message });
+  }
 });
 
 app.get('/api/family/members', async (req, res) => {

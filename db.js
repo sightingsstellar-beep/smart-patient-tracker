@@ -27,7 +27,6 @@ const DEFAULT_SETTINGS = {
   warn_threshold_red: '90',
   timezone: 'America/New_York',
   units: 'ml',
-  ui_palette: 'calm',
 };
 
 const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;
@@ -189,6 +188,14 @@ async function initSchema() {
       data    TEXT NOT NULL
     );
 
+    CREATE TABLE IF NOT EXISTS account_preferences (
+      subject    TEXT NOT NULL,
+      key        TEXT NOT NULL,
+      value      TEXT NOT NULL,
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+      PRIMARY KEY (subject, key)
+    );
+
     CREATE INDEX IF NOT EXISTS idx_fluid_logs_patient_day ON fluid_logs (family_id, patient_id, day_key, timestamp);
     CREATE INDEX IF NOT EXISTS idx_wellness_patient_day ON wellness_checks (family_id, patient_id, day_key, timestamp);
     CREATE INDEX IF NOT EXISTS idx_gag_patient_day ON gag_events (family_id, patient_id, day_key, timestamp);
@@ -265,6 +272,21 @@ async function setSettingForScope(key, value, scope = {}) {
     [familyId, patientId, key, String(value)]
   );
   if (familyId === DEFAULT_FAMILY_ID && patientId === DEFAULT_PATIENT_ID) settingsCache.set(key, String(value));
+}
+
+async function getAccountPreferences(subject) {
+  if (!subject) return {};
+  const { rows } = await query('SELECT key, value FROM account_preferences WHERE subject = $1', [subject]);
+  return Object.fromEntries(rows.map((row) => [row.key, row.value]));
+}
+
+async function setAccountPreference(subject, key, value) {
+  if (!subject) throw new Error('account preference subject is required');
+  await query(
+    `INSERT INTO account_preferences (subject, key, value, updated_at) VALUES ($1,$2,$3,now())
+     ON CONFLICT (subject, key) DO UPDATE SET value=EXCLUDED.value, updated_at=now()`,
+    [subject, key, String(value)]
+  );
 }
 
 async function seedDefaultSettingsForPatient(familyId, patientId, overrides = {}) {
@@ -786,7 +808,7 @@ async function deleteWeight(date, scope = {}) {
 }
 
 async function exportAllData() {
-  const tables = ['families', 'patients', 'users', 'family_memberships', 'family_invitations', 'alexa_account_links', 'settings', 'fluid_logs', 'wellness_checks', 'gag_events', 'weight_logs', 'sessions'];
+  const tables = ['families', 'patients', 'users', 'family_memberships', 'family_invitations', 'alexa_account_links', 'settings', 'account_preferences', 'fluid_logs', 'wellness_checks', 'gag_events', 'weight_logs', 'sessions'];
   const data = {};
   for (const table of tables) {
     const { rows } = await query(`SELECT * FROM ${table}`);
@@ -884,6 +906,8 @@ module.exports = {
   getSettingForScope,
   setSetting,
   setSettingForScope,
+  getAccountPreferences,
+  setAccountPreference,
   seedDefaultSettingsForPatient,
   getPrimaryPatientForFamily,
   getFamilyMembershipsByClerkUserId,

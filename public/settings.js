@@ -50,7 +50,6 @@ const FIELD_IDS = [
   'wellness_check_1',
   'wellness_check_2',
   'timezone',
-  'ui_palette',
 ];
 
 // ---------------------------------------------------------------------------
@@ -91,9 +90,7 @@ async function loadSettings() {
     const radios = document.querySelectorAll('input[name="units"]');
     radios.forEach((r) => { r.checked = r.value === unitsValue; });
 
-    if (window.GlideTheme) {
-      window.GlideTheme.apply(settings.ui_palette || 'calm');
-    }
+    await loadAccountPreferences();
 
   } catch (err) {
     console.error('[settings] Load error:', err);
@@ -125,11 +122,10 @@ async function saveSettings() {
     payload.units = selectedUnit.value;
   }
 
-  if (!['calm', 'contrast', 'dark'].includes(payload.ui_palette)) {
-    payload.ui_palette = 'calm';
-  }
+  const paletteEl = document.getElementById('ui_palette');
+  const selectedPalette = ['calm', 'contrast', 'dark'].includes(paletteEl?.value) ? paletteEl.value : 'calm';
   if (window.GlideTheme) {
-    window.GlideTheme.apply(payload.ui_palette);
+    window.GlideTheme.apply(selectedPalette);
   }
 
   // Basic validation
@@ -175,9 +171,7 @@ async function saveSettings() {
     if (nameEl && data.child_name) {
       nameEl.textContent = data.child_name;
     }
-    if (window.GlideTheme) {
-      window.GlideTheme.apply(data.ui_palette || payload.ui_palette);
-    }
+    await saveAccountPreferences(selectedPalette);
 
   } catch (err) {
     console.error('[settings] Save error:', err);
@@ -186,6 +180,43 @@ async function saveSettings() {
     btn.disabled = false;
     btn.innerHTML = SAVE_BUTTON_HTML;
   }
+}
+
+// ---------------------------------------------------------------------------
+// Account preferences
+// ---------------------------------------------------------------------------
+
+async function loadAccountPreferences() {
+  const paletteEl = document.getElementById('ui_palette');
+  if (!paletteEl) return;
+  try {
+    const res = await fetch('/api/account/preferences', {
+      cache: 'no-store',
+      headers: { Accept: 'application/json' },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const palette = data.preferences?.ui_palette || window.GlideTheme?.current?.() || 'calm';
+    paletteEl.value = ['calm', 'contrast', 'dark'].includes(palette) ? palette : 'calm';
+    if (window.GlideTheme) window.GlideTheme.apply(paletteEl.value);
+  } catch (err) {
+    console.warn('[settings] Account preferences unavailable:', err.message);
+    paletteEl.value = window.GlideTheme?.current?.() || 'calm';
+  }
+}
+
+async function saveAccountPreferences(uiPalette) {
+  const res = await fetch('/api/account/preferences', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ui_palette: uiPalette }),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || !data.ok) {
+    throw new Error(data.error || `HTTP ${res.status}`);
+  }
+  const savedPalette = data.preferences?.ui_palette || uiPalette;
+  if (window.GlideTheme) window.GlideTheme.apply(savedPalette);
 }
 
 // ---------------------------------------------------------------------------

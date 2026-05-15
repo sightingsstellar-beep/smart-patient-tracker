@@ -1,8 +1,8 @@
 /*
  * theme.js — shared Glide Bedside color palette loader.
  *
- * Applies a stored palette immediately, then syncs with /api/settings when the
- * app is available. Keep this tiny so it can run in <head> before CSS loads.
+ * Applies a stored palette immediately, then syncs with account preferences
+ * when the app is available. Keep this tiny so it can run in <head> before CSS loads.
  */
 
 'use strict';
@@ -41,14 +41,15 @@
 
   async function syncFromSettings() {
     try {
-      const res = await fetch('/api/settings', {
+      const res = await fetch('/api/account/preferences', {
         cache: 'no-store',
         credentials: 'same-origin',
         headers: { Accept: 'application/json' },
       });
       if (!res.ok) return;
-      const settings = await res.json();
-      applyPalette(settings.ui_palette || settings.theme_palette || 'calm');
+      const data = await res.json();
+      const palette = data.preferences?.ui_palette;
+      if (palette) applyPalette(palette);
     } catch (_) {
       // Theme sync is best-effort; keep the immediate local palette.
     }
