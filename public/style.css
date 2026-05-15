@@ -1368,12 +1368,12 @@ body {
 
 .day-controller-bar {
   position: sticky;
-  top: 102px;
+  top: 74px;
   z-index: 90;
   background: rgba(255, 255, 255, 0.96);
   backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border);
-  padding: 10px 12px 12px;
+  padding: 0 12px 12px;
 }
 
 .day-controller-shell {
@@ -1382,6 +1382,7 @@ body {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  padding-top: 10px;
 }
 
 .day-nav-btn,
@@ -1853,7 +1854,7 @@ body {
 
 @media (max-width: 430px) {
   .day-controller-bar {
-    top: 98px;
+    top: 72px;
   }
 
   .day-status-row {

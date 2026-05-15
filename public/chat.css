@@ -11,8 +11,8 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  /* Extra bottom padding for fixed input bar + iOS home bar */
-  padding-bottom: 0;
+  /* Room for the fixed chat composer plus the shared bottom nav. */
+  padding-bottom: calc(158px + env(safe-area-inset-bottom, 0px));
 }
 
 .chat-main {
@@ -22,7 +22,7 @@ body {
   max-width: 640px;
   margin: 0 auto;
   width: 100%;
-  padding: 12px 12px 80px; /* 80px for fixed input bar */
+  padding: 12px 12px 158px; /* fixed input bar + floating bottom nav */
   gap: 12px;
   overflow-y: auto;
 }
@@ -293,32 +293,33 @@ body {
 
 .chat-input-bar {
   position: fixed;
-  bottom: 0;
+  bottom: calc(88px + env(safe-area-inset-bottom, 0px));
   left: 0;
   right: 0;
   background: white;
-  border-top: 1px solid var(--border);
+  border: 1px solid rgba(219, 229, 236, 0.9);
+  border-radius: 26px;
   padding: 10px 12px;
-  padding-bottom: calc(10px + env(safe-area-inset-bottom, 0px));
   display: flex;
   align-items: center;
   gap: 8px;
   z-index: 200;
-  max-width: 640px;
+  max-width: 620px;
   margin: 0 auto;
-  /* full width even when centered */
-  width: 100%;
+  width: calc(100% - 20px);
   left: 50%;
   transform: translateX(-50%);
+  box-shadow: 0 16px 36px rgba(23, 47, 69, 0.14), 0 2px 8px rgba(23, 47, 69, 0.08);
 }
 
 /* Ensure the input bar spans full width on mobile */
 @media (max-width: 640px) {
   .chat-input-bar {
-    left: 0;
-    right: 0;
+    left: 10px;
+    right: 10px;
     transform: none;
-    max-width: 100%;
+    max-width: none;
+    width: auto;
   }
 }
 
@@ -380,6 +381,6 @@ body {
   }
 
   .chat-main {
-    padding: 16px 16px 88px;
+    padding: 16px 16px 166px;
   }
 }
