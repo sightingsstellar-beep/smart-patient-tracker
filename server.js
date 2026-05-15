@@ -132,6 +132,20 @@ app.get('/apple-touch-icon.png', (req, res) =>
 app.get('/manifest.json', (req, res) =>
   res.sendFile(path.join(__dirname, 'public', 'manifest.json'))
 );
+app.use('/vendor/phosphor', express.static(path.join(__dirname, 'public', 'vendor', 'phosphor'), {
+  etag: true,
+  lastModified: true,
+  maxAge: 0,
+  setHeaders(res) {
+    res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+  },
+}));
+for (const publicScript of ['theme.js', 'version-watch.js']) {
+  app.get(`/${publicScript}`, (req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+    res.sendFile(path.join(__dirname, 'public', publicScript));
+  });
+}
 
 function authStatus(req = null) {
   let clerkAuthenticated = false;
