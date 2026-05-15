@@ -76,6 +76,111 @@
   --glide-gradient: linear-gradient(135deg, #003d4f 0%, #005f73 50%, #00838f 100%);
 }
 
+:root[data-theme="sage"] {
+  --blue: #4f7f64;
+  --blue-dark: #2f5d45;
+  --blue-light: #e5f3ea;
+  --bedside-bg: #f5faf6;
+  --bedside-bg-start: #f9fcf8;
+  --bedside-bg-mid: #edf7f0;
+  --bedside-bg-end: #f8faf7;
+  --bedside-bg-glow: rgba(112, 163, 132, 0.22);
+  --bedside-nav-muted: #657568;
+  --bedside-nav-track: rgba(79, 127, 100, 0.11);
+  --bedside-nav-border: rgba(79, 127, 100, 0.22);
+  --aqua: #6fb6a0;
+  --aqua-light: #e6f6f1;
+  --green: #3d8756;
+  --green-light: #e4f5e9;
+  --yellow: #b48828;
+  --yellow-light: #fff5d9;
+  --red: #bd5c52;
+  --red-light: #fdecea;
+  --purple: #7b6fa8;
+  --grey: #667368;
+  --grey-light: #f2f6f3;
+  --surface: #fcfefd;
+  --input-bg: #ffffff;
+  --text: #1d2b22;
+  --text-primary: #1d2b22;
+  --text-secondary: #627067;
+  --border: #cfdfd5;
+  --focus-ring: rgba(79, 127, 100, 0.18);
+  --shadow: 0 10px 26px rgba(31, 68, 45, 0.09);
+  --shadow-hover: 0 16px 36px rgba(31, 68, 45, 0.16);
+  --glide-gradient: linear-gradient(135deg, #2f5d45 0%, #4f7f64 48%, #78b896 100%);
+}
+
+:root[data-theme="lavender"] {
+  --blue: #6d5aa8;
+  --blue-dark: #4f3d86;
+  --blue-light: #eeeafd;
+  --bedside-bg: #faf8ff;
+  --bedside-bg-start: #fcfbff;
+  --bedside-bg-mid: #f1edfb;
+  --bedside-bg-end: #fbf9ff;
+  --bedside-bg-glow: rgba(141, 122, 201, 0.24);
+  --bedside-nav-muted: #756f86;
+  --bedside-nav-track: rgba(109, 90, 168, 0.11);
+  --bedside-nav-border: rgba(109, 90, 168, 0.22);
+  --aqua: #7fb7c7;
+  --aqua-light: #e8f5f8;
+  --green: #4c8a68;
+  --green-light: #e6f5ec;
+  --yellow: #b4842d;
+  --yellow-light: #fff4dc;
+  --red: #c45a69;
+  --red-light: #fdebed;
+  --purple: #6d5aa8;
+  --grey: #716b7f;
+  --grey-light: #f4f2f9;
+  --surface: #fffefd;
+  --input-bg: #ffffff;
+  --text: #282238;
+  --text-primary: #282238;
+  --text-secondary: #6f687c;
+  --border: #d9d2ea;
+  --focus-ring: rgba(109, 90, 168, 0.2);
+  --shadow: 0 10px 26px rgba(54, 43, 92, 0.09);
+  --shadow-hover: 0 16px 36px rgba(54, 43, 92, 0.17);
+  --glide-gradient: linear-gradient(135deg, #4f3d86 0%, #6d5aa8 48%, #a08fe0 100%);
+}
+
+:root[data-theme="sunrise"] {
+  --blue: #b85c38;
+  --blue-dark: #843c25;
+  --blue-light: #fff0e8;
+  --bedside-bg: #fff9f4;
+  --bedside-bg-start: #fffdf8;
+  --bedside-bg-mid: #fff0e2;
+  --bedside-bg-end: #fffaf5;
+  --bedside-bg-glow: rgba(245, 158, 93, 0.24);
+  --bedside-nav-muted: #80685b;
+  --bedside-nav-track: rgba(184, 92, 56, 0.11);
+  --bedside-nav-border: rgba(184, 92, 56, 0.22);
+  --aqua: #3e9c9a;
+  --aqua-light: #e5f8f7;
+  --green: #557f43;
+  --green-light: #edf6e8;
+  --yellow: #c58924;
+  --yellow-light: #fff4d8;
+  --red: #b7473b;
+  --red-light: #fde9e6;
+  --purple: #7d659e;
+  --grey: #76695f;
+  --grey-light: #f8f3ee;
+  --surface: #fffefd;
+  --input-bg: #ffffff;
+  --text: #33251d;
+  --text-primary: #33251d;
+  --text-secondary: #74675f;
+  --border: #ead7ca;
+  --focus-ring: rgba(184, 92, 56, 0.2);
+  --shadow: 0 10px 26px rgba(98, 52, 30, 0.09);
+  --shadow-hover: 0 16px 36px rgba(98, 52, 30, 0.17);
+  --glide-gradient: linear-gradient(135deg, #843c25 0%, #b85c38 48%, #e0a55e 100%);
+}
+
 :root[data-theme="dark"] {
   --blue: #67e8f9;
   --blue-dark: #a5f3fc;
@@ -111,6 +216,43 @@
   --shadow: 0 12px 30px rgba(0, 0, 0, 0.42);
   --shadow-hover: 0 18px 42px rgba(0, 0, 0, 0.58);
   --glide-gradient: linear-gradient(135deg, #0f766e 0%, #0e7490 50%, #2563eb 100%);
+}
+
+:root[data-theme="midnight"] {
+  --blue: #c4b5fd;
+  --blue-dark: #ddd6fe;
+  --blue-light: rgba(196, 181, 253, 0.14);
+  --bedside-bg: #111827;
+  --bedside-bg-start: #111827;
+  --bedside-bg-mid: #1e1b4b;
+  --bedside-bg-end: #030712;
+  --bedside-bg-glow: rgba(124, 58, 237, 0.2);
+  --bedside-nav: rgba(17, 24, 39, 0.96);
+  --bedside-nav-muted: #c7d2fe;
+  --bedside-nav-track: rgba(196, 181, 253, 0.13);
+  --bedside-nav-border: rgba(196, 181, 253, 0.28);
+  --aqua: #93c5fd;
+  --aqua-light: rgba(147, 197, 253, 0.15);
+  --green: #86efac;
+  --green-light: rgba(134, 239, 172, 0.14);
+  --yellow: #fde68a;
+  --yellow-light: rgba(253, 230, 138, 0.15);
+  --red: #fda4af;
+  --red-light: rgba(253, 164, 175, 0.14);
+  --purple: #c4b5fd;
+  --grey: #cbd5e1;
+  --grey-light: rgba(148, 163, 184, 0.12);
+  --surface: #1f2937;
+  --input-bg: #111827;
+  --white: #1f2937;
+  --text: #f9fafb;
+  --text-primary: #f9fafb;
+  --text-secondary: #d1d5db;
+  --border: #4b5563;
+  --focus-ring: rgba(196, 181, 253, 0.28);
+  --shadow: 0 12px 30px rgba(0, 0, 0, 0.44);
+  --shadow-hover: 0 18px 42px rgba(0, 0, 0, 0.6);
+  --glide-gradient: linear-gradient(135deg, #312e81 0%, #6d28d9 52%, #be185d 100%);
 }
 
 * {
@@ -2184,14 +2326,19 @@ textarea::placeholder {
   border-width: 1.5px;
 }
 
-:root[data-theme="dark"] .header {
+:root[data-theme="dark"] .header,
+:root[data-theme="midnight"] .header {
   box-shadow: 0 12px 30px rgba(0, 0, 0, 0.48);
 }
 
 :root[data-theme="dark"] .footer,
 :root[data-theme="dark"] .tab-bar,
 :root[data-theme="dark"] .bottom-nav,
-:root[data-theme="dark"] .chat-input-bar {
+:root[data-theme="dark"] .chat-input-bar,
+:root[data-theme="midnight"] .footer,
+:root[data-theme="midnight"] .tab-bar,
+:root[data-theme="midnight"] .bottom-nav,
+:root[data-theme="midnight"] .chat-input-bar {
   background: var(--bedside-nav);
   border-color: var(--bedside-nav-border);
 }
@@ -2202,7 +2349,14 @@ textarea::placeholder {
 :root[data-theme="dark"] .log-item,
 :root[data-theme="dark"] .family-member-row,
 :root[data-theme="dark"] .message.assistant,
-:root[data-theme="dark"] .message.system {
+:root[data-theme="dark"] .message.system,
+:root[data-theme="midnight"] .range-pill.active,
+:root[data-theme="midnight"] .preset-btn,
+:root[data-theme="midnight"] .quick-btn,
+:root[data-theme="midnight"] .log-item,
+:root[data-theme="midnight"] .family-member-row,
+:root[data-theme="midnight"] .message.assistant,
+:root[data-theme="midnight"] .message.system {
   background: #1e293b;
   color: var(--text);
   border-color: var(--border);
@@ -2210,10 +2364,14 @@ textarea::placeholder {
 
 :root[data-theme="dark"] .progress-track,
 :root[data-theme="dark"] .trend-grid,
-:root[data-theme="dark"] .timeline-track {
+:root[data-theme="dark"] .timeline-track,
+:root[data-theme="midnight"] .progress-track,
+:root[data-theme="midnight"] .trend-grid,
+:root[data-theme="midnight"] .timeline-track {
   background: #263244;
 }
 
-:root[data-theme="dark"] .settings-field select {
+:root[data-theme="dark"] .settings-field select,
+:root[data-theme="midnight"] .settings-field select {
   background-color: var(--input-bg);
 }

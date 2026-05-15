@@ -123,7 +123,7 @@ async function saveSettings() {
   }
 
   const paletteEl = document.getElementById('ui_palette');
-  const selectedPalette = ['calm', 'contrast', 'dark'].includes(paletteEl?.value) ? paletteEl.value : 'calm';
+  const selectedPalette = ['calm', 'contrast', 'sage', 'lavender', 'sunrise', 'dark', 'midnight'].includes(paletteEl?.value) ? paletteEl.value : 'calm';
   if (window.GlideTheme) {
     window.GlideTheme.apply(selectedPalette);
   }
@@ -197,7 +197,7 @@ async function loadAccountPreferences() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     const data = await res.json();
     const palette = data.preferences?.ui_palette || window.GlideTheme?.current?.() || 'calm';
-    paletteEl.value = ['calm', 'contrast', 'dark'].includes(palette) ? palette : 'calm';
+    paletteEl.value = ['calm', 'contrast', 'sage', 'lavender', 'sunrise', 'dark', 'midnight'].includes(palette) ? palette : 'calm';
     if (window.GlideTheme) window.GlideTheme.apply(paletteEl.value);
   } catch (err) {
     console.warn('[settings] Account preferences unavailable:', err.message);

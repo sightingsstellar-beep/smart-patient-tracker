@@ -9,11 +9,16 @@
 
 (() => {
   const STORAGE_KEY = 'glide-bedside-ui-palette';
-  const VALID = new Set(['calm', 'contrast', 'dark']);
+  const VALID = new Set(['calm', 'contrast', 'sage', 'lavender', 'sunrise', 'dark', 'midnight']);
+  const DARK_PALETTES = new Set(['dark', 'midnight']);
   const META_COLORS = {
     calm: '#2f7f9f',
     contrast: '#005f73',
+    sage: '#4f7f64',
+    lavender: '#6d5aa8',
+    sunrise: '#b85c38',
     dark: '#0f172a',
+    midnight: '#111827',
   };
 
   function normalize(value) {
@@ -28,7 +33,7 @@
   function applyPalette(value) {
     const palette = normalize(value);
     document.documentElement.dataset.theme = palette;
-    document.documentElement.style.colorScheme = palette === 'dark' ? 'dark' : 'light';
+    document.documentElement.style.colorScheme = DARK_PALETTES.has(palette) ? 'dark' : 'light';
     updateThemeColor(palette);
     try { localStorage.setItem(STORAGE_KEY, palette); } catch (_) {}
     window.GlideThemePalette = palette;

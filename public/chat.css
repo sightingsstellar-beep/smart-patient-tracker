@@ -412,6 +412,9 @@ input {
 
 :root[data-theme="dark"] .chat-message.assistant,
 :root[data-theme="dark"] .chat-message.system,
-:root[data-theme="dark"] .transcript-box {
+:root[data-theme="dark"] .transcript-box,
+:root[data-theme="midnight"] .chat-message.assistant,
+:root[data-theme="midnight"] .chat-message.system,
+:root[data-theme="midnight"] .transcript-box {
   background-color: #1e293b;
 }

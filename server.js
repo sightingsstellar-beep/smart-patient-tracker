@@ -2407,7 +2407,7 @@ app.post('/api/account/preferences', async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Invalid request body' });
     }
     if (body.ui_palette !== undefined) {
-      const palette = ['calm', 'contrast', 'dark'].includes(body.ui_palette) ? body.ui_palette : 'calm';
+      const palette = ['calm', 'contrast', 'sage', 'lavender', 'sunrise', 'dark', 'midnight'].includes(body.ui_palette) ? body.ui_palette : 'calm';
       await db.setAccountPreference(subject, 'ui_palette', palette);
     }
     const preferences = await db.getAccountPreferences(subject);

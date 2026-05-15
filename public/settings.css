@@ -326,6 +326,7 @@
   color: var(--text-secondary);
 }
 
-:root[data-theme="dark"] .settings-field select {
+:root[data-theme="dark"] .settings-field select,
+:root[data-theme="midnight"] .settings-field select {
   background-color: var(--input-bg);
 }
