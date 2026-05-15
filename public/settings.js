@@ -50,6 +50,7 @@ const FIELD_IDS = [
   'wellness_check_1',
   'wellness_check_2',
   'timezone',
+  'ui_palette',
 ];
 
 // ---------------------------------------------------------------------------
@@ -90,6 +91,10 @@ async function loadSettings() {
     const radios = document.querySelectorAll('input[name="units"]');
     radios.forEach((r) => { r.checked = r.value === unitsValue; });
 
+    if (window.GlideTheme) {
+      window.GlideTheme.apply(settings.ui_palette || 'calm');
+    }
+
   } catch (err) {
     console.error('[settings] Load error:', err);
     showStatus('Failed to load settings: ' + err.message, 'error');
@@ -118,6 +123,13 @@ async function saveSettings() {
   const selectedUnit = document.querySelector('input[name="units"]:checked');
   if (selectedUnit) {
     payload.units = selectedUnit.value;
+  }
+
+  if (!['calm', 'contrast', 'dark'].includes(payload.ui_palette)) {
+    payload.ui_palette = 'calm';
+  }
+  if (window.GlideTheme) {
+    window.GlideTheme.apply(payload.ui_palette);
   }
 
   // Basic validation
@@ -162,6 +174,9 @@ async function saveSettings() {
     const nameEl = document.getElementById('child-name');
     if (nameEl && data.child_name) {
       nameEl.textContent = data.child_name;
+    }
+    if (window.GlideTheme) {
+      window.GlideTheme.apply(data.ui_palette || payload.ui_palette);
     }
 
   } catch (err) {
@@ -320,5 +335,11 @@ loadSettings();
 loadFamilyMembers();
 
 document.getElementById('save-btn').addEventListener('click', saveSettings);
+const paletteSelect = document.getElementById('ui_palette');
+if (paletteSelect) {
+  paletteSelect.addEventListener('change', () => {
+    if (window.GlideTheme) window.GlideTheme.apply(paletteSelect.value);
+  });
+}
 const inviteBtn = document.getElementById('invite-btn');
 if (inviteBtn) inviteBtn.addEventListener('click', sendCaregiverInvite);

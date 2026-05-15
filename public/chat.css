@@ -388,3 +388,30 @@ body {
     padding: 16px 16px 150px;
   }
 }
+
+/* Palette-aware page refinements */
+.voice-section,
+.messages-panel,
+.chat-input-bar,
+.chat-message,
+.chat-empty,
+.transcript-box {
+  background-color: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.chat-input,
+.message-input,
+textarea,
+input {
+  background-color: var(--input-bg);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+:root[data-theme="dark"] .chat-message.assistant,
+:root[data-theme="dark"] .chat-message.system,
+:root[data-theme="dark"] .transcript-box {
+  background-color: #1e293b;
+}

@@ -10,6 +10,7 @@
   <title>Glide Bedside — Settings</title>
   <link rel="stylesheet" href="/vendor/phosphor/regular/style.css" />
   <link rel="stylesheet" href="/vendor/phosphor/fill/style.css" />
+  <script src="theme.js"></script>
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="settings.css" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -174,6 +175,20 @@
           <option value="Asia/Baghdad">Asia/Baghdad (AST)</option>
           <option value="Australia/Sydney">Australia/Sydney (AEST)</option>
         </select>
+      </div>
+    </section>
+
+    <!-- ========== APPEARANCE ========== -->
+    <section class="card settings-card">
+      <div class="settings-section-title"><span class="section-title-icon" aria-hidden="true"><i class="ph ph-palette"></i></span> Appearance</div>
+      <div class="settings-field">
+        <label for="ui_palette">Color palette</label>
+        <select id="ui_palette" name="ui_palette">
+          <option value="calm">Calm clinical</option>
+          <option value="contrast">High contrast</option>
+          <option value="dark">Dark mode</option>
+        </select>
+        <p class="settings-help">Choose a softer default, stronger contrast, or dark mode for lower-light rooms.</p>
       </div>
     </section>
 

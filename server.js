@@ -250,6 +250,7 @@ function renderClerkLoginPage({ misconfigured = false } = {}) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sign In — Glide Bedside</title>
   <link rel="stylesheet" href="/vendor/phosphor/fill/style.css" />
+  <script src="theme.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { width:100%; max-width:100%; overflow-x:hidden; }

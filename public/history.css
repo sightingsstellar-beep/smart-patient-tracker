@@ -405,3 +405,21 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* Palette-aware page refinements */
+.trends-toolbar,
+.trend-card,
+.range-pill.active,
+.trend-day,
+.trend-summary {
+  background-color: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+:root[data-theme="dark"] .range-pills,
+:root[data-theme="dark"] .trend-grid,
+:root[data-theme="dark"] .trend-axis {
+  background-color: #1e293b;
+  border-color: var(--border);
+}

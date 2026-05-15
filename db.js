@@ -27,6 +27,7 @@ const DEFAULT_SETTINGS = {
   warn_threshold_red: '90',
   timezone: 'America/New_York',
   units: 'ml',
+  ui_palette: 'calm',
 };
 
 const connectionString = process.env.DATABASE_URL || process.env.POSTGRES_URL;

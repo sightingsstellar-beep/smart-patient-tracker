@@ -8,6 +8,10 @@
   --blue-dark: #175977;
   --blue-light: #e7f5f8;
   --bedside-bg: #f4fafb;
+  --bedside-bg-start: #f4fafb;
+  --bedside-bg-mid: #eef5f8;
+  --bedside-bg-end: #f7f9fb;
+  --bedside-bg-glow: rgba(95, 199, 189, 0.24);
   --bedside-nav: rgba(255, 255, 255, 0.98);
   --bedside-nav-muted: #6f8294;
   --bedside-nav-track: rgba(47, 127, 159, 0.09);
@@ -24,15 +28,89 @@
   --grey: #667085;
   --grey-light: #f6f8fb;
   --surface: #fbfdff;
+  --input-bg: #ffffff;
   --white: #ffffff;
   --text: #182434;
   --text-primary: #182434;
   --text-secondary: #667085;
   --border: #dbe5ec;
+  --focus-ring: rgba(47, 127, 159, 0.16);
   --radius: 18px;
   --shadow: 0 10px 26px rgba(23, 47, 69, 0.08);
   --shadow-hover: 0 16px 36px rgba(23, 47, 69, 0.16);
   --glide-gradient: linear-gradient(135deg, #2f7f9f 0%, #319a9a 48%, #5fc7bd 100%);
+}
+
+:root[data-theme="contrast"] {
+  --blue: #005f73;
+  --blue-dark: #003d4f;
+  --blue-light: #d7f7ff;
+  --bedside-bg: #f2fbff;
+  --bedside-bg-start: #ffffff;
+  --bedside-bg-mid: #e5f7ff;
+  --bedside-bg-end: #ffffff;
+  --bedside-bg-glow: rgba(0, 95, 115, 0.18);
+  --bedside-nav-muted: #244653;
+  --bedside-nav-track: rgba(0, 95, 115, 0.15);
+  --bedside-nav-border: rgba(0, 95, 115, 0.34);
+  --aqua: #00838f;
+  --aqua-light: #d7fbff;
+  --green: #116b3f;
+  --green-light: #daf4e5;
+  --yellow: #9b6500;
+  --yellow-light: #fff0c2;
+  --red: #a12b25;
+  --red-light: #ffe1df;
+  --purple: #5744a3;
+  --grey: #475569;
+  --grey-light: #eef3f8;
+  --surface: #ffffff;
+  --input-bg: #ffffff;
+  --text: #071923;
+  --text-primary: #071923;
+  --text-secondary: #334155;
+  --border: #9fb7c3;
+  --focus-ring: rgba(0, 95, 115, 0.26);
+  --shadow: 0 10px 26px rgba(7, 25, 35, 0.14);
+  --shadow-hover: 0 16px 36px rgba(7, 25, 35, 0.22);
+  --glide-gradient: linear-gradient(135deg, #003d4f 0%, #005f73 50%, #00838f 100%);
+}
+
+:root[data-theme="dark"] {
+  --blue: #67e8f9;
+  --blue-dark: #a5f3fc;
+  --blue-light: rgba(103, 232, 249, 0.14);
+  --bedside-bg: #0f172a;
+  --bedside-bg-start: #0f172a;
+  --bedside-bg-mid: #111827;
+  --bedside-bg-end: #020617;
+  --bedside-bg-glow: rgba(20, 184, 166, 0.18);
+  --bedside-nav: rgba(15, 23, 42, 0.96);
+  --bedside-nav-muted: #a9b7c7;
+  --bedside-nav-track: rgba(103, 232, 249, 0.12);
+  --bedside-nav-border: rgba(148, 163, 184, 0.32);
+  --aqua: #5eead4;
+  --aqua-light: rgba(94, 234, 212, 0.15);
+  --green: #86efac;
+  --green-light: rgba(134, 239, 172, 0.14);
+  --yellow: #facc15;
+  --yellow-light: rgba(250, 204, 21, 0.16);
+  --red: #fca5a5;
+  --red-light: rgba(252, 165, 165, 0.15);
+  --purple: #c4b5fd;
+  --grey: #a9b7c7;
+  --grey-light: rgba(148, 163, 184, 0.12);
+  --surface: #162033;
+  --input-bg: #0f172a;
+  --white: #162033;
+  --text: #f8fafc;
+  --text-primary: #f8fafc;
+  --text-secondary: #cbd5e1;
+  --border: #334155;
+  --focus-ring: rgba(103, 232, 249, 0.28);
+  --shadow: 0 12px 30px rgba(0, 0, 0, 0.42);
+  --shadow-hover: 0 18px 42px rgba(0, 0, 0, 0.58);
+  --glide-gradient: linear-gradient(135deg, #0f766e 0%, #0e7490 50%, #2563eb 100%);
 }
 
 * {
@@ -49,8 +127,8 @@ html {
 body {
   font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
   background:
-    radial-gradient(circle at top left, rgba(95, 199, 189, 0.24), transparent 34rem),
-    linear-gradient(180deg, #f4fafb 0%, #eef5f8 46%, #f7f9fb 100%);
+    radial-gradient(circle at top left, var(--bedside-bg-glow), transparent 34rem),
+    linear-gradient(180deg, var(--bedside-bg-start) 0%, var(--bedside-bg-mid) 46%, var(--bedside-bg-end) 100%);
   color: var(--text);
   min-height: 100vh;
   padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
@@ -2037,4 +2115,105 @@ body {
   .wellness-radio-group {
     grid-template-columns: 1fr;
   }
+}
+
+/* ============================================================
+   Palette-aware contrast pass
+   ============================================================ */
+
+.card,
+.summary-card,
+.quick-add-card,
+.log-section,
+.modal-content,
+.amount-modal,
+.sheet,
+.trends-toolbar,
+.trend-card,
+.voice-section,
+.chat-container,
+.chat-input-bar,
+.settings-card {
+  background-color: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+input,
+select,
+textarea,
+button {
+  color-scheme: inherit;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="number"],
+input[type="time"],
+select,
+textarea,
+.chat-input,
+.amount-input {
+  background-color: var(--input-bg);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+input:focus,
+select:focus,
+textarea:focus,
+.chat-input:focus,
+.amount-input:focus {
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-secondary);
+  opacity: 0.76;
+}
+
+:root[data-theme="contrast"] .card,
+:root[data-theme="contrast"] .summary-card,
+:root[data-theme="contrast"] .quick-add-card,
+:root[data-theme="contrast"] .log-section,
+:root[data-theme="contrast"] .settings-card,
+:root[data-theme="contrast"] .trend-card,
+:root[data-theme="contrast"] .voice-section {
+  border-width: 1.5px;
+}
+
+:root[data-theme="dark"] .header {
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.48);
+}
+
+:root[data-theme="dark"] .footer,
+:root[data-theme="dark"] .tab-bar,
+:root[data-theme="dark"] .bottom-nav,
+:root[data-theme="dark"] .chat-input-bar {
+  background: var(--bedside-nav);
+  border-color: var(--bedside-nav-border);
+}
+
+:root[data-theme="dark"] .range-pill.active,
+:root[data-theme="dark"] .preset-btn,
+:root[data-theme="dark"] .quick-btn,
+:root[data-theme="dark"] .log-item,
+:root[data-theme="dark"] .family-member-row,
+:root[data-theme="dark"] .message.assistant,
+:root[data-theme="dark"] .message.system {
+  background: #1e293b;
+  color: var(--text);
+  border-color: var(--border);
+}
+
+:root[data-theme="dark"] .progress-track,
+:root[data-theme="dark"] .trend-grid,
+:root[data-theme="dark"] .timeline-track {
+  background: #263244;
+}
+
+:root[data-theme="dark"] .settings-field select {
+  background-color: var(--input-bg);
 }

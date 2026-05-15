@@ -14,7 +14,6 @@
   gap: 10px;
   font-size: 1.25rem;
   font-weight: 800;
-  color: #1a73e8;
   color: var(--blue);
   margin: 0 0 16px;
   padding: 0 4px;
@@ -82,7 +81,7 @@
 .settings-field label {
   font-size: 0.92rem;
   font-weight: 500;
-  color: #3c4043;
+  color: var(--text-secondary);
 }
 
 .settings-field input[type="text"],
@@ -94,10 +93,10 @@
   padding: 9px 12px;
   font-size: 1rem;
   font-family: inherit;
-  border: 1.5px solid #dadce0;
+  border: 1.5px solid var(--border);
   border-radius: 8px;
-  background: #fff;
-  color: #202124;
+  background: var(--input-bg);
+  color: var(--text);
   transition: border-color 0.15s, box-shadow 0.15s;
   box-sizing: border-box;
   appearance: none;
@@ -114,10 +113,8 @@
 .settings-field input:focus,
 .settings-field select:focus {
   outline: none;
-  border-color: #1a73e8;
   border-color: var(--blue);
-  box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.15);
-  box-shadow: 0 0 0 3px rgba(47, 127, 159, 0.16);
+  box-shadow: 0 0 0 3px var(--focus-ring);
 }
 
 /* ---- Radio group ---- */
@@ -135,14 +132,14 @@
   gap: 6px;
   font-size: 1rem;
   font-weight: 500;
-  color: #202124;
+  color: var(--text);
   cursor: pointer;
 }
 
 .radio-label input[type="radio"] {
   width: 18px;
   height: 18px;
-  accent-color: #1a73e8;
+  accent-color: var(--blue);
   cursor: pointer;
 }
 
@@ -193,7 +190,7 @@
 
 .settings-help {
   margin: 0 0 16px;
-  color: #5f6368;
+  color: var(--text-secondary);
   font-size: 0.92rem;
   line-height: 1.4;
 }
@@ -224,7 +221,7 @@
 
 .family-member-name {
   font-weight: 700;
-  color: #202124;
+  color: var(--text);
   overflow-wrap: anywhere;
 }
 
@@ -234,7 +231,7 @@
 .family-members-empty,
 .family-members-error {
   font-size: 0.88rem;
-  color: #5f6368;
+  color: var(--text-secondary);
   line-height: 1.35;
   overflow-wrap: anywhere;
 }
@@ -249,17 +246,17 @@
 }
 
 .family-member-status.active {
-  color: #137333;
-  background: #e6f4ea;
+  color: var(--green);
+  background: var(--green-light);
 }
 
 .family-member-status.pending {
-  color: #b06000;
-  background: #fef7e0;
+  color: var(--yellow);
+  background: var(--yellow-light);
 }
 
 .family-members-error {
-  color: #d93025;
+  color: var(--red);
 }
 
 /* ---- Status messages ---- */
@@ -272,11 +269,11 @@
 }
 
 .settings-status.success {
-  color: #1e8e3e;
+  color: var(--green);
 }
 
 .settings-status.error {
-  color: #d93025;
+  color: var(--red);
 }
 
 /* ---- Responsive ---- */
@@ -306,4 +303,29 @@
     flex: 1;
     min-width: 0;
   }
+}
+
+/* Palette-aware page refinements */
+.settings-card,
+.family-member-row,
+.settings-field input,
+.settings-field select {
+  background-color: var(--surface);
+  color: var(--text);
+  border-color: var(--border);
+}
+
+.settings-field input,
+.settings-field select {
+  background-color: var(--input-bg);
+}
+
+.settings-field label,
+.settings-help,
+.family-member-meta {
+  color: var(--text-secondary);
+}
+
+:root[data-theme="dark"] .settings-field select {
+  background-color: var(--input-bg);
 }
