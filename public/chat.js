@@ -96,7 +96,7 @@ loadSettings();
 // Show initial welcome message
 appendMessage(
   'bot',
-  'Hi! You can type or hold the mic 🎙️ to log entries. Try: 120ml pediasure and 45ml water or pee 80ml',
+  'Hi! You can type or hold the mic to log entries. Try: 120ml pediasure and 45ml water or pee 80ml',
   'normal'
 );
 
@@ -120,10 +120,10 @@ async function sendToChat(text) {
     if (data.ok) {
       appendMessage('bot', data.message, 'success');
     } else {
-      appendMessage('bot', data.message || data.error || '❌ Something went wrong', 'warn');
+      appendMessage('bot', data.message || data.error || 'Something went wrong', 'warn');
     }
   } catch (err) {
-    appendMessage('bot', '❌ Network error — are you connected?', 'error');
+    appendMessage('bot', 'Network error — are you connected?', 'error');
   }
 }
 
@@ -382,7 +382,7 @@ function startRecording() {
     startMediaRecorder().catch((err) => {
       console.error('[chat] MediaRecorder error:', err);
       stopRecording(true); // abort
-      appendMessage('bot', '❌ Could not access microphone: ' + err.message, 'error');
+      appendMessage('bot', 'Could not access microphone: ' + err.message, 'error');
     });
   }
 }
@@ -453,7 +453,7 @@ async function stopRecording(abort = false) {
     } else {
       // Web Speech gave nothing — fall through to MediaRecorder+Whisper
       hideTranscribing();
-      appendMessage('bot', '🎙️ Web Speech returned nothing. Try typing instead, or tap-hold the mic again.', 'warn');
+      appendMessage('bot', 'Web Speech returned nothing. Try typing instead, or tap-hold the mic again.', 'warn');
     }
   } else {
     // MediaRecorder path
@@ -461,7 +461,7 @@ async function stopRecording(abort = false) {
       const audioBlob = await stopMediaRecorder();
       if (!audioBlob || audioBlob.size < 500) {
         hideTranscribing();
-        appendMessage('bot', '🎙️ Recording was too short or empty. Try again.', 'warn');
+        appendMessage('bot', 'Recording was too short or empty. Try again.', 'warn');
         return;
       }
 
@@ -471,7 +471,7 @@ async function stopRecording(abort = false) {
     } catch (err) {
       hideTranscribing();
       console.error('[chat] Whisper transcription error:', err);
-      appendMessage('bot', '❌ Transcription failed: ' + err.message + '. You can type instead.', 'error');
+      appendMessage('bot', 'Transcription failed: ' + err.message + '. You can type instead.', 'error');
     }
   }
 }

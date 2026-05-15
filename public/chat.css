@@ -184,6 +184,10 @@ body {
   font-weight: 600;
   cursor: pointer;
   transition: background 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
 }
 
 .btn-log-it:hover,
@@ -349,7 +353,7 @@ body {
   background: var(--blue);
   color: white;
   border: none;
-  font-size: 1.1rem;
+  font-size: 1.18rem;
   display: flex;
   align-items: center;
   justify-content: center;

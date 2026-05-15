@@ -79,6 +79,10 @@ function computeWellnessAverage(day) {
   return mean(scores);
 }
 
+function trendIconHtml(iconClass) {
+  return `<span class="trend-heading-icon" aria-hidden="true"><i class="ph ${escapeHtml(iconClass)}"></i></span>`;
+}
+
 function buildTrendCard({ icon, title, subtitle, unit, points, colorClass, latestLabel, averageLabel, signed = false, negativeColorClass = 'trend-bar--red' }) {
   const validValues = points.map((point) => point.value).filter((value) => typeof value === 'number' && !Number.isNaN(value));
   const maxValue = signed
@@ -119,7 +123,7 @@ function buildTrendCard({ icon, title, subtitle, unit, points, colorClass, lates
     <section class="trend-card card">
       <div class="trend-card-header">
         <div>
-          <h3>${escapeHtml(icon)} ${escapeHtml(title)}</h3>
+          <h3>${trendIconHtml(icon)} <span>${escapeHtml(title)}</span></h3>
           <p>${escapeHtml(subtitle)}</p>
         </div>
       </div>
@@ -196,7 +200,7 @@ function buildLineTrendCard({ icon, title, subtitle, unit, points, colorClass, l
     <section class="trend-card card">
       <div class="trend-card-header">
         <div>
-          <h3>${escapeHtml(icon)} ${escapeHtml(title)}</h3>
+          <h3>${trendIconHtml(icon)} <span>${escapeHtml(title)}</span></h3>
           <p>${escapeHtml(subtitle)}</p>
         </div>
       </div>
@@ -285,7 +289,7 @@ function renderTrends() {
 
   const cards = [
     buildTrendCard({
-      icon: '⚖️',
+      icon: 'ph-scales',
       title: 'Fluid balance',
       subtitle: 'Daily intake minus measured output',
       unit: ' net',
@@ -297,7 +301,7 @@ function renderTrends() {
       averageLabel: formatSignedValue(mean(balancePoints.map((point) => point.value)) || 0, ' / day'),
     }),
     buildLineTrendCard({
-      icon: '⚖️',
+      icon: 'ph-scales',
       title: 'Weight trend',
       subtitle: 'Recorded weight by day',
       unit: ' kg',
@@ -307,7 +311,7 @@ function renderTrends() {
       averageLabel: mean(weightPoints.map((point) => point.value)) !== null ? `${formatNumber(mean(weightPoints.map((point) => point.value)))} kg` : 'No data',
     }),
     buildTrendCard({
-      icon: '🫧',
+      icon: 'ph-drop',
       title: 'Intake over time',
       subtitle: 'Daily total intake',
       unit: ' ml',
@@ -317,7 +321,7 @@ function renderTrends() {
       averageLabel: `${formatNumber(mean(intakePoints.map((point) => point.value)) || 0)} ml`,
     }),
     buildTrendCard({
-      icon: '🚽',
+      icon: 'ph-toilet',
       title: 'Output events',
       subtitle: 'Daily count of output entries',
       unit: '',
@@ -327,7 +331,7 @@ function renderTrends() {
       averageLabel: `${formatNumber(mean(outputPoints.map((point) => point.value)) || 0)} / day`,
     }),
     buildTrendCard({
-      icon: '🤢',
+      icon: 'ph-warning-circle',
       title: 'Gag frequency',
       subtitle: 'Daily gag episodes',
       unit: '',
@@ -337,7 +341,7 @@ function renderTrends() {
       averageLabel: `${formatNumber(mean(gagPoints.map((point) => point.value)) || 0)} / day`,
     }),
     buildTrendCard({
-      icon: '🩺',
+      icon: 'ph-stethoscope',
       title: 'Wellness average',
       subtitle: 'Average of energy, appetite, and mood',
       unit: '',
@@ -385,7 +389,7 @@ async function loadTrends() {
     });
   } catch (err) {
     console.error('[trends] Load error:', err.message);
-    container.innerHTML = `<div class="h-error">🚦 Failed to load trends: ${escapeHtml(err.message)}</div>`;
+    container.innerHTML = `<div class="h-error"><i class="ph ph-traffic-signal" aria-hidden="true"></i> Failed to load trends: ${escapeHtml(err.message)}</div>`;
   }
 }
 

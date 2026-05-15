@@ -7,6 +7,8 @@
 
 'use strict';
 
+const SAVE_BUTTON_HTML = '<i class="ph ph-floppy-disk" aria-hidden="true"></i> Save Settings';
+
 // ---------------------------------------------------------------------------
 // Clock
 // ---------------------------------------------------------------------------
@@ -90,7 +92,7 @@ async function loadSettings() {
 
   } catch (err) {
     console.error('[settings] Load error:', err);
-    showStatus('❌ Failed to load settings: ' + err.message, 'error');
+    showStatus('Failed to load settings: ' + err.message, 'error');
   }
 }
 
@@ -101,7 +103,7 @@ async function loadSettings() {
 async function saveSettings() {
   const btn = document.getElementById('save-btn');
   btn.disabled = true;
-  btn.textContent = '⏳ Saving…';
+  btn.innerHTML = '<i class="ph ph-circle-notch" aria-hidden="true"></i> Saving…';
   showStatus('', '');
 
   const payload = {};
@@ -121,25 +123,25 @@ async function saveSettings() {
   // Basic validation
   const limit = parseInt(payload.daily_limit_ml, 10);
   if (isNaN(limit) || limit < 100 || limit > 5000) {
-    showStatus('❌ Daily limit must be between 100 and 5000 ml', 'error');
+    showStatus('Daily limit must be between 100 and 5000 ml', 'error');
     btn.disabled = false;
-    btn.textContent = '💾 Save Settings';
+    btn.innerHTML = SAVE_BUTTON_HTML;
     return;
   }
 
   const yellow = parseInt(payload.warn_threshold_yellow, 10);
   const red = parseInt(payload.warn_threshold_red, 10);
   if (isNaN(yellow) || yellow < 10 || yellow > 100 || isNaN(red) || red < 10 || red > 100) {
-    showStatus('❌ Warning thresholds must be between 10% and 100%', 'error');
+    showStatus('Warning thresholds must be between 10% and 100%', 'error');
     btn.disabled = false;
-    btn.textContent = '💾 Save Settings';
+    btn.innerHTML = SAVE_BUTTON_HTML;
     return;
   }
 
   if (yellow >= red) {
-    showStatus('❌ Yellow threshold must be less than red threshold', 'error');
+    showStatus('Yellow threshold must be less than red threshold', 'error');
     btn.disabled = false;
-    btn.textContent = '💾 Save Settings';
+    btn.innerHTML = SAVE_BUTTON_HTML;
     return;
   }
 
@@ -154,7 +156,7 @@ async function saveSettings() {
       throw new Error(data.error || `HTTP ${res.status}`);
     }
 
-    showStatus('✅ Saved!', 'success');
+    showStatus('Saved!', 'success');
 
     // Update child name in header
     const nameEl = document.getElementById('child-name');
@@ -164,10 +166,10 @@ async function saveSettings() {
 
   } catch (err) {
     console.error('[settings] Save error:', err);
-    showStatus('❌ Error saving: ' + err.message, 'error');
+    showStatus('Error saving: ' + err.message, 'error');
   } finally {
     btn.disabled = false;
-    btn.textContent = '💾 Save Settings';
+    btn.innerHTML = SAVE_BUTTON_HTML;
   }
 }
 
@@ -255,13 +257,13 @@ async function sendCaregiverInvite() {
   const email = emailEl.value.trim().toLowerCase();
   const role = roleEl.value || 'caregiver';
   if (!email) {
-    statusEl.textContent = '❌ Enter an email address.';
+    statusEl.textContent = 'Enter an email address.';
     statusEl.className = 'settings-status error';
     return;
   }
 
   btn.disabled = true;
-  btn.textContent = '⏳ Sending…';
+  btn.innerHTML = '<i class="ph ph-circle-notch" aria-hidden="true"></i> Sending…';
   statusEl.textContent = '';
   statusEl.className = 'settings-status';
 
@@ -274,14 +276,14 @@ async function sendCaregiverInvite() {
     const data = await res.json();
     if (!res.ok || !data.ok) throw new Error(data.error || `HTTP ${res.status}`);
     statusEl.textContent = data.email?.sent
-      ? `✅ Invite email sent to ${email}.`
-      : `✅ ${email} can sign in and access this tracker. Invite email is not configured yet.`;
+      ? `Invite email sent to ${email}.`
+      : `${email} can sign in and access this tracker. Invite email is not configured yet.`;
     statusEl.className = 'settings-status success';
     emailEl.value = '';
     loadFamilyMembers();
   } catch (err) {
     console.error('[settings] Invite error:', err);
-    statusEl.textContent = '❌ Invite failed: ' + err.message;
+    statusEl.textContent = 'Invite failed: ' + err.message;
     statusEl.className = 'settings-status error';
   } finally {
     btn.disabled = false;

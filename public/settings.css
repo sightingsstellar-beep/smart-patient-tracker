@@ -9,6 +9,9 @@
 }
 
 .settings-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   font-size: 1.25rem;
   font-weight: 800;
   color: #1a73e8;
@@ -16,6 +19,20 @@
   margin: 0 0 16px;
   padding: 0 4px;
   letter-spacing: -0.02em;
+}
+
+.heading-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  display: inline-grid;
+  place-items: center;
+  background: linear-gradient(135deg, rgba(47, 127, 159, 0.18), rgba(95, 199, 189, 0.16));
+  color: var(--blue);
+  font-size: 1.18rem;
+  box-shadow:
+    inset 0 0 0 1px var(--bedside-nav-border),
+    0 8px 18px rgba(47, 127, 159, 0.14);
 }
 
 /* ---- Card sections ---- */
@@ -39,6 +56,14 @@
   border-radius: 999px;
   background: var(--blue-light);
   border: 1px solid rgba(47, 127, 159, 0.12);
+}
+
+.section-title-icon {
+  display: inline-grid;
+  place-items: center;
+  color: var(--blue);
+  font-size: 1rem;
+  line-height: 1;
 }
 
 /* ---- Individual fields ---- */
@@ -132,7 +157,10 @@
 }
 
 .settings-save-btn {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   width: 100%;
   max-width: 280px;
   padding: 14px 24px;

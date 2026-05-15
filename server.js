@@ -244,12 +244,13 @@ function renderClerkLoginPage({ misconfigured = false } = {}) {
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sign In — Glide Bedside</title>
+  <link rel="stylesheet" href="/vendor/phosphor/fill/style.css" />
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html, body { width:100%; max-width:100%; overflow-x:hidden; }
     body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background:#f0f4f8; min-height:100svh; display:flex; align-items:center; justify-content:center; padding:16px; }
     .card { background:#fff; border-radius:20px; box-shadow:0 4px 24px rgba(0,0,0,.10); padding:32px 18px 28px; width:100%; max-width:min(430px, 100%); text-align:center; overflow:hidden; }
-    .icon { font-size:2.8rem; margin-bottom:12px; }
+    .icon { width:58px; height:58px; margin:0 auto 14px; border-radius:999px; display:grid; place-items:center; color:#2f7f9f; background:linear-gradient(135deg, rgba(47,127,159,.18), rgba(95,199,189,.16)); box-shadow:inset 0 0 0 1px rgba(47,127,159,.18), 0 10px 22px rgba(47,127,159,.14); font-size:2rem; }
     h1 { font-size:clamp(1.15rem, 5vw, 1.3rem); font-weight:700; color:#202124; margin-bottom:6px; }
     .subtitle { font-size:.9rem; color:#5f6368; margin-bottom:20px; }
     .notice { background:#fff7e6; color:#7a4a00; border-radius:10px; padding:10px 14px; font-size:.88rem; margin-bottom:18px; text-align:left; }
@@ -264,14 +265,14 @@ function renderClerkLoginPage({ misconfigured = false } = {}) {
     @media (max-width: 380px) {
       body { padding:10px; align-items:flex-start; }
       .card { padding:24px 10px 22px; border-radius:16px; }
-      .icon { font-size:2.2rem; }
+      .icon { width:52px; height:52px; font-size:1.75rem; }
       .subtitle { margin-bottom:14px; }
     }
   </style>
 </head>
 <body>
   <div class="card">
-    <div class="icon">💙</div>
+    <div class="icon" aria-hidden="true"><i class="ph-fill ph-heart"></i></div>
     <h1>Glide Bedside</h1>
     <p class="subtitle">Secure caregiver access for your family care circle.</p>
     ${misconfigured ? '<div class="notice">Clerk login is enabled but not fully configured. Please contact support.</div>' : `<p class="muted" id="login-help">Loading secure sign-in…</p><div id="sign-in" aria-live="polite"></div>`}
@@ -3194,7 +3195,7 @@ async function buildChatConfirmation(actions, summary, scope = {}) {
   const totalOut = summary.outputs.reduce((sum, o) => sum + (o.amount_ml || 0), 0);
   const outStr = totalOut > 0 ? `${totalOut}g` : `${summary.outputs.length} event${summary.outputs.length !== 1 ? 's' : ''}`;
 
-  return `✅ Logged: ${logged} | 🫧 Total In: ${summary.totalIntake}/${limit}ml (${pct}%) · 🚽 Total Out: ${outStr}`;
+  return `Logged: ${logged} | Total In: ${summary.totalIntake}/${limit}ml (${pct}%) · Total Out: ${outStr}`;
 }
 
 app.post('/api/chat', async (req, res) => {
@@ -3216,7 +3217,7 @@ app.post('/api/chat', async (req, res) => {
     if (parsed.unparseable || parsed.actions.length === 0) {
       return res.json({
         ok: false,
-        message: "🤔 I couldn't understand that. Try something like: \"120ml pediasure\" or \"pee 80ml\" or \"gag x2\".",
+        message: "I couldn't understand that. Try something like: \"120ml pediasure\" or \"pee 80ml\" or \"gag x2\".",
         entries: [],
       });
     }
@@ -3231,7 +3232,7 @@ app.post('/api/chat', async (req, res) => {
       const label = formatFluidType(missingAmount.fluid_type);
       return res.json({
         ok: false,
-        message: `🚦 I need a measurement for ${label}. How many ml was it? (e.g. "${label} 80ml")`,
+        message: `I need a measurement for ${label}. How many ml was it? (e.g. "${label} 80ml")`,
         entries: [],
       });
     }

@@ -19,11 +19,11 @@
   <header class="header">
     <div class="header-top">
       <div class="header-left">
-        <h1 class="title"><span id="child-name">…</span> <span class="heart">💙</span></h1>
+        <h1 class="title"><span id="child-name">…</span> <span class="heart" aria-hidden="true"><i class="ph-fill ph-heart"></i></span></h1>
         <div class="subtitle" id="current-date">Loading...</div>
       </div>
       <div class="header-right">
-        <a href="/logout" class="logout-btn" title="Log out">⏻</a>
+        <a href="/logout" class="logout-btn" title="Log out" aria-label="Log out"><i class="ph ph-power" aria-hidden="true"></i></a>
         <div class="clock" id="current-time">--:--</div>
       </div>
     </div>
@@ -60,11 +60,11 @@
   </header>
 
   <main class="main settings-main">
-    <h2 class="settings-heading">⚙️ Settings</h2>
+    <h2 class="settings-heading"><span class="heading-icon" aria-hidden="true"><i class="ph ph-gear-six"></i></span> Settings</h2>
 
     <!-- ========== PATIENT ========== -->
     <section class="card settings-card">
-      <div class="settings-section-title">💙 Patient</div>
+      <div class="settings-section-title"><span class="section-title-icon" aria-hidden="true"><i class="ph ph-heart"></i></span> Patient</div>
 
       <div class="settings-field">
         <label for="child_name">Child's name</label>
@@ -75,7 +75,7 @@
 
     <!-- ========== FLUID TRACKING ========== -->
     <section class="card settings-card">
-      <div class="settings-section-title">🫧 Fluid Tracking</div>
+      <div class="settings-section-title"><span class="section-title-icon" aria-hidden="true"><i class="ph ph-drop"></i></span> Fluid Tracking</div>
 
       <div class="settings-field">
         <label for="daily_limit_ml">Daily fluid limit (ml)</label>
@@ -115,7 +115,7 @@
 
     <!-- ========== ALERT THRESHOLDS ========== -->
     <section class="card settings-card">
-      <div class="settings-section-title">🚦 Alert Thresholds</div>
+      <div class="settings-section-title"><span class="section-title-icon" aria-hidden="true"><i class="ph ph-traffic-signal"></i></span> Alert Thresholds</div>
 
       <div class="settings-field">
         <label for="warn_threshold_yellow">Yellow warning at (% of daily limit)</label>
@@ -130,7 +130,7 @@
 
     <!-- ========== REPORT TIMES ========== -->
     <section class="card settings-card">
-      <div class="settings-section-title">🕒 Report Times</div>
+      <div class="settings-section-title"><span class="section-title-icon" aria-hidden="true"><i class="ph ph-clock"></i></span> Report Times</div>
 
       <div class="settings-field">
         <label for="report_time_1">Handoff report time</label>
@@ -145,7 +145,7 @@
 
     <!-- ========== WELLNESS CHECKS ========== -->
     <section class="card settings-card">
-      <div class="settings-section-title">🩺 Wellness Checks</div>
+      <div class="settings-section-title"><span class="section-title-icon" aria-hidden="true"><i class="ph ph-stethoscope"></i></span> Wellness Checks</div>
 
       <div class="settings-field">
         <label for="wellness_check_1">Afternoon check time</label>
@@ -160,7 +160,7 @@
 
     <!-- ========== REGIONAL ========== -->
     <section class="card settings-card">
-      <div class="settings-section-title">🌐 Regional</div>
+      <div class="settings-section-title"><span class="section-title-icon" aria-hidden="true"><i class="ph ph-globe"></i></span> Regional</div>
 
       <div class="settings-field">
         <label for="timezone">Timezone</label>
@@ -179,7 +179,7 @@
 
     <!-- ========== CAREGIVERS ========== -->
     <section class="card settings-card" id="caregiver-card">
-      <div class="settings-section-title">👥 Caregivers</div>
+      <div class="settings-section-title"><span class="section-title-icon" aria-hidden="true"><i class="ph ph-users"></i></span> Caregivers</div>
       <p class="settings-help">Invite another caregiver to access this same family/patient tracker with their own login.</p>
       <div class="family-members" id="family-members" aria-live="polite">
         <div class="family-members-loading">Loading family access…</div>
@@ -202,7 +202,7 @@
 
     <!-- ========== SAVE ========== -->
     <div class="settings-save-row">
-      <button class="settings-save-btn" id="save-btn">💾 Save Settings</button>
+      <button class="settings-save-btn" id="save-btn"><i class="ph ph-floppy-disk" aria-hidden="true"></i> Save Settings</button>
       <div class="settings-status" id="settings-status" aria-live="polite"></div>
     </div>
   </main>

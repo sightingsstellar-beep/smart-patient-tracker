@@ -30,6 +30,18 @@ const OUTPUT_OPTIONS = [
   { value: 'vomit', label: 'Vomit' },
 ];
 
+const OUTPUT_ICON_CLASSES = {
+  urine: 'ph-toilet',
+  poop: 'ph-toilet-paper',
+  vomit: 'ph-spiral',
+};
+
+function outputIconHtml(type) {
+  const iconClass = OUTPUT_ICON_CLASSES[type] || 'ph-toilet';
+  const warnClass = type === 'vomit' ? ' output-type-icon--warn' : '';
+  return `<span class="output-type-icon${warnClass}" aria-hidden="true"><i class="ph ${iconClass}"></i></span>`;
+}
+
 const POOP_SUBTYPE_OPTIONS = [
   { value: 'normal', label: 'Normal' },
   { value: 'diarrhea', label: 'Diarrhea' },
@@ -434,7 +446,7 @@ function renderOutputs() {
       <li class="output-item">
         <button class="entry-row-button" data-entry-kind="fluid" data-entry-id="${entry.id}">
           <span class="output-time">${escapeHtml(entry.time || '--')}</span>
-          <span class="output-type-icon">${entry.fluid_type === 'poop' ? '💩' : entry.fluid_type === 'vomit' ? '🤮' : '🚽'}</span>
+          ${outputIconHtml(entry.fluid_type)}
           <span class="entry-row-main">
             <span class="entry-row-title">${escapeHtml(entry.fluid_type_label || FLUID_LABELS[entry.fluid_type] || entry.fluid_type)}</span>
             ${subtypeLabel ? `<span class="entry-row-subtitle">${escapeHtml(subtypeLabel)}</span>` : ''}
@@ -594,9 +606,9 @@ async function submitQuickLog(payload, btn = null) {
 
   if (payload.time) body.time = payload.time;
 
-  const original = btn ? btn.textContent : '';
+  const original = btn ? btn.innerHTML : '';
   if (btn) {
-    btn.textContent = '⏳';
+    btn.innerHTML = '<span class="quick-btn-icon" aria-hidden="true"><i class="ph ph-circle-notch"></i></span><span class="quick-btn-label">Saving…</span>';
     btn.disabled = true;
   }
 
@@ -609,9 +621,9 @@ async function submitQuickLog(payload, btn = null) {
     await requireWriteOk(res);
 
     if (btn) {
-      btn.textContent = '✅';
+      btn.innerHTML = '<span class="quick-btn-icon" aria-hidden="true"><i class="ph ph-check-circle"></i></span><span class="quick-btn-label">Saved</span>';
       setTimeout(() => {
-        btn.textContent = original;
+        btn.innerHTML = original;
         btn.disabled = false;
       }, 1200);
     }
@@ -621,9 +633,9 @@ async function submitQuickLog(payload, btn = null) {
     console.error('[quick-log] Error:', err.message);
     showAppAlert(err.message, { canonicalUrl: err.canonicalUrl });
     if (btn) {
-      btn.textContent = '❌';
+      btn.innerHTML = '<span class="quick-btn-icon" aria-hidden="true"><i class="ph ph-warning-circle"></i></span><span class="quick-btn-label">Failed</span>';
       setTimeout(() => {
-        btn.textContent = original;
+        btn.innerHTML = original;
         btn.disabled = false;
       }, 1500);
     }
@@ -879,30 +891,30 @@ async function handleUndoCurrentDay() {
 
   const btn = document.getElementById('undo-btn');
   if (!allEntries.length) {
-    const original = btn.textContent;
-    btn.textContent = '🚦 Nothing to undo';
-    setTimeout(() => { btn.textContent = original; }, 1500);
+    const original = btn.innerHTML;
+    btn.innerHTML = '<i class="ph ph-traffic-signal" aria-hidden="true"></i> Nothing to undo';
+    setTimeout(() => { btn.innerHTML = original; }, 1500);
     return;
   }
 
   const latest = allEntries[0];
-  const original = btn.textContent;
+  const original = btn.innerHTML;
   btn.disabled = true;
-  btn.textContent = '⏳ Undoing...';
+  btn.innerHTML = '<i class="ph ph-circle-notch" aria-hidden="true"></i> Undoing...';
 
   try {
     const url = latest._kind === 'gag' ? `/api/gag/${latest.id}` : `/api/log/${latest.id}`;
     const res = await writeFetch(url, { method: 'DELETE' });
     await requireWriteOk(res);
-    btn.textContent = '✅ Undone';
+    btn.innerHTML = '<i class="ph ph-check-circle" aria-hidden="true"></i> Undone';
     await refreshDay();
   } catch (err) {
     console.error('[undo] Error:', err.message);
     showAppAlert(err.message, { canonicalUrl: err.canonicalUrl });
-    btn.textContent = '❌ Failed';
+    btn.innerHTML = '<i class="ph ph-warning-circle" aria-hidden="true"></i> Failed';
   } finally {
     setTimeout(() => {
-      btn.textContent = original;
+      btn.innerHTML = original;
       btn.disabled = false;
     }, 1400);
   }

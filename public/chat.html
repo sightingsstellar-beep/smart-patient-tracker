@@ -19,11 +19,11 @@
   <header class="header">
     <div class="header-top">
       <div class="header-left">
-        <h1 class="title"><span id="child-name">…</span> <span class="heart">💙</span></h1>
+        <h1 class="title"><span id="child-name">…</span> <span class="heart" aria-hidden="true"><i class="ph-fill ph-heart"></i></span></h1>
         <div class="subtitle" id="current-date">Loading...</div>
       </div>
       <div class="header-right">
-        <a href="/logout" class="logout-btn" title="Log out">⏻</a>
+        <a href="/logout" class="logout-btn" title="Log out" aria-label="Log out"><i class="ph ph-power" aria-hidden="true"></i></a>
         <div class="clock" id="current-time">--:--</div>
       </div>
     </div>
@@ -69,7 +69,7 @@
           id="mic-btn"
           aria-label="Hold to record"
           aria-pressed="false"
-        >🎙️</button>
+        ><i class="ph ph-microphone" aria-hidden="true"></i></button>
         <div class="mic-label" id="mic-label">Hold to record</div>
         <div class="mic-timer" id="mic-timer" style="display:none;">0:00</div>
       </div>
@@ -84,7 +84,7 @@
           placeholder="Transcribed text..."
         ></textarea>
         <div class="transcription-buttons">
-          <button class="btn-log-it" id="btn-log-it">Log It ✅</button>
+          <button class="btn-log-it" id="btn-log-it">Log It <i class="ph ph-check-circle" aria-hidden="true"></i></button>
           <button class="btn-cancel-transcription" id="btn-cancel-transcription">Cancel</button>
         </div>
       </div>
@@ -115,7 +115,7 @@
       autocorrect="off"
       spellcheck="false"
     />
-    <button class="chat-send-btn" id="chat-send-btn" aria-label="Send">➤</button>
+    <button class="chat-send-btn" id="chat-send-btn" aria-label="Send"><i class="ph ph-paper-plane-right" aria-hidden="true"></i></button>
   </div>
 
   <script src="auth-fetch.js"></script>
