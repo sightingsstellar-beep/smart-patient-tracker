@@ -668,22 +668,113 @@ body {
   background: linear-gradient(180deg, #ffffff, var(--blue-light));
   color: var(--blue);
   border: 1px solid rgba(47, 127, 159, 0.16);
-  border-radius: 12px;
-  padding: 12px 8px;
-  font-size: 0.85rem;
-  font-weight: 600;
+  border-radius: 14px;
+  padding: 12px 8px 10px;
+  min-height: 82px;
+  font-size: 0.82rem;
+  font-weight: 700;
   cursor: pointer;
   transition: all 0.15s ease;
   text-align: center;
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.quick-btn-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 999px;
+  display: inline-grid;
+  place-items: center;
+  background: linear-gradient(135deg, rgba(47, 127, 159, 0.18), rgba(95, 199, 189, 0.16));
+  color: currentColor;
+  font-size: 1.28rem;
+  line-height: 1;
+  box-shadow:
+    inset 0 0 0 1px rgba(47, 127, 159, 0.18),
+    0 7px 15px rgba(47, 127, 159, 0.14);
+  transition: background 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+.quick-btn-icon i {
+  display: block;
+}
+
+.quick-btn-label {
+  line-height: 1.08;
+  white-space: nowrap;
+}
+
+.quick-btn--output {
+  background: linear-gradient(180deg, #ffffff, var(--yellow-light));
+  color: var(--yellow);
+  border-color: rgba(217, 154, 34, 0.18);
+}
+
+.quick-btn--output .quick-btn-icon {
+  background: linear-gradient(135deg, rgba(217, 154, 34, 0.17), rgba(255, 246, 223, 0.92));
+  box-shadow:
+    inset 0 0 0 1px rgba(217, 154, 34, 0.22),
+    0 7px 15px rgba(217, 154, 34, 0.13);
+}
+
+.quick-btn--nutrition {
+  background: linear-gradient(180deg, #ffffff, var(--green-light));
+  color: var(--green);
+  border-color: rgba(47, 143, 102, 0.16);
+}
+
+.quick-btn--nutrition .quick-btn-icon {
+  background: linear-gradient(135deg, rgba(47, 143, 102, 0.16), rgba(232, 247, 239, 0.95));
+  box-shadow:
+    inset 0 0 0 1px rgba(47, 143, 102, 0.2),
+    0 7px 15px rgba(47, 143, 102, 0.12);
+}
+
+.quick-btn--juice {
+  background: linear-gradient(180deg, #ffffff, #fff2df);
+  color: #c86d1f;
+  border-color: rgba(200, 109, 31, 0.16);
+}
+
+.quick-btn--juice .quick-btn-icon {
+  background: linear-gradient(135deg, rgba(200, 109, 31, 0.16), rgba(255, 242, 223, 0.95));
+  box-shadow:
+    inset 0 0 0 1px rgba(200, 109, 31, 0.2),
+    0 7px 15px rgba(200, 109, 31, 0.12);
+}
+
+.quick-btn--gag {
+  background: linear-gradient(180deg, #ffffff, var(--red-light));
+  color: var(--red);
+  border-color: rgba(201, 80, 75, 0.16);
+}
+
+.quick-btn--gag .quick-btn-icon {
+  background: linear-gradient(135deg, rgba(201, 80, 75, 0.16), rgba(253, 236, 235, 0.95));
+  box-shadow:
+    inset 0 0 0 1px rgba(201, 80, 75, 0.2),
+    0 7px 15px rgba(201, 80, 75, 0.12);
 }
 
 .quick-btn:hover,
 .quick-btn:active {
   background: var(--blue);
+  border-color: var(--blue);
   color: white;
   transform: scale(0.97);
+}
+
+.quick-btn:hover .quick-btn-icon,
+.quick-btn:active .quick-btn-icon {
+  background: rgba(255, 255, 255, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.28);
+  transform: scale(1.04);
 }
 
 .quick-btn.success {
