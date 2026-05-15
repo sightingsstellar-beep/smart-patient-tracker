@@ -12,7 +12,7 @@ body {
   flex-direction: column;
   min-height: 100vh;
   /* Room for the fixed chat composer plus the shared bottom nav. */
-  padding-bottom: calc(158px + env(safe-area-inset-bottom, 0px));
+  padding-bottom: calc(142px + env(safe-area-inset-bottom, 0px));
 }
 
 .chat-main {
@@ -22,7 +22,7 @@ body {
   max-width: 640px;
   margin: 0 auto;
   width: 100%;
-  padding: 12px 12px 158px; /* fixed input bar + floating bottom nav */
+  padding: 12px 12px 142px; /* fixed input bar + docked bottom nav */
   gap: 12px;
   overflow-y: auto;
 }
@@ -293,7 +293,7 @@ body {
 
 .chat-input-bar {
   position: fixed;
-  bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+  bottom: calc(72px + env(safe-area-inset-bottom, 0px));
   left: 0;
   right: 0;
   background: white;
@@ -381,6 +381,6 @@ body {
   }
 
   .chat-main {
-    padding: 16px 16px 166px;
+    padding: 16px 16px 150px;
   }
 }
