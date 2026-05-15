@@ -8,6 +8,8 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <link rel="manifest" href="/manifest.json" />
   <title>Glide Bedside — Trends</title>
+  <link rel="stylesheet" href="/vendor/phosphor/regular/style.css" />
+  <link rel="stylesheet" href="/vendor/phosphor/fill/style.css" />
   <link rel="stylesheet" href="style.css" />
   <link rel="stylesheet" href="history.css" />
   <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -24,21 +26,33 @@
         <div class="clock" id="current-time">--:--</div>
       </div>
     </div>
-    <nav class="tab-bar">
+    <nav class="tab-bar" aria-label="Primary">
       <a href="/" class="tab-item">
-        <span class="tab-icon">🫧</span>
+        <span class="tab-icon" aria-hidden="true">
+          <i class="tab-icon-outline ph ph-drop"></i>
+          <i class="tab-icon-fill ph-fill ph-drop"></i>
+        </span>
         <span class="tab-label">Day</span>
       </a>
-      <a href="/history" class="tab-item active">
-        <span class="tab-icon">📈</span>
+      <a href="/history" class="tab-item active" aria-current="page">
+        <span class="tab-icon" aria-hidden="true">
+          <i class="tab-icon-outline ph ph-chart-line-up"></i>
+          <i class="tab-icon-fill ph-fill ph-chart-line-up"></i>
+        </span>
         <span class="tab-label">Trends</span>
       </a>
       <a href="/chat" class="tab-item">
-        <span class="tab-icon">🎙️</span>
+        <span class="tab-icon" aria-hidden="true">
+          <i class="tab-icon-outline ph ph-microphone"></i>
+          <i class="tab-icon-fill ph-fill ph-microphone"></i>
+        </span>
         <span class="tab-label">Chat</span>
       </a>
       <a href="/settings" class="tab-item">
-        <span class="tab-icon">⚙️</span>
+        <span class="tab-icon" aria-hidden="true">
+          <i class="tab-icon-outline ph ph-gear-six"></i>
+          <i class="tab-icon-fill ph-fill ph-gear-six"></i>
+        </span>
         <span class="tab-label">Settings</span>
       </a>
     </nav>
