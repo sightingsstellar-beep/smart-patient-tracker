@@ -1879,7 +1879,6 @@ body {
   width: 100%;
   border: none;
   background: var(--white);
-  border: 1px solid rgba(219, 229, 236, 0.82);
   border-radius: 10px;
   padding: 8px 10px;
   text-align: left;
@@ -1893,7 +1892,6 @@ body {
 .entry-row-button:active,
 .entry-row-button:hover {
   background: var(--blue-light);
-  border-color: var(--bedside-nav-border);
 }
 
 .entry-row-main {
