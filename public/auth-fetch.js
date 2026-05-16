@@ -93,8 +93,11 @@
     const shouldAuth = sameOriginApi(input) && !headers.has('Authorization');
     const write = !['GET', 'HEAD', 'OPTIONS'].includes(method);
 
-    if (shouldAuth) {
-      const token = await getClerkToken({ skipCache: write });
+    // Authenticated GETs are already covered by Clerk's same-origin session
+    // cookies on the server. Avoid loading Clerk's browser bundle just to render
+    // ordinary page data; reserve token work for writes and 401 recovery.
+    if (shouldAuth && write) {
+      const token = await getClerkToken({ skipCache: true });
       if (token) headers.set('Authorization', `Bearer ${token}`);
     }
 
