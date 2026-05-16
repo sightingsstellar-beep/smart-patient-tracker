@@ -491,13 +491,6 @@ body {
   overflow: hidden;
 }
 
-.card::before {
-  content: '';
-  position: absolute;
-  inset: 0 0 auto;
-  height: 4px;
-  background: linear-gradient(90deg, rgba(95, 199, 189, 0.74), rgba(47, 127, 159, 0.18));
-}
 
 .card-header {
   display: flex;
