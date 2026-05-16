@@ -122,6 +122,7 @@
       <div class="card-header card-header--actionable">
         <span class="card-icon" aria-hidden="true"><i class="ph ph-drop"></i></span>
         <h2>Intake</h2>
+        <span class="badge" id="intake-count">0</span>
         <button class="card-action-btn" id="add-intake-btn">+ Add</button>
       </div>
       <div class="intake-totals">
@@ -133,7 +134,9 @@
         <div class="progress-bar" id="progress-bar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
       </div>
       <div class="over-limit-warning" id="over-limit-warning" style="display:none;"><i class="ph ph-traffic-signal" aria-hidden="true"></i> Daily limit exceeded!</div>
-      <div class="fluid-types" id="fluid-types"></div>
+      <ul class="output-list intake-list" id="intake-list">
+        <li class="empty-state">No intake logged yet</li>
+      </ul>
     </section>
 
     <section class="card output-card">

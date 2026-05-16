@@ -30,16 +30,30 @@ const OUTPUT_OPTIONS = [
   { value: 'vomit', label: 'Vomit' },
 ];
 
+const INPUT_ICON_CLASSES = {
+  water: 'ph-drop',
+  pediasure: 'ph-first-aid-kit',
+  milk: 'ph-cow',
+  juice: 'ph-orange-slice',
+  yogurt_drink: 'ph-bowl-food',
+};
+
 const OUTPUT_ICON_CLASSES = {
   urine: 'ph-toilet',
   poop: 'ph-toilet-paper',
   vomit: 'ph-spiral',
 };
 
-function outputIconHtml(type) {
-  const iconClass = OUTPUT_ICON_CLASSES[type] || 'ph-toilet';
+function entryTypeIconHtml(type, entryType = 'output') {
+  const iconMap = entryType === 'input' ? INPUT_ICON_CLASSES : OUTPUT_ICON_CLASSES;
+  const iconClass = iconMap[type] || (entryType === 'input' ? 'ph-drop' : 'ph-toilet');
+  const inputClass = entryType === 'input' ? ' output-type-icon--input' : '';
   const warnClass = type === 'vomit' ? ' output-type-icon--warn' : '';
-  return `<span class="output-type-icon${warnClass}" aria-hidden="true"><i class="ph ${iconClass}"></i></span>`;
+  return `<span class="output-type-icon${inputClass}${warnClass}" aria-hidden="true"><i class="ph ${iconClass}"></i></span>`;
+}
+
+function outputIconHtml(type) {
+  return entryTypeIconHtml(type, 'output');
 }
 
 const POOP_SUBTYPE_OPTIONS = [
@@ -376,49 +390,28 @@ function renderIntake() {
 
   document.getElementById('over-limit-warning').style.display = total > limit ? 'block' : 'none';
 
-  const container = document.getElementById('fluid-types');
+  const list = document.getElementById('intake-list');
   const inputs = state.data?.inputs || [];
-  const intakeByType = state.data?.intakeByType || {};
-  const entries = Object.entries(intakeByType).filter(([, ml]) => ml > 0);
+  document.getElementById('intake-count').textContent = inputs.length;
 
-  if (entries.length === 0) {
-    container.innerHTML = `<div class="empty-state">No intake logged for ${escapeHtml(formatChipLabel(state.selectedDayKey).toLowerCase())}</div>`;
+  if (!inputs.length) {
+    list.innerHTML = `<li class="empty-state">No intake logged for ${escapeHtml(formatChipLabel(state.selectedDayKey).toLowerCase())}</li>`;
     return;
   }
 
-  const inputsByType = inputs.reduce((map, entry) => {
-    if (!entry?.fluid_type) return map;
-    if (!map[entry.fluid_type]) map[entry.fluid_type] = [];
-    map[entry.fluid_type].push(entry);
-    return map;
-  }, {});
-
-  container.innerHTML = entries.map(([type, amount]) => {
-    const items = inputsByType[type] || [];
-    const detailHtml = items.map((entry) => {
-      return `
-        <div class="fluid-type-detail-row">
-          <button class="entry-row-button" data-entry-kind="fluid" data-entry-id="${entry.id}">
-            <span class="output-time">${escapeHtml(entry.time || '--')}</span>
-            <span class="entry-row-spacer"></span>
-            <span class="entry-row-amount">${escapeHtml(entry.amount_ml || 0)} ml</span>
-          </button>
-        </div>
-      `;
-    }).join('');
-
+  list.innerHTML = inputs.map((entry) => {
+    const amount = entry.amount_ml ? `${entry.amount_ml} ml` : 'No amount';
     return `
-      <div class="fluid-type-card">
-        <div class="fluid-type-static-header">
-          <div class="fluid-type-summary">
-            <div class="fluid-type-name">${escapeHtml(FLUID_LABELS[type] || type)}</div>
-            <div class="fluid-type-amount">${escapeHtml(amount)} ml</div>
-          </div>
-        </div>
-        <div class="fluid-type-details">
-          ${detailHtml || '<div class="fluid-type-detail-empty">No individual entries found</div>'}
-        </div>
-      </div>
+      <li class="output-item intake-item">
+        <button class="entry-row-button" data-entry-kind="fluid" data-entry-id="${entry.id}">
+          <span class="output-time">${escapeHtml(entry.time || '--')}</span>
+          ${entryTypeIconHtml(entry.fluid_type, 'input')}
+          <span class="entry-row-main">
+            <span class="entry-row-title">${escapeHtml(entry.fluid_type_label || FLUID_LABELS[entry.fluid_type] || entry.fluid_type)}</span>
+          </span>
+          <span class="entry-row-amount">${escapeHtml(amount)}</span>
+        </button>
+      </li>
     `;
   }).join('');
 }
@@ -1005,7 +998,7 @@ function initEventListeners() {
   document.getElementById('add-gag-btn').addEventListener('click', () => openEntrySheet({ mode: 'add', kind: 'gag' }));
   document.getElementById('weight-action-btn').addEventListener('click', () => openEntrySheet({ mode: state.weight ? 'edit' : 'add', kind: 'weight' }));
 
-  ['fluid-types', 'output-list', 'gag-list'].forEach((id) => {
+  ['intake-list', 'output-list', 'gag-list'].forEach((id) => {
     document.getElementById(id).addEventListener('click', (event) => {
       const button = event.target.closest('.entry-row-button');
       if (!button) return;

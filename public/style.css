@@ -673,11 +673,8 @@ body {
   50% { background: #fad2d0; }
 }
 
-/* Fluid type cards */
-.fluid-types {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 8px;
+/* Intake list mirrors the Outputs section for easier scanning. */
+.intake-list {
   margin-top: 12px;
 }
 
@@ -807,6 +804,12 @@ body {
   background: linear-gradient(135deg, rgba(201, 80, 75, 0.16), rgba(253, 236, 235, 0.95));
   color: var(--red);
   box-shadow: inset 0 0 0 1px rgba(201, 80, 75, 0.22);
+}
+
+.output-type-icon--input {
+  background: linear-gradient(135deg, rgba(47, 127, 159, 0.17), rgba(95, 199, 189, 0.18));
+  color: var(--blue);
+  box-shadow: inset 0 0 0 1px var(--bedside-nav-border);
 }
 
 .empty-state {
