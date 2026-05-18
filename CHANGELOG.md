@@ -4,9 +4,10 @@ All notable changes to the Glide Bedside web app and Alexa skill are documented 
 
 This project follows semantic versioning. Because the tracker is live and used daily, every deployed behavior change should link back to Mission Control context and include verification evidence.
 
-## [Unreleased]
+## [1.2.2] - 2026-05-17
 
 ### Changed
+- Renamed the GitHub repository and package identity from Smart Patient Tracker to Glide Bedside (`sightingsstellar-beep/glide-bedside`).
 - Adopted the updated official Glide tool-family names: Glide Bedside, Glide Hello, and Glide Guide.
 - Updated web app/PWA labels, Alexa manifest metadata, Alexa invocation examples, runtime messages, invite emails, and publication docs from Patient Tracker / Handoff Videos / Community Guidebook naming to Glide Bedside / Glide Hello / Glide Guide.
 
@@ -14,6 +15,10 @@ This project follows semantic versioning. Because the tracker is live and used d
 - `node --check server.js`
 - `node --check db.js`
 - Alexa manifest JSON/structure smoke check for skill name, endpoint, and policy URLs.
+
+### Mission Control
+- Resource: Glide Bedside live app.
+- Initiative: GlideChart tool repos and release accountability.
 
 ## [1.2.0] - 2026-05-11
 
