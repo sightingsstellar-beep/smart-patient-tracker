@@ -4,6 +4,24 @@ All notable changes to the Glide Bedside web app and Alexa skill are documented 
 
 This project follows semantic versioning. Because the tracker is live and used daily, every deployed behavior change should link back to Mission Control context and include verification evidence.
 
+## [1.2.3] - 2026-05-18
+
+### Changed
+- Added a package-level `npm test` smoke gate for syntax-checking the main server, database, bot, and operational scripts.
+- Updated local setup documentation to require Node.js 20.9+, matching `package.json`.
+
+### Fixed
+- Made the Clerk credential verification script load local `.env` values and fail clearly when `CLERK_SECRET_KEY` is missing.
+- Added a required destination confirmation guard to the destructive SQLite-to-Postgres migration script, plus a dry-run/count mode for safer inspection.
+
+### Verification
+- `npm test`
+- `node scripts/migrate-sqlite-to-postgres.js --dry-run` against a temporary SQLite fixture and dummy Postgres URL
+
+### Mission Control
+- Resource: Glide Bedside live app.
+- Clawpatch pilot report: `state/clawpatch-pilots/20260518T001459Z-glide-bedside/report.md`.
+
 ## [1.2.2] - 2026-05-17
 
 ### Changed

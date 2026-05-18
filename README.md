@@ -47,7 +47,7 @@ Before marking a tracker/Alexa change done, record the deployed version, verific
 ## Quick Start (Local)
 
 ### Prerequisites
-- Node.js 18+
+- Node.js 20.9+
 - A Telegram bot token (from [@BotFather](https://t.me/BotFather))
 - An OpenAI API key
 

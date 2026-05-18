@@ -6,16 +6,59 @@ require('dotenv').config();
 const path = require('path');
 const fs = require('fs');
 const SQLite = require('better-sqlite3');
-const db = require('../db');
 
-const sqlitePath = process.argv[2] || path.join(__dirname, '..', 'data', 'elina.db');
+function parseArgs(argv) {
+  const options = {
+    sqlitePath: null,
+    confirmDestination: null,
+    dryRun: false,
+  };
+
+  for (let index = 0; index < argv.length; index += 1) {
+    const arg = argv[index];
+    if (arg === '--confirm-destination') {
+      if (!argv[index + 1] || argv[index + 1].startsWith('--')) {
+        throw new Error('--confirm-destination requires a value');
+      }
+      options.confirmDestination = argv[index + 1];
+      index += 1;
+    } else if (arg === '--dry-run') {
+      options.dryRun = true;
+    } else if (!arg.startsWith('--') && !options.sqlitePath) {
+      options.sqlitePath = arg;
+    } else {
+      throw new Error(`Unknown argument: ${arg}`);
+    }
+  }
+
+  return options;
+}
+
+function destinationIdentity(databaseUrl) {
+  if (!databaseUrl) return 'DATABASE_URL or POSTGRES_URL is not set';
+
+  try {
+    const url = new URL(databaseUrl);
+    return `${url.hostname}${url.port ? `:${url.port}` : ''}${url.pathname}`;
+  } catch {
+    return 'unparseable DATABASE_URL';
+  }
+}
+
+const options = parseArgs(process.argv.slice(2));
+const sqlitePath = options.sqlitePath || path.join(__dirname, '..', 'data', 'elina.db');
 if (!fs.existsSync(sqlitePath)) {
   console.error(`SQLite source not found: ${sqlitePath}`);
   process.exit(1);
 }
 
-const FAMILY_ID = db.DEFAULT_FAMILY_ID;
-const PATIENT_ID = db.DEFAULT_PATIENT_ID;
+const destination = destinationIdentity(process.env.DATABASE_URL || process.env.POSTGRES_URL);
+if (!options.dryRun && (!options.confirmDestination || !destination.includes(options.confirmDestination))) {
+  console.error('Refusing to run destructive migration without destination confirmation.');
+  console.error(`Destination: ${destination}`);
+  console.error('Pass --confirm-destination <substring-of-destination> after verifying this is the intended database.');
+  process.exit(1);
+}
 
 function rows(sqlite, table) {
   const exists = sqlite.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name=?").get(table);
@@ -24,8 +67,24 @@ function rows(sqlite, table) {
 }
 
 async function main() {
-  await db.ready;
   const sqlite = new SQLite(sqlitePath, { readonly: true });
+  const sourceCounts = {};
+  for (const table of ['settings', 'fluid_logs', 'wellness_checks', 'gag_events', 'weight_logs', 'sessions']) {
+    sourceCounts[table] = rows(sqlite, table).length;
+  }
+
+  if (options.dryRun) {
+    console.log(JSON.stringify({ ok: true, dryRun: true, sqlitePath, destination, sourceCounts }, null, 2));
+    sqlite.close();
+    return;
+  }
+
+  console.error(`Destructive migration confirmed for destination: ${destination}`);
+
+  const db = require('../db');
+  const FAMILY_ID = db.DEFAULT_FAMILY_ID;
+  const PATIENT_ID = db.DEFAULT_PATIENT_ID;
+  await db.ready;
   const client = await db.pool.connect();
   try {
     await client.query('BEGIN');

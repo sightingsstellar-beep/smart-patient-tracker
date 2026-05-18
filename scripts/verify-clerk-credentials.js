@@ -1,9 +1,15 @@
 #!/usr/bin/env node
 'use strict';
 
+require('dotenv').config();
+
 const { createClerkClient } = require('@clerk/express');
 
 async function main() {
+  if (!process.env.CLERK_SECRET_KEY) {
+    throw new Error('CLERK_SECRET_KEY is required. Set it in the environment or local .env file.');
+  }
+
   const client = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
   const result = await client.users.getUserList({ limit: 1 });
   console.log(JSON.stringify({

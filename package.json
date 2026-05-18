@@ -1,11 +1,12 @@
 {
   "name": "glide-bedside",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "Glide Bedside — fluid intake/output, wellness checks, and daily reports via Telegram bot and web dashboard",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "test": "node --check server.js && node --check db.js && node --check bot.js && node --check scripts/verify-clerk-credentials.js && node --check scripts/migrate-sqlite-to-postgres.js"
   },
   "dependencies": {
     "@clerk/express": "^2.1.15",
