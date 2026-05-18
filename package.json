@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "node --check server.js && node --check db.js && node --check bot.js && node --check scripts/verify-clerk-credentials.js && node --check scripts/migrate-sqlite-to-postgres.js"
+    "test": "node --check server.js && node --check db.js && node --check bot.js && node --check scripts/verify-clerk-credentials.js && node --check scripts/migrate-sqlite-to-postgres.js",
+    "verify:surface-map": "node ../repos/mission-control-v3/scripts/verify-surface-map.mjs surface.map.json"
   },
   "dependencies": {
     "@clerk/express": "^2.1.15",

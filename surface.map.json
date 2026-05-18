@@ -1,0 +1,210 @@
+{
+  "schema": "mc.surface_map.v1",
+  "maturity": "active",
+  "confidence": "medium",
+  "name": "glide-bedside",
+  "purpose": "Repo-local orientation map for significant Glide Bedside changes. This file helps agents find and check important product, API, data, Alexa, and deployment surfaces, but it is not runtime authority or a replacement for source code, production state, docs, or Mission Control state.",
+  "authority": {
+    "canonicalRuntime": "Glide Bedside production app on Railway and its configured Postgres database",
+    "sourceOfTruth": [
+      "server.js",
+      "db.js",
+      "public/",
+      "bot.js",
+      "alexa/",
+      "docs/",
+      "package.json",
+      "railway.json"
+    ],
+    "nonGoals": [
+      "Runtime schema definition",
+      "Mission Control state store",
+      "Complete implementation inventory"
+    ]
+  },
+  "surfaces": [
+    {
+      "id": "product.dashboard",
+      "status": "active",
+      "label": "Browser dashboard and family settings",
+      "kind": "product",
+      "summary": "Mobile-first caregiver dashboard, display mode, history, login, settings, theme, auth fetch, and client release/version behavior.",
+      "paths": [
+        "public/index.html",
+        "public/app.js",
+        "public/style.css",
+        "public/settings.html",
+        "public/settings.js",
+        "public/history.html",
+        "public/history.js",
+        "public/display.html",
+        "public/auth-fetch.js",
+        "public/version-watch.js"
+      ],
+      "routes": [
+        "GET /settings",
+        "GET /history",
+        "GET /display"
+      ],
+      "checks": [
+        "npm run test"
+      ],
+      "driftRisks": [
+        "Dashboard workflows change without corresponding API or settings updates.",
+        "Version/accountability surfaces stop matching deployed release behavior."
+      ]
+    },
+    {
+      "id": "api.express",
+      "status": "active",
+      "label": "Express API and auth boundary",
+      "kind": "api",
+      "summary": "HTTP routes for health, version, dashboard data, settings, logging, backups, display access, machine API keys, sessions, and Clerk/Alexa auth boundaries.",
+      "paths": [
+        "server.js",
+        "app-version.js",
+        ".env.example"
+      ],
+      "routes": [
+        "GET /health",
+        "GET /api/version",
+        "GET /api/settings",
+        "POST /api/settings",
+        "GET /api/today",
+        "POST /api/entries",
+        "POST /api/alexa"
+      ],
+      "checks": [
+        "npm run test"
+      ],
+      "driftRisks": [
+        "New API routes bypass auth, family scoping, or release accountability.",
+        "Environment requirements change without README or .env.example updates."
+      ]
+    },
+    {
+      "id": "data.postgres",
+      "status": "active",
+      "label": "Postgres schema and patient/family data helpers",
+      "kind": "data",
+      "summary": "Database schema initialization, scoped query helpers, settings cache, sessions, entries, patients, families, and migration path from the retired SQLite shape.",
+      "paths": [
+        "db.js",
+        "scripts/migrate-sqlite-to-postgres.js",
+        "seed-sample-data.js"
+      ],
+      "checks": [
+        "npm run test"
+      ],
+      "driftRisks": [
+        "Schema changes do not stay aligned with dashboard, bot, Alexa, or backup expectations.",
+        "Family/patient scoping regresses while adding multi-family behavior."
+      ]
+    },
+    {
+      "id": "bot.telegram-nlp",
+      "status": "active",
+      "label": "Telegram bot and natural-language logging",
+      "kind": "adapter",
+      "summary": "Telegram command handling, OpenAI-backed parsing, report generation, scheduler integration, mailer, and realtime update paths.",
+      "paths": [
+        "bot.js",
+        "parser.js",
+        "scheduler.js",
+        "mailer.js",
+        "realtime.js"
+      ],
+      "checks": [
+        "npm run test"
+      ],
+      "driftRisks": [
+        "Parser or bot commands diverge from dashboard data semantics.",
+        "Scheduled reports or notifications change without operator-facing docs."
+      ]
+    },
+    {
+      "id": "alexa.skill",
+      "status": "active",
+      "label": "Alexa skill and account-linking surface",
+      "kind": "adapter",
+      "summary": "Alexa manifest, interaction model, skill assets, account-linking docs, reviewer-safe testing path, and related endpoint/version behavior.",
+      "paths": [
+        "ask-manifest.json",
+        "alexa/interaction-model.json",
+        "assets/alexa",
+        "docs/alexa-account-linking-implementation.md",
+        "docs/alexa-reviewer-safe-test-path.md",
+        "docs/alexa-multi-family-publishing-roadmap.md"
+      ],
+      "routes": [
+        "POST /api/alexa"
+      ],
+      "checks": [
+        "npm run test"
+      ],
+      "driftRisks": [
+        "Alexa interaction model or account-linking behavior drifts from the Express endpoint.",
+        "Store/reviewer metadata falls behind product naming, privacy, or testing reality."
+      ]
+    },
+    {
+      "id": "release.deployment",
+      "status": "active",
+      "label": "Release, deployment, and accountability",
+      "kind": "verification",
+      "summary": "Package version, changelog, Railway deployment config, Nixpacks build behavior, health checks, and Mission Control release receipts.",
+      "paths": [
+        "package.json",
+        "package-lock.json",
+        "CHANGELOG.md",
+        "README.md",
+        "railway.json",
+        "nixpacks.toml",
+        "docs/smart-patient-tracker-release-v1.1.1.md"
+      ],
+      "routes": [
+        "GET /health",
+        "GET /api/version"
+      ],
+      "checks": [
+        "npm run test"
+      ],
+      "driftRisks": [
+        "Production version, changelog, and Mission Control receipts diverge.",
+        "Deployment config changes without a matching health/version verification path."
+      ]
+    },
+    {
+      "id": "docs.product-architecture",
+      "status": "active",
+      "label": "Product architecture and care-tool docs",
+      "kind": "docs",
+      "summary": "Human-readable design notes for tenancy, Clerk auth, native app readiness, account linking, and family-care product evolution.",
+      "paths": [
+        "README.md",
+        "docs/family-tenancy-access-design.md",
+        "docs/clerk-auth-spike.md",
+        "docs/native-app-readiness-api-contract.md"
+      ],
+      "checks": [
+        "npm run test"
+      ],
+      "driftRisks": [
+        "Architecture docs describe planned behavior after implementation has shifted.",
+        "Care-tool naming and scope drift away from the GlideChart product structure in Mission Control."
+      ]
+    }
+  ],
+  "workflow": {
+    "beforeSignificantChange": [
+      "Read this map and the listed docs for touched surfaces",
+      "Use the active Mission Control work packet before object-centered execution",
+      "Check whether the change touches product, data, Alexa, deployment, or docs surfaces together"
+    ],
+    "afterSignificantChange": [
+      "Run npm run verify:surface-map",
+      "Run npm run test",
+      "Record Mission Control receipts or proposals at transition points"
+    ]
+  }
+}
