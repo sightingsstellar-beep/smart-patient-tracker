@@ -55,8 +55,8 @@ Before marking a tracker/Alexa change done, record the deployed version, verific
 
 ```bash
 # 1. Clone or download the project
-git clone https://github.com/sightingsstellar-beep/smart-patient-tracker.git
-cd smart-patient-tracker
+git clone https://github.com/sightingsstellar-beep/glide-bedside.git
+cd glide-bedside
 
 # 2. Install dependencies
 npm install
@@ -245,7 +245,7 @@ The web dashboard is served at the root URL (`/`). It:
 ## File Structure
 
 ```
-smart-patient-tracker/
+glide-bedside/
 ├── server.js          # Express app, API routes, report builder
 ├── bot.js             # Telegram bot (polling, commands, NLP dispatch)
 ├── parser.js          # OpenAI gpt-4o-mini NLP parser
@@ -278,6 +278,9 @@ smart-patient-tracker/
 ---
 
 ## API Reference
+
+For the native-app readiness inventory and proposed mobile-facing contract, see
+[`docs/native-app-readiness-api-contract.md`](docs/native-app-readiness-api-contract.md).
 
 | Method | Endpoint | Description |
 |---|---|---|
